@@ -1,0 +1,23 @@
+{
+    "files.associations": {
+        "gd32f4xx.h": "c",
+        "gd32f470v_start.h": "c"
+    },
+    "clangd.fallbackFlags": [
+        "-I../Drivers/CMSIS/",
+        "-I../Drivers/CMSIS/GD/GD32F4xx/Include",
+        "-I../Drivers/GD32F4xx_standard_peripheral/Include",
+        "-I../Utilities",
+        "-I../Application",
+    ],
+    "clangd.arguments": [
+        "--clang-tidy",
+        "--clang-tidy-checks=performance-*,bugprone-*",
+        "--query-driver=/usr/bin/clang,/usr/bin/clang++",
+        "--all-scopes-completion",
+        "--completion-style=detailed",
+        "--function-arg-placeholders",
+        "--header-insertion=iwyu",
+        "--pch-storage=disk"
+    ]
+}

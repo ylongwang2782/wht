@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+            ],
+            "defines": [
+              ],
+            "compilerPath": "C:\\Program Files\\JetBrains\\CLion 2024.1\\bin\\mingw\\bin\\gcc.exe",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,27 @@
+{
+    "code-runner.saveFileBeforeRun": true,
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.fallbackFlags": [
+        "-IC:/code_project/GD32_WHT/Drivers/CMSIS/",
+        "-IC:/code_project/GD32_WHT/Drivers/CMSIS/GD/GD32F4xx/Include",
+        "-IC:/code_project/GD32_WHT/Drivers/GD32F4xx_standard_peripheral/Include",
+        "-IC:/code_project/GD32_WHT/Utilities",
+        "-IC:/code_project/GD32_WHT/Application",
+        "-IC:/code_project/GD32_WHT/Drivers/GD32F4xx_standard_peripheral/Include",
+        "-IC:/code_project/GD32_WHT/Drivers/User/Include",
+        "-IC:/code_project/GD32_WHT/Drivers/User/Device",
+        "-DGD32F470",
+        "-DDEBUG"
+    ],
+    "clangd.arguments": [
+        "--clang-tidy",
+        "--clang-tidy-checks=performance-*,bugprone-*",
+        "--query-driver=/usr/bin/clang,/usr/bin/clang++",
+        "--all-scopes-completion",
+        "--completion-style=detailed",
+        "--function-arg-placeholders",
+        "--header-insertion=iwyu",
+        "--pch-storage=disk",
+    ],
+    "todo-tree.tree.showBadges": false,
+}
