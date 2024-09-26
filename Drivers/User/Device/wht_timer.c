@@ -13,7 +13,7 @@ const uint8_t timer_nvic_sub_prio = 0;
 void (*timer1_callback)(void) = NULL;
 
 void timer1_init(void (*callback)(void)) {
-    nvic_irq_enable(TIMER1_IRQn, timer_nvic_pre_prio, timer_nvic_sub_prio);
+    
     timer_parameter_struct timer_initpara;
 
     rcu_periph_clock_enable(RCU_TIMER1);
@@ -30,6 +30,8 @@ void timer1_init(void (*callback)(void)) {
     timer_interrupt_enable(TIMER1, TIMER_INT_UP);
     timer_enable(TIMER1);
 
+    // 设置中断优先级
+    nvic_irq_enable(TIMER1_IRQn, timer_nvic_pre_prio, timer_nvic_sub_prio);
     // 注册回调函数
     timer1_callback = callback;
 }
