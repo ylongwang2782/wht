@@ -2,12 +2,13 @@
 
 #include "wht_timer.h"
 
+uint16_t wire_data = 0;
+static int32_t heartbeat = -1;
+
 void running_led_init(void);
 void slave_timer_config(void);
 void timer_task(void);
 int wire_gpio_init(void);
-
-uint16_t wire_data = 0;
 
 int slave_mode_entry(void) {
     systick_config();
@@ -15,10 +16,32 @@ int slave_mode_entry(void) {
     timer1_init(timer_task);
     wire_gpio_init();
 
-    while (1);
+    while (1) {
+        // feed watchdog
+
+        // 1. Wireless rx check task
+        // 1.1 Frame parse task
+        // 1.2 Excute by frame type
+
+        // 2. Data collect task
+        // 2.1 Collect wire data
+
+        // 3. Data pack task
+        // 3.1 Pack 0x01: Join reply
+        // 3.2 Pack 0x02: Wire test data
+
+        // 4. Data tx task
+        // 4.1 Send 0x01: Join reply
+        // 4.2 Send 0x02: Wire test data
+
+        // 5. Device status check task
+
+        // 6. Pdt test task
+    }
 }
 
 void timer_task(void) {
+    heartbeat++;
     gpio_bit_toggle(GPIOC, GPIO_PIN_6);  // 切换LED状态
     wire_data = gpio_input_port_get(GPIOE);
 }
