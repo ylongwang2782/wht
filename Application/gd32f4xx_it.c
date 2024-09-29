@@ -34,10 +34,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gd32f4xx_it.h"
 
-#include "gd32f470v_start.h"
 #include "systick.h"
 #include "wht_timer.h"
 
+extern uint8_t rx_count;
+extern uint8_t receive_flag;
+void USART1_IRQHandler(void)
+{
+    if(RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)){
+        /* clear IDLE flag */
+        usart_data_receive(USART1);
+        /* number of data received */
+        rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH5));
+        receive_flag = 1;
+        
+        /* disable DMA and reconfigure */
+        dma_channel_disable(DMA0, DMA_CH5);
+        dma_flag_clear(DMA0, DMA_CH5, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA0, DMA_CH5, 256);
+        dma_channel_enable(DMA0, DMA_CH5);
+    }
+}
 
 /* timer1 interrupt handler */
 void TIMER1_IRQHandler(void) {

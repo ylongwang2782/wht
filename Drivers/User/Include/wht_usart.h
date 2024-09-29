@@ -30,8 +30,16 @@
 #define WHT_COM2_TX_PIN                 GPIO_PIN_10
 #define WHT_COM2_RX_PIN                 GPIO_PIN_11
 
+enum {
+    COM0 = 0,
+    COM1,
+    COM2,
+};
+
 void wht_com_init(uint32_t com,uint8_t txbuffer[]);
 void wh_usart_send(uint32_t usart_periph,uint8_t *data, uint16_t len);
 void wht_usart_init(void);
 int wht_usart_send(uint8_t *data, uint16_t len);
 int wht_usart_recv(uint8_t *data, uint16_t len);
+
+void com1_idle_rx_dma_config(uint32_t com);
