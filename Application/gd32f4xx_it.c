@@ -36,18 +36,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "systick.h"
 #include "wht_timer.h"
+#include "wht_usart.h"
 
-extern uint8_t rx_count;
-extern uint8_t receive_flag;
-void USART1_IRQHandler(void)
-{
-    if(RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)){
+void USART1_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)) {
         /* clear IDLE flag */
         usart_data_receive(USART1);
         /* number of data received */
-        rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH5));
-        receive_flag = 1;
-        
+        if (usart1_callback != NULL) {
+            usart1_callback();  // 调用注册的回调函数
+        }
         /* disable DMA and reconfigure */
         dma_channel_disable(DMA0, DMA_CH5);
         dma_flag_clear(DMA0, DMA_CH5, DMA_FLAG_FTF);
@@ -60,7 +58,6 @@ void USART1_IRQHandler(void)
 void TIMER1_IRQHandler(void) {
     if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP)) {
         timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);
-
         // 调用回调函数
         if (timer1_callback != NULL) {
             timer1_callback();  // 执行回调函数

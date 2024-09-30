@@ -10,7 +10,6 @@
  */
 #include <stdio.h>
 
-#include "gd32f470v_start.h"
 #include "gd32f4xx.h"
 #include "systick.h"
 
@@ -18,7 +17,7 @@ extern void master_mode_entry(void);
 extern void slave_mode_entry(void);
 
 int main(void) {
-
+    
 #ifdef MASTER_MODE
     master_mode_entry();
 #endif

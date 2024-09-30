@@ -1,5 +1,4 @@
 #include "wht_timer.h"
-#include <stdint.h>
 
 // TIEMR TRIGGER INTERVAL = 240M / TIMER_PRESCALER / TIMER_PERIOD = 10kHz
 // TIEMR TRIGGER INTERVAL = 240M / 2400 / 1000 = 100Hz

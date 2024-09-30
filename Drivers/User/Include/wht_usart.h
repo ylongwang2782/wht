@@ -36,10 +36,12 @@ enum {
     COM2,
 };
 
-void wht_com_init(uint32_t com,uint8_t txbuffer[]);
-void wh_usart_send(uint32_t usart_periph,uint8_t *data, uint16_t len);
+extern void (*usart1_callback)(void);
+
+void wht_com_init(uint32_t com);
+void wht_com1_send(uint32_t usart_periph,uint8_t *data, uint16_t len);
 void wht_usart_init(void);
 int wht_usart_send(uint8_t *data, uint16_t len);
 int wht_usart_recv(uint8_t *data, uint16_t len);
 
-void com1_idle_rx_dma_config(uint32_t com);
+void wht_com1_idle_rx_dma_config(uint32_t com, void (*callback)(void));
