@@ -45,5 +45,5 @@ int wht_usart_send(uint8_t *data, uint16_t len);
 int wht_usart_recv(uint8_t *data, uint16_t len);
 
 void wht_com1_idle_dma_rx_config(uint32_t com, void (*callback)(void));
-void wht_com1_dma_tx_init(void);
+void wht_com1_dma_tx_config(void);
 void wht_com1_dma_tx(uint8_t *data, uint16_t len);

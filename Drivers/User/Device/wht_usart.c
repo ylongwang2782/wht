@@ -1,5 +1,7 @@
 #include "wht_usart.h"
+
 #include "gd32f4xx_dma.h"
+
 
 #define ARRAYNUM(arr_name) (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
 #define USART0_DATA_ADDRESS ((uint32_t) & USART_DATA(USART0))
@@ -97,7 +99,7 @@ void com0_idle_rx_dma_config(uint32_t com) {
 
 uint8_t com1_txbuffer[10] = {0x01, 0x02, 0x03, 0x04, 0x05,
                              0x06, 0x07, 0x08, 0x09, 0x0A};
-void wht_com1_dma_tx_init(void) {
+void wht_com1_dma_tx_config(void) {
     dma_single_data_parameter_struct dma_init_struct;
     /* enable DMA1 */
     rcu_periph_clock_enable(RCU_DMA0);
@@ -125,6 +127,7 @@ void wht_com1_dma_tx(uint8_t *data, uint16_t len) {
     dma_memory_address_config(DMA0, DMA_CH6, DMA_MEMORY_0, (uint32_t)data);
     dma_transfer_number_config(DMA0, DMA_CH6, len);
     dma_channel_enable(DMA0, DMA_CH6);
+    while (RESET == usart_flag_get(WHT_COM1, USART_FLAG_TC));
 }
 
 uint8_t com1_rxbuffer[com_idle_rx_size];
