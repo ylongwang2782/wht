@@ -28,9 +28,11 @@ int slave_mode_entry(void) {
 
     wire_gpio_init();
 
-    wht_com1_idle_rx_dma_config(WHT_COM1,com_rx_idle_callback);
+    wht_com1_idle_dma_rx_config(WHT_COM1,com_rx_idle_callback);
     wht_com_init(WHT_COM1);
-    wht_com1_send(WHT_COM1, tx_buffer, 5);
+    wht_com1_dma_tx_init();
+    
+    wht_com1_dma_tx(tx_buffer, 5);
 
     while (1) {
         if (1 == receive_flag) {

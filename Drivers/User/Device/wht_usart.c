@@ -1,8 +1,9 @@
 #include "wht_usart.h"
+#include "gd32f4xx_dma.h"
 
 #define ARRAYNUM(arr_name) (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
-#define USART0_RDATA_ADDRESS ((uint32_t) & USART_DATA(USART0))
-#define USART1_RDATA_ADDRESS ((uint32_t) & USART_DATA(USART1))
+#define USART0_DATA_ADDRESS ((uint32_t) & USART_DATA(USART0))
+#define USART1_DATA_ADDRESS ((uint32_t) & USART_DATA(USART1))
 #define com_idle_rx_size 256
 
 static rcu_periph_enum COM_CLK[COMn] = {WHT_COM0_CLK, WHT_COM1_CLK,
@@ -16,7 +17,6 @@ static uint32_t COM_TX_PIN[COMn] = {WHT_COM0_TX_PIN, WHT_COM1_TX_PIN,
                                     WHT_COM2_TX_PIN};
 static uint32_t COM_RX_PIN[COMn] = {WHT_COM0_RX_PIN, WHT_COM1_RX_PIN,
                                     WHT_COM2_RX_PIN};
-
 void (*usart1_callback)(void) = NULL;
 
 void wht_com_init(uint32_t com) {
@@ -52,6 +52,7 @@ void wht_com_init(uint32_t com) {
     usart_receive_config(com, USART_RECEIVE_ENABLE);
     usart_transmit_config(com, USART_TRANSMIT_ENABLE);
     usart_dma_receive_config(com, USART_RECEIVE_DMA_ENABLE);
+    usart_dma_transmit_config(com, USART_RECEIVE_DMA_ENABLE);
     usart_enable(com);
 
     usart_interrupt_enable(USART1, USART_INT_IDLE);
@@ -79,7 +80,7 @@ void com0_idle_rx_dma_config(uint32_t com) {
     dma_init_struct.memory0_addr = (uint32_t)com0_rxbuffer;
     dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_init_struct.number = com_idle_rx_size;
-    dma_init_struct.periph_addr = USART0_RDATA_ADDRESS;
+    dma_init_struct.periph_addr = USART0_DATA_ADDRESS;
     dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
     dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
@@ -94,8 +95,40 @@ void com0_idle_rx_dma_config(uint32_t com) {
     usart_interrupt_enable(com, USART_INT_IDLE);
 }
 
+uint8_t com1_txbuffer[10] = {0x01, 0x02, 0x03, 0x04, 0x05,
+                             0x06, 0x07, 0x08, 0x09, 0x0A};
+void wht_com1_dma_tx_init(void) {
+    dma_single_data_parameter_struct dma_init_struct;
+    /* enable DMA1 */
+    rcu_periph_clock_enable(RCU_DMA0);
+    dma_deinit(DMA0, DMA_CH6);
+    dma_init_struct.direction = DMA_MEMORY_TO_PERIPH;
+    dma_init_struct.memory0_addr = (uint32_t)com1_txbuffer;
+    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
+    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
+    dma_init_struct.number = ARRAYNUM(com1_txbuffer);
+    dma_init_struct.periph_addr = USART1_DATA_ADDRESS;
+    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
+    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
+    dma_single_data_mode_init(DMA0, DMA_CH6, &dma_init_struct);
+    /* configure DMA mode */
+    dma_circulation_disable(DMA0, DMA_CH6);
+    dma_channel_subperipheral_select(DMA0, DMA_CH6, DMA_SUBPERI4);
+    /* enable DMA channel7 */
+    dma_channel_disable(DMA0, DMA_CH6);
+    usart_dma_transmit_config(USART1, USART_TRANSMIT_DMA_ENABLE);
+}
+
+void wht_com1_dma_tx(uint8_t *data, uint16_t len) {
+    dma_channel_disable(DMA0, DMA_CH6);
+    dma_flag_clear(DMA0, DMA_CH6, DMA_FLAG_FTF);
+    dma_memory_address_config(DMA0, DMA_CH6, DMA_MEMORY_0, (uint32_t)data);
+    dma_transfer_number_config(DMA0, DMA_CH6, len);
+    dma_channel_enable(DMA0, DMA_CH6);
+}
+
 uint8_t com1_rxbuffer[com_idle_rx_size];
-void wht_com1_idle_rx_dma_config(uint32_t com, void (*callback)(void)) {
+void wht_com1_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
     dma_single_data_parameter_struct dma_init_struct;
 
     nvic_irq_enable(USART1_IRQn, 0, 0);
@@ -107,7 +140,7 @@ void wht_com1_idle_rx_dma_config(uint32_t com, void (*callback)(void)) {
     dma_init_struct.memory0_addr = (uint32_t)com1_rxbuffer;
     dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_init_struct.number = com_idle_rx_size;
-    dma_init_struct.periph_addr = USART1_RDATA_ADDRESS;
+    dma_init_struct.periph_addr = USART1_DATA_ADDRESS;
     dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
     dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
