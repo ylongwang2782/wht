@@ -13,14 +13,19 @@ void running_led_init(void);
 void slave_timer_config(void);
 void timer_task(void);
 int wire_gpio_init(void);
-void com_rx_idle_callback(void);
+void com0_rx_idle_callback(void);
+extern uint8_t com0_rxbuffer[256];
+__IO uint8_t com0_rx_count = 0;
 
-uint8_t tx_buffer[5] = {0x01, 0x02, 0x03, 0x04, 0x05};
-uint8_t rx_buffer[256];
-uint16_t rx_len = 0;
+void com1_rx_idle_callback(void);
 extern uint8_t com1_rxbuffer[256];
 __IO uint8_t com1_rx_count = 0;
-__IO uint8_t tx_count = 0;
+
+void com2_rx_idle_callback(void);
+extern uint8_t com2_rxbuffer[256];
+__IO uint8_t com2_rx_count = 0;
+
+uint8_t txbuffer[5] = {0x01, 0x02, 0x03, 0x04, 0x05};
 
 int slave_mode_entry(void) {
     rcu_periph_clock_enable(RCU_SYSCFG);
@@ -32,16 +37,36 @@ int slave_mode_entry(void) {
 
     wire_gpio_init();
 
+    wht_com_init(WHT_COM0);
+    wht_com0_idle_dma_rx_config(WHT_COM0, com0_rx_idle_callback);
+    wht_com0_dma_tx_config();
+
     wht_com_init(WHT_COM1);
-    wht_com1_idle_dma_rx_config(WHT_COM1, com_rx_idle_callback);
+    wht_com1_idle_dma_rx_config(WHT_COM1, com1_rx_idle_callback);
     wht_com1_dma_tx_config();
 
-    wht_com1_dma_tx(tx_buffer, 5);
+    wht_com_init(WHT_COM2);
+    wht_com2_idle_dma_rx_config(WHT_COM2, com2_rx_idle_callback);
+    wht_com2_dma_tx_config();
+
+    wht_com_send(USART0, txbuffer, 5);
+    wht_com_send(USART1, txbuffer, 5);
+    wht_com_send(USART2, txbuffer, 5);
 
     while (1) {
+        if (com0_rx_count > 0) {
+            wht_com0_dma_tx(com0_rxbuffer, com0_rx_count);
+            com0_rx_count = 0;
+        }
+
         if (com1_rx_count > 0) {
             wht_com1_dma_tx(com1_rxbuffer, com1_rx_count);
             com1_rx_count = 0;
+        }
+
+        if (com2_rx_count > 0) {
+            wht_com2_dma_tx(com2_rxbuffer, com2_rx_count);
+            com2_rx_count = 0;
         }
 
         // feed watchdog
@@ -73,8 +98,16 @@ void timer_task(void) {
     wire_data = gpio_input_port_get(GPIOE);
 }
 
-void com_rx_idle_callback(void) {
+void com0_rx_idle_callback(void) {
+    com0_rx_count = 256 - (dma_transfer_number_get(DMA1, DMA_CH2));
+}
+
+void com1_rx_idle_callback(void) {
     com1_rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH5));
+}
+
+void com2_rx_idle_callback(void) {
+    com2_rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH1));
 }
 
 void running_led_init(void) {

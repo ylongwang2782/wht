@@ -2,11 +2,18 @@
 
 #include "gd32f4xx_dma.h"
 
-
-#define ARRAYNUM(arr_name) (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
+#define ARRAYNUM(arr_name)  (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
 #define USART0_DATA_ADDRESS ((uint32_t) & USART_DATA(USART0))
 #define USART1_DATA_ADDRESS ((uint32_t) & USART_DATA(USART1))
-#define com_idle_rx_size 256
+#define USART2_DATA_ADDRESS ((uint32_t) & USART_DATA(USART2))
+#define com_idle_rx_size    256
+
+#define COM0_IRQ_PRE_PRIO   1
+#define COM0_IRQ_SUB_PRIO   0
+#define COM1_IRQ_PRE_PRIO   1
+#define COM1_IRQ_SUB_PRIO   1
+#define COM2_IRQ_PRE_PRIO   1
+#define COM2_IRQ_SUB_PRIO   2
 
 static rcu_periph_enum COM_CLK[COMn] = {WHT_COM0_CLK, WHT_COM1_CLK,
                                         WHT_COM2_CLK};
@@ -19,7 +26,18 @@ static uint32_t COM_TX_PIN[COMn] = {WHT_COM0_TX_PIN, WHT_COM1_TX_PIN,
                                     WHT_COM2_TX_PIN};
 static uint32_t COM_RX_PIN[COMn] = {WHT_COM0_RX_PIN, WHT_COM1_RX_PIN,
                                     WHT_COM2_RX_PIN};
+
+void (*usart0_callback)(void) = NULL;
+uint8_t com0_txbuffer[1] = {0x01};
+uint8_t com0_rxbuffer[com_idle_rx_size];
+
 void (*usart1_callback)(void) = NULL;
+uint8_t com1_txbuffer[1] = {0x01};
+uint8_t com1_rxbuffer[com_idle_rx_size];
+
+void (*usart2_callback)(void) = NULL;
+uint8_t com2_txbuffer[1] = {0x01};
+uint8_t com2_rxbuffer[com_idle_rx_size];
 
 void wht_com_init(uint32_t com) {
     uint32_t COM_ID = 0;
@@ -28,6 +46,8 @@ void wht_com_init(uint32_t com) {
         COM_ID = 0U;
     } else if (WHT_COM1 == com) {
         COM_ID = 1U;
+    } else if (WHT_COM2 == com) {
+        COM_ID = 2U;
     }
 
     rcu_periph_clock_enable(COM_GPIO_CLK[COM_ID]);
@@ -57,23 +77,53 @@ void wht_com_init(uint32_t com) {
     usart_dma_transmit_config(com, USART_RECEIVE_DMA_ENABLE);
     usart_enable(com);
 
-    usart_interrupt_enable(USART1, USART_INT_IDLE);
+    usart_interrupt_enable(com, USART_INT_IDLE);
 }
 
-void wht_com1_send(uint32_t usart_periph, uint8_t *data, uint16_t len) {
+void wht_com_send(uint32_t usart_periph, uint8_t *data, uint16_t len) {
     int i;
     for (i = 0; i < len; i++) {
-        usart_data_transmit(USART1, data[i]);
-        while (RESET == usart_flag_get(USART1, USART_FLAG_TBE)) {
+        usart_data_transmit(usart_periph, data[i]);
+        while (RESET == usart_flag_get(usart_periph, USART_FLAG_TBE)) {
         }
     }
 }
 
-uint8_t com0_rxbuffer[com_idle_rx_size];
-void com0_idle_rx_dma_config(uint32_t com) {
+void wht_com0_dma_tx_config(void) {
+    dma_single_data_parameter_struct dma_init_struct;
+    /* enable DMA1 */
+    rcu_periph_clock_enable(RCU_DMA1);
+    dma_deinit(DMA1, DMA_CH2);
+    dma_init_struct.direction = DMA_MEMORY_TO_PERIPH;
+    dma_init_struct.memory0_addr = (uint32_t)com0_txbuffer;
+    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
+    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
+    dma_init_struct.number = ARRAYNUM(com0_txbuffer);
+    dma_init_struct.periph_addr = USART0_DATA_ADDRESS;
+    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
+    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
+    dma_single_data_mode_init(DMA1, DMA_CH2, &dma_init_struct);
+    /* configure DMA mode */
+    dma_circulation_disable(DMA1, DMA_CH2);
+    dma_channel_subperipheral_select(DMA1, DMA_CH2, DMA_SUBPERI4);
+    /* enable DMA channel7 */
+    dma_channel_disable(DMA1, DMA_CH2);
+    usart_dma_transmit_config(USART0, USART_TRANSMIT_DMA_ENABLE);
+}
+
+void wht_com0_dma_tx(uint8_t *data, uint16_t len) {
+    dma_channel_disable(DMA1, DMA_CH2);
+    dma_flag_clear(DMA1, DMA_CH2, DMA_FLAG_FTF);
+    dma_memory_address_config(DMA1, DMA_CH2, DMA_MEMORY_0, (uint32_t)data);
+    dma_transfer_number_config(DMA1, DMA_CH2, len);
+    dma_channel_enable(DMA1, DMA_CH2);
+    while (RESET == usart_flag_get(WHT_COM1, USART_FLAG_TC));
+}
+
+void wht_com0_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
     dma_single_data_parameter_struct dma_init_struct;
 
-    nvic_irq_enable(USART0_IRQn, 0, 0);
+    nvic_irq_enable(USART0_IRQn, COM0_IRQ_PRE_PRIO, COM0_IRQ_SUB_PRIO);
 
     rcu_periph_clock_enable(RCU_DMA1);
 
@@ -91,14 +141,13 @@ void com0_idle_rx_dma_config(uint32_t com) {
     /* configure DMA mode */
     dma_circulation_disable(DMA1, DMA_CH2);
     dma_channel_subperipheral_select(DMA1, DMA_CH2, DMA_SUBPERI4);
-    /* enable DMA1 channel2 */
+    /* enable DMA0 channel2 */
     dma_channel_enable(DMA1, DMA_CH2);
 
     usart_interrupt_enable(com, USART_INT_IDLE);
+    usart0_callback = callback;
 }
 
-uint8_t com1_txbuffer[10] = {0x01, 0x02, 0x03, 0x04, 0x05,
-                             0x06, 0x07, 0x08, 0x09, 0x0A};
 void wht_com1_dma_tx_config(void) {
     dma_single_data_parameter_struct dma_init_struct;
     /* enable DMA1 */
@@ -130,11 +179,10 @@ void wht_com1_dma_tx(uint8_t *data, uint16_t len) {
     while (RESET == usart_flag_get(WHT_COM1, USART_FLAG_TC));
 }
 
-uint8_t com1_rxbuffer[com_idle_rx_size];
 void wht_com1_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
     dma_single_data_parameter_struct dma_init_struct;
 
-    nvic_irq_enable(USART1_IRQn, 0, 0);
+    nvic_irq_enable(USART1_IRQn, COM1_IRQ_PRE_PRIO, COM1_IRQ_SUB_PRIO);
 
     rcu_periph_clock_enable(RCU_DMA0);
 
@@ -157,6 +205,65 @@ void wht_com1_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
 
     usart_interrupt_enable(com, USART_INT_IDLE);
     usart1_callback = callback;
+}
+
+void wht_com2_dma_tx_config(void) {
+    dma_single_data_parameter_struct dma_init_struct;
+    /* enable DMA1 */
+    rcu_periph_clock_enable(RCU_DMA0);
+    dma_deinit(DMA0, DMA_CH3);
+    dma_init_struct.direction = DMA_MEMORY_TO_PERIPH;
+    dma_init_struct.memory0_addr = (uint32_t)com2_txbuffer;
+    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
+    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
+    dma_init_struct.number = ARRAYNUM(com2_txbuffer);
+    dma_init_struct.periph_addr = USART2_DATA_ADDRESS;
+    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
+    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
+    dma_single_data_mode_init(DMA0, DMA_CH3, &dma_init_struct);
+    /* configure DMA mode */
+    dma_circulation_disable(DMA0, DMA_CH3);
+    dma_channel_subperipheral_select(DMA0, DMA_CH3, DMA_SUBPERI4);
+    /* enable DMA channel7 */
+    dma_channel_disable(DMA0, DMA_CH3);
+    usart_dma_transmit_config(USART2, USART_TRANSMIT_DMA_ENABLE);
+}
+
+void wht_com2_dma_tx(uint8_t *data, uint16_t len) {
+    dma_channel_disable(DMA0, DMA_CH3);
+    dma_flag_clear(DMA0, DMA_CH3, DMA_FLAG_FTF);
+    dma_memory_address_config(DMA0, DMA_CH3, DMA_MEMORY_0, (uint32_t)data);
+    dma_transfer_number_config(DMA0, DMA_CH3, len);
+    dma_channel_enable(DMA0, DMA_CH3);
+    while (RESET == usart_flag_get(WHT_COM2, USART_FLAG_TC));
+}
+
+void wht_com2_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
+    dma_single_data_parameter_struct dma_init_struct;
+
+    nvic_irq_enable(USART2_IRQn, COM2_IRQ_PRE_PRIO, COM2_IRQ_SUB_PRIO);
+
+    rcu_periph_clock_enable(RCU_DMA0);
+
+    dma_deinit(DMA0, DMA_CH1);
+    dma_init_struct.direction = DMA_PERIPH_TO_MEMORY;
+    dma_init_struct.memory0_addr = (uint32_t)com2_rxbuffer;
+    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
+    dma_init_struct.number = com_idle_rx_size;
+    dma_init_struct.periph_addr = USART2_DATA_ADDRESS;
+    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
+    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
+    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
+    dma_single_data_mode_init(DMA0, DMA_CH1, &dma_init_struct);
+
+    /* configure DMA mode */
+    dma_circulation_disable(DMA0, DMA_CH1);
+    dma_channel_subperipheral_select(DMA0, DMA_CH1, DMA_SUBPERI4);
+    /* enable DMA0 channel2 */
+    dma_channel_enable(DMA0, DMA_CH1);
+
+    usart_interrupt_enable(com, USART_INT_IDLE);
+    usart2_callback = callback;
 }
 
 int fputc(int ch, FILE *f) {

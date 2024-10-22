@@ -34,9 +34,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "gd32f4xx_it.h"
 
+#include "gd32f4xx_usart.h"
 #include "systick.h"
 #include "wht_timer.h"
 #include "wht_usart.h"
+
+extern void (*usart0_callback)(void);
+extern void (*usart1_callback)(void);
+extern void (*usart2_callback)(void);
+
+void USART0_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(USART0);
+        /* number of data received */
+        if (usart0_callback != NULL) {
+            usart0_callback();  // 调用注册的回调函数
+        }
+        /* disable DMA and reconfigure */
+        dma_channel_disable(DMA1, DMA_CH2);
+        dma_flag_clear(DMA1, DMA_CH2, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA1, DMA_CH2, 256);
+        dma_channel_enable(DMA1, DMA_CH2);
+    }
+}
 
 void USART1_IRQHandler(void) {
     if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)) {
@@ -51,6 +72,22 @@ void USART1_IRQHandler(void) {
         dma_flag_clear(DMA0, DMA_CH5, DMA_FLAG_FTF);
         dma_transfer_number_config(DMA0, DMA_CH5, 256);
         dma_channel_enable(DMA0, DMA_CH5);
+    }
+}
+
+void USART2_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(USART2);
+        /* number of data received */
+        if (usart2_callback != NULL) {
+            usart2_callback();  // 调用注册的回调函数
+        }
+        /* disable DMA and reconfigure */
+        dma_channel_disable(DMA0, DMA_CH1);
+        dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA0, DMA_CH1, 256);
+        dma_channel_enable(DMA0, DMA_CH1);
     }
 }
 
