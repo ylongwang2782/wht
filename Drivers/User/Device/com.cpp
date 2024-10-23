@@ -2,9 +2,6 @@
 
 #include <cstdint>
 
-// 构造函数
-Serial1::Serial1(uint8_t &idle_dma_rx_count) : rx_count(idle_dma_rx_count) {}
-
 void Serial1::init(uint32_t baudval) {
     rcu_periph_clock_enable(RCU_GPIOD);
     rcu_periph_clock_enable(RCU_USART1);
@@ -91,7 +88,20 @@ void Serial1::idle_dma_rx_config() {
     usart_interrupt_enable(USART1, USART_INT_IDLE);
 }
 
-Serial2::Serial2(uint8_t &idle_dma_rx_count) : rx_count(idle_dma_rx_count) {}
+uint8_t Serial1::rx_count = 0; // 定义并初始化静态变量
+extern "C" void USART1_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(USART1);
+        /* number of data received */
+        Serial1::rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH5));
+        dma_channel_disable(DMA0, DMA_CH5);
+        dma_flag_clear(DMA0, DMA_CH5, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA0, DMA_CH5, 256);
+        dma_channel_enable(DMA0, DMA_CH5);
+    }
+}
+
 
 #define COM2_GPIO_PORT GPIOB
 #define COM2_GPIO_CLK  RCU_GPIOB
@@ -182,4 +192,19 @@ void Serial2::idle_dma_rx_config() {
     dma_channel_enable(DMA0, DMA_CH1);
 
     usart_interrupt_enable(USART2, USART_INT_IDLE);
+}
+
+uint8_t Serial2::rx_count = 0; // 定义并初始化静态变量
+extern "C" void USART2_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(USART2);
+        /* number of data received */
+        Serial2::rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH1));
+        /* disable DMA and reconfigure */
+        dma_channel_disable(DMA0, DMA_CH1);
+        dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA0, DMA_CH1, 256);
+        dma_channel_enable(DMA0, DMA_CH1);
+    }
 }

@@ -11,9 +11,6 @@ extern "C" {
 #endif
 
 #define ARRAYNUM(arr_name)  (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
-#define USART0_DATA_ADDRESS ((uint32_t) & USART_DATA(USART0))
-#define USART1_DATA_ADDRESS ((uint32_t) & USART_DATA(USART1))
-#define USART2_DATA_ADDRESS ((uint32_t) & USART_DATA(USART2))
 #define com_idle_rx_size    256
 
 #define COM0_IRQ_PRE_PRIO   1
@@ -25,11 +22,8 @@ extern "C" {
 
 class Serial1 {
    public:
-    uint8_t &rx_count;
+    static uint8_t rx_count;
     uint8_t rxbuffer[com_idle_rx_size];
-
-    // 构造函数
-    Serial1(uint8_t &idle_dma_rx_count);
 
     // 初始化USART
     void init(uint32_t baudval);
@@ -46,8 +40,6 @@ class Serial1 {
     // 配置DMA接收及空闲检测
     void idle_dma_rx_config();
 
-    void idle_dma_rx_check(void);
-
    private:
     // 发送和接收缓冲区
     uint8_t txbuffer[1];
@@ -55,11 +47,8 @@ class Serial1 {
 
 class Serial2 {
    public:
-    uint8_t &rx_count;
+    static uint8_t rx_count;
     uint8_t rxbuffer[com_idle_rx_size];
-
-    // 构造函数
-    Serial2(uint8_t &idle_dma_rx_count);
 
     // 初始化USART
     void init(uint32_t baudval);

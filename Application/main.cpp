@@ -13,10 +13,6 @@ extern "C" {
 #include "com.h"
 #include "led.h"
 #include "timer.h"
-
-extern uint8_t usart1_rx_count;
-extern uint8_t usart2_rx_count;
-
 LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
 
 void ledTask() { led0.toggle(); }
@@ -26,12 +22,12 @@ int main(void) {
 
     uint8_t data_to_send[] = {0x01, 0x02, 0x03};
 
-    Serial1 serial1(usart1_rx_count);
+    Serial1 serial1;
     serial1.init(115200);
     serial1.data_send(data_to_send, 1);
     serial1.dma_tx(data_to_send, 2);
 
-    Serial2 serial2(usart2_rx_count);
+    Serial2 serial2;
     serial2.init(115200);
     serial2.data_send(data_to_send, 1);
     serial2.dma_tx(data_to_send, 2);
@@ -40,7 +36,6 @@ int main(void) {
     timer.init(50, ledTask);
 
     while (1) {
-        // led0.toggle();
         if (serial1.rx_count > 0) {
             serial1.dma_tx(serial1.rxbuffer, serial1.rx_count);
             serial1.rx_count = 0;
