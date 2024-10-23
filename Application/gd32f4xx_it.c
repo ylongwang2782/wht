@@ -38,9 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "systick.h"
 #include "wht_timer.h"
 
-void (*usart1_callback)(void) = NULL;
-
 uint8_t usart1_rx_count = 0;
+uint8_t usart2_rx_count = 0;
 
 // void USART0_IRQHandler(void) {
 //     if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE)) {
@@ -71,21 +70,19 @@ void USART1_IRQHandler(void) {
     }
 }
 
-// void USART2_IRQHandler(void) {
-//     if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE)) {
-//         /* clear IDLE flag */
-//         usart_data_receive(USART2);
-//         /* number of data received */
-//         if (usart2_callback != NULL) {
-//             usart2_callback();  // 调用注册的回调函数
-//         }
-//         /* disable DMA and reconfigure */
-//         dma_channel_disable(DMA0, DMA_CH1);
-//         dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
-//         dma_transfer_number_config(DMA0, DMA_CH1, 256);
-//         dma_channel_enable(DMA0, DMA_CH1);
-//     }
-// }
+void USART2_IRQHandler(void) {
+    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(USART2);
+        /* number of data received */
+        usart2_rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH1));
+        /* disable DMA and reconfigure */
+        dma_channel_disable(DMA0, DMA_CH1);
+        dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
+        dma_transfer_number_config(DMA0, DMA_CH1, 256);
+        dma_channel_enable(DMA0, DMA_CH1);
+    }
+}
 
 /* timer1 interrupt handler */
 void TIMER1_IRQHandler(void) {
