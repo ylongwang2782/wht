@@ -84,17 +84,6 @@ void USART2_IRQHandler(void) {
     }
 }
 
-/* timer1 interrupt handler */
-void TIMER1_IRQHandler(void) {
-    if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP)) {
-        timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);
-        // 调用回调函数
-        if (timer1_callback != NULL) {
-            timer1_callback();  // 执行回调函数
-        }
-    }
-}
-
 /*!
     \brief      this function handles NMI exception
     \param[in]  none
