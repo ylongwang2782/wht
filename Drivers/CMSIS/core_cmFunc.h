@@ -49,7 +49,7 @@
  */
 __STATIC_INLINE uint32_t __get_CONTROL(void)
 {
-  register uint32_t __regControl         __ASM("control");
+    uint32_t __regControl         __ASM("control");
   return(__regControl);
 }
 
@@ -62,7 +62,7 @@ __STATIC_INLINE uint32_t __get_CONTROL(void)
  */
 __STATIC_INLINE void __set_CONTROL(uint32_t control)
 {
-  register uint32_t __regControl         __ASM("control");
+    uint32_t __regControl         __ASM("control");
   __regControl = control;
 }
 
@@ -75,7 +75,7 @@ __STATIC_INLINE void __set_CONTROL(uint32_t control)
  */
 __STATIC_INLINE uint32_t __get_IPSR(void)
 {
-  register uint32_t __regIPSR          __ASM("ipsr");
+    uint32_t __regIPSR          __ASM("ipsr");
   return(__regIPSR);
 }
 
@@ -88,7 +88,7 @@ __STATIC_INLINE uint32_t __get_IPSR(void)
  */
 __STATIC_INLINE uint32_t __get_APSR(void)
 {
-  register uint32_t __regAPSR          __ASM("apsr");
+    uint32_t __regAPSR          __ASM("apsr");
   return(__regAPSR);
 }
 
@@ -101,7 +101,7 @@ __STATIC_INLINE uint32_t __get_APSR(void)
  */
 __STATIC_INLINE uint32_t __get_xPSR(void)
 {
-  register uint32_t __regXPSR          __ASM("xpsr");
+    uint32_t __regXPSR          __ASM("xpsr");
   return(__regXPSR);
 }
 
@@ -114,7 +114,7 @@ __STATIC_INLINE uint32_t __get_xPSR(void)
  */
 __STATIC_INLINE uint32_t __get_PSP(void)
 {
-  register uint32_t __regProcessStackPointer  __ASM("psp");
+    uint32_t __regProcessStackPointer  __ASM("psp");
   return(__regProcessStackPointer);
 }
 
@@ -127,7 +127,7 @@ __STATIC_INLINE uint32_t __get_PSP(void)
  */
 __STATIC_INLINE void __set_PSP(uint32_t topOfProcStack)
 {
-  register uint32_t __regProcessStackPointer  __ASM("psp");
+    uint32_t __regProcessStackPointer  __ASM("psp");
   __regProcessStackPointer = topOfProcStack;
 }
 
@@ -140,7 +140,7 @@ __STATIC_INLINE void __set_PSP(uint32_t topOfProcStack)
  */
 __STATIC_INLINE uint32_t __get_MSP(void)
 {
-  register uint32_t __regMainStackPointer     __ASM("msp");
+    uint32_t __regMainStackPointer     __ASM("msp");
   return(__regMainStackPointer);
 }
 
@@ -153,7 +153,7 @@ __STATIC_INLINE uint32_t __get_MSP(void)
  */
 __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
 {
-  register uint32_t __regMainStackPointer     __ASM("msp");
+    uint32_t __regMainStackPointer     __ASM("msp");
   __regMainStackPointer = topOfMainStack;
 }
 
@@ -166,7 +166,7 @@ __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
  */
 __STATIC_INLINE uint32_t __get_PRIMASK(void)
 {
-  register uint32_t __regPriMask         __ASM("primask");
+    uint32_t __regPriMask         __ASM("primask");
   return(__regPriMask);
 }
 
@@ -179,7 +179,7 @@ __STATIC_INLINE uint32_t __get_PRIMASK(void)
  */
 __STATIC_INLINE void __set_PRIMASK(uint32_t priMask)
 {
-  register uint32_t __regPriMask         __ASM("primask");
+    uint32_t __regPriMask         __ASM("primask");
   __regPriMask = (priMask);
 }
 
@@ -204,52 +204,52 @@ __STATIC_INLINE void __set_PRIMASK(uint32_t priMask)
 
 /** \brief  Get Base Priority
 
-    This function returns the current value of the Base Priority register.
+    This function returns the current value of the Base Priority  .
 
-    \return               Base Priority register value
+    \return               Base Priority   value
  */
 __STATIC_INLINE uint32_t  __get_BASEPRI(void)
 {
-  register uint32_t __regBasePri         __ASM("basepri");
+    uint32_t __regBasePri         __ASM("basepri");
   return(__regBasePri);
 }
 
 
 /** \brief  Set Base Priority
 
-    This function assigns the given value to the Base Priority register.
+    This function assigns the given value to the Base Priority  .
 
     \param [in]    basePri  Base Priority value to set
  */
 __STATIC_INLINE void __set_BASEPRI(uint32_t basePri)
 {
-  register uint32_t __regBasePri         __ASM("basepri");
+    uint32_t __regBasePri         __ASM("basepri");
   __regBasePri = (basePri & 0xff);
 }
 
 
 /** \brief  Get Fault Mask
 
-    This function returns the current value of the Fault Mask register.
+    This function returns the current value of the Fault Mask  .
 
-    \return               Fault Mask register value
+    \return               Fault Mask   value
  */
 __STATIC_INLINE uint32_t __get_FAULTMASK(void)
 {
-  register uint32_t __regFaultMask       __ASM("faultmask");
+    uint32_t __regFaultMask       __ASM("faultmask");
   return(__regFaultMask);
 }
 
 
 /** \brief  Set Fault Mask
 
-    This function assigns the given value to the Fault Mask register.
+    This function assigns the given value to the Fault Mask  .
 
     \param [in]    faultMask  Fault Mask value to set
  */
 __STATIC_INLINE void __set_FAULTMASK(uint32_t faultMask)
 {
-  register uint32_t __regFaultMask       __ASM("faultmask");
+    uint32_t __regFaultMask       __ASM("faultmask");
   __regFaultMask = (faultMask & (uint32_t)1);
 }
 
@@ -260,14 +260,14 @@ __STATIC_INLINE void __set_FAULTMASK(uint32_t faultMask)
 
 /** \brief  Get FPSCR
 
-    This function returns the current value of the Floating Point Status/Control register.
+    This function returns the current value of the Floating Point Status/Control  .
 
-    \return               Floating Point Status/Control register value
+    \return               Floating Point Status/Control   value
  */
 __STATIC_INLINE uint32_t __get_FPSCR(void)
 {
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-  register uint32_t __regfpscr         __ASM("fpscr");
+    uint32_t __regfpscr         __ASM("fpscr");
   return(__regfpscr);
 #else
    return(0);
@@ -277,14 +277,14 @@ __STATIC_INLINE uint32_t __get_FPSCR(void)
 
 /** \brief  Set FPSCR
 
-    This function assigns the given value to the Floating Point Status/Control register.
+    This function assigns the given value to the Floating Point Status/Control  .
 
     \param [in]    fpscr  Floating Point Status/Control value to set
  */
 __STATIC_INLINE void __set_FPSCR(uint32_t fpscr)
 {
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-  register uint32_t __regfpscr         __ASM("fpscr");
+    uint32_t __regfpscr         __ASM("fpscr");
   __regfpscr = (fpscr);
 #endif
 }
@@ -409,7 +409,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_xPSR(void)
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_PSP(void)
 {
-  register uint32_t result;
+    uint32_t result;
 
   __ASM volatile ("MRS %0, psp\n"  : "=r" (result) );
   return(result);
@@ -436,7 +436,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_PSP(uint32_t topOf
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_MSP(void)
 {
-  register uint32_t result;
+    uint32_t result;
 
   __ASM volatile ("MRS %0, msp\n" : "=r" (result) );
   return(result);
@@ -508,9 +508,9 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE void __disable_fault_irq(void
 
 /** \brief  Get Base Priority
 
-    This function returns the current value of the Base Priority register.
+    This function returns the current value of the Base Priority  .
 
-    \return               Base Priority register value
+    \return               Base Priority   value
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_BASEPRI(void)
 {
@@ -523,7 +523,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_BASEPRI(void)
 
 /** \brief  Set Base Priority
 
-    This function assigns the given value to the Base Priority register.
+    This function assigns the given value to the Base Priority  .
 
     \param [in]    basePri  Base Priority value to set
  */
@@ -535,9 +535,9 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_BASEPRI(uint32_t v
 
 /** \brief  Get Fault Mask
 
-    This function returns the current value of the Fault Mask register.
+    This function returns the current value of the Fault Mask  .
 
-    \return               Fault Mask register value
+    \return               Fault Mask   value
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FAULTMASK(void)
 {
@@ -550,7 +550,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FAULTMASK(void
 
 /** \brief  Set Fault Mask
 
-    This function assigns the given value to the Fault Mask register.
+    This function assigns the given value to the Fault Mask  .
 
     \param [in]    faultMask  Fault Mask value to set
  */
@@ -566,9 +566,9 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_FAULTMASK(uint32_t
 
 /** \brief  Get FPSCR
 
-    This function returns the current value of the Floating Point Status/Control register.
+    This function returns the current value of the Floating Point Status/Control  .
 
-    \return               Floating Point Status/Control register value
+    \return               Floating Point Status/Control   value
  */
 __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FPSCR(void)
 {
@@ -585,7 +585,7 @@ __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FPSCR(void)
 
 /** \brief  Set FPSCR
 
-    This function assigns the given value to the Floating Point Status/Control register.
+    This function assigns the given value to the Floating Point Status/Control  .
 
     \param [in]    fpscr  Floating Point Status/Control value to set
  */
