@@ -2,209 +2,194 @@
 
 #include <cstdint>
 
-void Serial1::init(uint32_t baudval) {
-    rcu_periph_clock_enable(RCU_GPIOD);
-    rcu_periph_clock_enable(RCU_USART1);
-    gpio_af_set(GPIOD, GPIO_AF_7, GPIO_PIN_5);
-    gpio_af_set(GPIOD, GPIO_AF_7, GPIO_PIN_6);
-    gpio_mode_set(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_5);
-    gpio_output_options_set(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
-                            GPIO_PIN_5);
-    gpio_mode_set(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_6);
-    gpio_output_options_set(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
-                            GPIO_PIN_6);
+#define WHT_COM1            USART1
+#define WHT_COM1_CLK        RCU_USART1
+#define WHT_COM1_GPIO_PORT  GPIOD
+#define WHT_COM1_GPIO_CLK   RCU_GPIOD
+#define WHT_COM1_AF         GPIO_AF_7
+#define WHT_COM1_TX_PIN     GPIO_PIN_5
+#define WHT_COM1_RX_PIN     GPIO_PIN_6
+#define WHT_COM1_DMA_PERIPH RCU_DMA0
+#define WHT_COM1_RX_DMA_CH  DMA_CH5
+#define WHT_COM1_TX_DMA_CH  DMA_CH6
 
-    usart_deinit(USART1);
-    usart_baudrate_set(USART1, baudval);
-    usart_receive_config(USART1, USART_RECEIVE_ENABLE);
-    usart_transmit_config(USART1, USART_TRANSMIT_ENABLE);
-    usart_dma_receive_config(USART1, USART_RECEIVE_DMA_ENABLE);
-    usart_dma_transmit_config(USART1, USART_RECEIVE_DMA_ENABLE);
-    usart_enable(USART1);
+SerialConfig usart1_config = {.baudrate = 115200,
+                              .gpio_port = GPIOD,
+                              .tx_pin = GPIO_PIN_5,
+                              .rx_pin = GPIO_PIN_6,
+                              .usart_periph = USART1,
+                              .usart_clk = RCU_USART1,
+                              .usart_port_clk = RCU_GPIOD,
+                              .gpio_af = GPIO_AF_7,
+                              .rcu_dma_periph = RCU_DMA0,
+                              .dma_periph = DMA0,
+                              .dma_tx_channel = DMA_CH6,
+                              .dma_rx_channel = DMA_CH5,
+                              .nvic_irq = USART1_IRQn,
+                              .nvic_irq_pre_priority = 1,
+                              .nvic_irq_sub_priority = 1,
+                              .rx_count = 0};
 
-    usart_interrupt_enable(USART1, USART_INT_IDLE);
-    Serial1::dma_tx_config();
-    Serial1::idle_dma_rx_config();
+SerialConfig usart2_config = {.baudrate = 115200,
+                              .gpio_port = GPIOB,
+                              .tx_pin = GPIO_PIN_10,
+                              .rx_pin = GPIO_PIN_11,
+                              .usart_periph = USART2,
+                              .usart_clk = RCU_USART2,
+                              .usart_port_clk = RCU_GPIOB,
+                              .gpio_af = GPIO_AF_7,
+                              .rcu_dma_periph = RCU_DMA0,
+                              .dma_periph = DMA0,
+                              .dma_tx_channel = DMA_CH3,
+                              .dma_rx_channel = DMA_CH1,
+                              .nvic_irq = USART2_IRQn,
+                              .nvic_irq_pre_priority = 1,
+                              .nvic_irq_sub_priority = 2,
+                              .rx_count = 0};
+
+void Serial::setup() {
+    Serial::init();
+    Serial::dma_tx_config();
+    Serial::idle_dma_rx_config();
 }
 
-void Serial1::dma_tx_config() {
-    uint8_t com1_txbuffer[1] = {0x01};
+void Serial::init() {
+    rcu_periph_clock_enable(config.usart_port_clk);
+    rcu_periph_clock_enable(config.usart_clk);
+    gpio_af_set(config.gpio_port, config.gpio_af, config.tx_pin);
+    gpio_af_set(config.gpio_port, config.gpio_af, config.rx_pin);
+    gpio_mode_set(config.gpio_port, GPIO_MODE_AF, GPIO_PUPD_PULLUP,
+                  config.tx_pin);
+    gpio_output_options_set(config.gpio_port, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                            config.tx_pin);
+    gpio_mode_set(config.gpio_port, GPIO_MODE_AF, GPIO_PUPD_PULLUP,
+                  config.rx_pin);
+    gpio_output_options_set(config.gpio_port, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                            config.rx_pin);
+
+    usart_deinit(config.usart_periph);
+    usart_baudrate_set(config.usart_periph, config.baudrate);
+    usart_receive_config(config.usart_periph, USART_RECEIVE_ENABLE);
+    usart_transmit_config(config.usart_periph, USART_TRANSMIT_ENABLE);
+    usart_dma_receive_config(config.usart_periph, USART_RECEIVE_DMA_ENABLE);
+    usart_dma_transmit_config(config.usart_periph, USART_RECEIVE_DMA_ENABLE);
+    usart_enable(config.usart_periph);
+
+    usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+}
+
+void Serial::dma_tx_config() {
     dma_single_data_parameter_struct dma_init_struct;
-    rcu_periph_clock_enable(RCU_DMA0);
-    dma_deinit(DMA0, DMA_CH6);
+    rcu_periph_clock_enable(config.rcu_dma_periph);
+    dma_deinit(config.dma_periph, config.dma_tx_channel);
     dma_init_struct.direction = DMA_MEMORY_TO_PERIPH;
-    dma_init_struct.memory0_addr = (uintptr_t)com1_txbuffer;
+    dma_init_struct.memory0_addr = (uintptr_t)txbuffer;
     dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
     dma_init_struct.number = ARRAYNUM(txbuffer);
-    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(USART1);
+    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(config.usart_periph);
     dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
-    dma_single_data_mode_init(DMA0, DMA_CH6, &dma_init_struct);
+    dma_single_data_mode_init(config.dma_periph, config.dma_tx_channel,
+                              &dma_init_struct);
 
-    dma_circulation_disable(DMA0, DMA_CH6);
-    dma_channel_subperipheral_select(DMA0, DMA_CH6, DMA_SUBPERI4);
-    dma_channel_disable(DMA0, DMA_CH6);
-    usart_dma_transmit_config(USART1, USART_TRANSMIT_DMA_ENABLE);
+    dma_circulation_disable(config.dma_periph, config.dma_tx_channel);
+    dma_channel_subperipheral_select(config.dma_periph, config.dma_tx_channel,
+                                     DMA_SUBPERI4);
+    dma_channel_disable(config.dma_periph, config.dma_tx_channel);
+    usart_dma_transmit_config(config.usart_periph, USART_TRANSMIT_DMA_ENABLE);
 }
 
-void Serial1::dma_tx(uint8_t *data, uint16_t len) {
-    dma_channel_disable(DMA0, DMA_CH6);
-    dma_flag_clear(DMA0, DMA_CH6, DMA_FLAG_FTF);
-    dma_memory_address_config(DMA0, DMA_CH6, DMA_MEMORY_0, (uintptr_t)data);
-    dma_transfer_number_config(DMA0, DMA_CH6, len);
-    dma_channel_enable(DMA0, DMA_CH6);
-    while (RESET == usart_flag_get(USART1, USART_FLAG_TC));
+void Serial::dma_tx(uint8_t *data, uint16_t len) {
+    dma_channel_disable(config.dma_periph, config.dma_tx_channel);
+    dma_flag_clear(config.dma_periph, config.dma_tx_channel, DMA_FLAG_FTF);
+    dma_memory_address_config(config.dma_periph, config.dma_tx_channel,
+                              DMA_MEMORY_0, (uintptr_t)data);
+    dma_transfer_number_config(config.dma_periph, config.dma_tx_channel, len);
+    dma_channel_enable(config.dma_periph, config.dma_tx_channel);
+    while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
 }
 
-void Serial1::data_send(uint8_t *data, uint16_t len) {
+void Serial::data_send(uint8_t *data, uint16_t len) {
     for (size_t i = 0; i < len; i++) {
-        usart_data_transmit(USART1, data[i]);
-        while (RESET == usart_flag_get(USART1, USART_FLAG_TBE)) {
+        usart_data_transmit(config.usart_periph, data[i]);
+        while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TBE)) {
         }
     }
 }
 
-void Serial1::idle_dma_rx_config() {
+void Serial::idle_dma_rx_config() {
     dma_single_data_parameter_struct dma_init_struct;
-    nvic_irq_enable(USART1_IRQn, COM1_IRQ_PRE_PRIO, COM1_IRQ_SUB_PRIO);
-    rcu_periph_clock_enable(RCU_DMA0);
+    nvic_irq_enable(config.nvic_irq, config.nvic_irq_pre_priority,
+                    config.nvic_irq_sub_priority);
+    rcu_periph_clock_enable(config.rcu_dma_periph);
 
-    dma_deinit(DMA0, DMA_CH5);
+    dma_deinit(config.dma_periph, config.dma_rx_channel);
     dma_init_struct.direction = DMA_PERIPH_TO_MEMORY;
     dma_init_struct.memory0_addr = (uintptr_t)rxbuffer;
     dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
     dma_init_struct.number = com_idle_rx_size;
-    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(USART1);
+    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(config.usart_periph);
     dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
     dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
-    dma_single_data_mode_init(DMA0, DMA_CH5, &dma_init_struct);
+    dma_single_data_mode_init(config.dma_periph, config.dma_rx_channel,
+                              &dma_init_struct);
 
-    dma_circulation_disable(DMA0, DMA_CH5);
-    dma_channel_subperipheral_select(DMA0, DMA_CH5, DMA_SUBPERI4);
-    dma_channel_enable(DMA0, DMA_CH5);
+    dma_circulation_disable(config.dma_periph, config.dma_rx_channel);
+    dma_channel_subperipheral_select(config.dma_periph, config.dma_rx_channel,
+                                     DMA_SUBPERI4);
+    dma_channel_enable(config.dma_periph, config.dma_rx_channel);
 
-    usart_interrupt_enable(USART1, USART_INT_IDLE);
+    usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
 }
 
-uint8_t Serial1::rx_count = 0; // 定义并初始化静态变量
+void HandleInterrupt(SerialConfig &config, uint16_t &rx_count) {
+    if (RESET !=
+        usart_interrupt_flag_get(config.usart_periph, USART_INT_FLAG_IDLE)) {
+        /* clear IDLE flag */
+        usart_data_receive(config.usart_periph);
+        /* number of data received */
+        rx_count = 256 - (dma_transfer_number_get(config.dma_periph,
+                                                  config.dma_rx_channel));
+        dma_channel_disable(config.dma_periph, config.dma_rx_channel);
+        dma_flag_clear(config.dma_periph, config.dma_rx_channel, DMA_FLAG_FTF);
+        dma_transfer_number_config(config.dma_periph, config.dma_rx_channel,
+                                   256);
+        dma_channel_enable(config.dma_periph, config.dma_rx_channel);
+    }
+}
+
+uint16_t usart1_rx_count = 0;
+uint16_t usart2_rx_count = 0;
 extern "C" void USART1_IRQHandler(void) {
-    if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_IDLE)) {
+    if (RESET !=
+        usart_interrupt_flag_get(usart1_config.usart_periph, USART_INT_FLAG_IDLE)) {
         /* clear IDLE flag */
-        usart_data_receive(USART1);
+        usart_data_receive(usart1_config.usart_periph);
         /* number of data received */
-        Serial1::rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH5));
-        dma_channel_disable(DMA0, DMA_CH5);
-        dma_flag_clear(DMA0, DMA_CH5, DMA_FLAG_FTF);
-        dma_transfer_number_config(DMA0, DMA_CH5, 256);
-        dma_channel_enable(DMA0, DMA_CH5);
+        usart1_rx_count = 256 - (dma_transfer_number_get(usart1_config.dma_periph,
+                                                  usart1_config.dma_rx_channel));
+        dma_channel_disable(usart1_config.dma_periph, usart1_config.dma_rx_channel);
+        dma_flag_clear(usart1_config.dma_periph, usart1_config.dma_rx_channel, DMA_FLAG_FTF);
+        dma_transfer_number_config(usart1_config.dma_periph, usart1_config.dma_rx_channel,
+                                   256);
+        dma_channel_enable(usart1_config.dma_periph, usart1_config.dma_rx_channel);
     }
 }
 
-
-#define COM2_GPIO_PORT GPIOB
-#define COM2_GPIO_CLK  RCU_GPIOB
-#define COM2_TX_PIN    GPIO_PIN_10
-#define COM2_RX_PIN    GPIO_PIN_11
-
-void Serial2::init(uint32_t baudval) {
-    rcu_periph_clock_enable(COM2_GPIO_CLK);
-    rcu_periph_clock_enable(RCU_USART2);
-    gpio_af_set(COM2_GPIO_PORT, GPIO_AF_7, COM2_TX_PIN);
-    gpio_af_set(COM2_GPIO_PORT, GPIO_AF_7, GPIO_PIN_11);
-    gpio_mode_set(COM2_GPIO_PORT, GPIO_MODE_AF, GPIO_PUPD_PULLUP, COM2_TX_PIN);
-    gpio_output_options_set(COM2_GPIO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
-                            COM2_TX_PIN);
-    gpio_mode_set(COM2_GPIO_PORT, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_11);
-    gpio_output_options_set(COM2_GPIO_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
-                            GPIO_PIN_11);
-
-    usart_deinit(USART2);
-    usart_baudrate_set(USART2, baudval);
-    usart_receive_config(USART2, USART_RECEIVE_ENABLE);
-    usart_transmit_config(USART2, USART_TRANSMIT_ENABLE);
-    usart_dma_receive_config(USART2, USART_RECEIVE_DMA_ENABLE);
-    usart_dma_transmit_config(USART2, USART_RECEIVE_DMA_ENABLE);
-    usart_enable(USART2);
-
-    usart_interrupt_enable(USART2, USART_INT_IDLE);
-    Serial2::dma_tx_config();
-    Serial2::idle_dma_rx_config();
-}
-
-void Serial2::dma_tx_config() {
-    uint8_t com_txbuffer[1] = {0x01};
-    dma_single_data_parameter_struct dma_init_struct;
-    rcu_periph_clock_enable(RCU_DMA0);
-    dma_deinit(DMA0, DMA_CH3);
-    dma_init_struct.direction = DMA_MEMORY_TO_PERIPH;
-    dma_init_struct.memory0_addr = (uintptr_t)com_txbuffer;
-    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
-    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
-    dma_init_struct.number = ARRAYNUM(txbuffer);
-    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(USART2);
-    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
-    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
-    dma_single_data_mode_init(DMA0, DMA_CH3, &dma_init_struct);
-
-    dma_circulation_disable(DMA0, DMA_CH3);
-    dma_channel_subperipheral_select(DMA0, DMA_CH3, DMA_SUBPERI4);
-    dma_channel_disable(DMA0, DMA_CH3);
-    usart_dma_transmit_config(USART2, USART_TRANSMIT_DMA_ENABLE);
-}
-
-void Serial2::dma_tx(uint8_t *data, uint16_t len) {
-    dma_channel_disable(DMA0, DMA_CH3);
-    dma_flag_clear(DMA0, DMA_CH3, DMA_FLAG_FTF);
-    dma_memory_address_config(DMA0, DMA_CH3, DMA_MEMORY_0, (uintptr_t)data);
-    dma_transfer_number_config(DMA0, DMA_CH3, len);
-    dma_channel_enable(DMA0, DMA_CH3);
-    while (RESET == usart_flag_get(USART2, USART_FLAG_TC));
-}
-
-void Serial2::data_send(uint8_t *data, uint16_t len) {
-    for (size_t i = 0; i < len; i++) {
-        usart_data_transmit(USART2, data[i]);
-        while (RESET == usart_flag_get(USART2, USART_FLAG_TBE)) {
-        }
-    }
-}
-
-void Serial2::idle_dma_rx_config() {
-    dma_single_data_parameter_struct dma_init_struct;
-    nvic_irq_enable(USART2_IRQn, COM2_IRQ_PRE_PRIO, COM2_IRQ_SUB_PRIO);
-    rcu_periph_clock_enable(RCU_DMA0);
-
-    dma_deinit(DMA0, DMA_CH1);
-    dma_init_struct.direction = DMA_PERIPH_TO_MEMORY;
-    dma_init_struct.memory0_addr = (uintptr_t)rxbuffer;
-    dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
-    dma_init_struct.number = com_idle_rx_size;
-    dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(USART2);
-    dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
-    dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
-    dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
-    dma_single_data_mode_init(DMA0, DMA_CH1, &dma_init_struct);
-
-    dma_circulation_disable(DMA0, DMA_CH1);
-    dma_channel_subperipheral_select(DMA0, DMA_CH1, DMA_SUBPERI4);
-    dma_channel_enable(DMA0, DMA_CH1);
-
-    usart_interrupt_enable(USART2, USART_INT_IDLE);
-}
-
-uint8_t Serial2::rx_count = 0; // 定义并初始化静态变量
-extern "C" void USART2_IRQHandler(void) {
-    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE)) {
-        /* clear IDLE flag */
-        usart_data_receive(USART2);
-        /* number of data received */
-        Serial2::rx_count = 256 - (dma_transfer_number_get(DMA0, DMA_CH1));
-        /* disable DMA and reconfigure */
-        dma_channel_disable(DMA0, DMA_CH1);
-        dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
-        dma_transfer_number_config(DMA0, DMA_CH1, 256);
-        dma_channel_enable(DMA0, DMA_CH1);
-    }
-}
+// extern "C" void USART2_IRQHandler(void) {
+//     if (RESET !=
+//         usart_interrupt_flag_get(usart2_config.usart_periph, USART_INT_FLAG_IDLE)) {
+//         /* clear IDLE flag */
+//         usart_data_receive(usart2_config.usart_periph);
+//         /* number of data received */
+//         usart2_rx_count = 256 - (dma_transfer_number_get(usart2_config.dma_periph,
+//                                                   usart2_config.dma_rx_channel));
+//         dma_channel_disable(usart2_config.dma_periph, usart2_config.dma_rx_channel);
+//         dma_flag_clear(usart2_config.dma_periph, usart2_config.dma_rx_channel, DMA_FLAG_FTF);
+//         dma_transfer_number_config(usart2_config.dma_periph, usart2_config.dma_rx_channel,
+//                                    256);
+//         dma_channel_enable(usart2_config.dma_periph, usart2_config.dma_rx_channel);
+//     }
+// }
