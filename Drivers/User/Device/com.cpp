@@ -2,17 +2,6 @@
 
 #include <cstdint>
 
-#define WHT_COM1            USART1
-#define WHT_COM1_CLK        RCU_USART1
-#define WHT_COM1_GPIO_PORT  GPIOD
-#define WHT_COM1_GPIO_CLK   RCU_GPIOD
-#define WHT_COM1_AF         GPIO_AF_7
-#define WHT_COM1_TX_PIN     GPIO_PIN_5
-#define WHT_COM1_RX_PIN     GPIO_PIN_6
-#define WHT_COM1_DMA_PERIPH RCU_DMA0
-#define WHT_COM1_RX_DMA_CH  DMA_CH5
-#define WHT_COM1_TX_DMA_CH  DMA_CH6
-
 SerialConfig usart1_config = {.baudrate = 115200,
                               .gpio_port = GPIOD,
                               .tx_pin = GPIO_PIN_5,
@@ -144,52 +133,28 @@ void Serial::idle_dma_rx_config() {
     usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
 }
 
-void HandleInterrupt(SerialConfig &config, uint16_t &rx_count) {
+void handle_usart_interrupt(SerialConfig *config) {
     if (RESET !=
-        usart_interrupt_flag_get(config.usart_periph, USART_INT_FLAG_IDLE)) {
+        usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_IDLE)) {
         /* clear IDLE flag */
-        usart_data_receive(config.usart_periph);
+        usart_data_receive(config->usart_periph);
         /* number of data received */
-        rx_count = 256 - (dma_transfer_number_get(config.dma_periph,
-                                                  config.dma_rx_channel));
-        dma_channel_disable(config.dma_periph, config.dma_rx_channel);
-        dma_flag_clear(config.dma_periph, config.dma_rx_channel, DMA_FLAG_FTF);
-        dma_transfer_number_config(config.dma_periph, config.dma_rx_channel,
+        config->rx_count =
+            256 - (dma_transfer_number_get(config->dma_periph,
+                                           config->dma_rx_channel));
+        dma_channel_disable(config->dma_periph, config->dma_rx_channel);
+        dma_flag_clear(config->dma_periph, config->dma_rx_channel,
+                       DMA_FLAG_FTF);
+        dma_transfer_number_config(config->dma_periph, config->dma_rx_channel,
                                    256);
-        dma_channel_enable(config.dma_periph, config.dma_rx_channel);
+        dma_channel_enable(config->dma_periph, config->dma_rx_channel);
     }
 }
 
-uint16_t usart1_rx_count = 0;
-uint16_t usart2_rx_count = 0;
 extern "C" void USART1_IRQHandler(void) {
-    if (RESET !=
-        usart_interrupt_flag_get(usart1_config.usart_periph, USART_INT_FLAG_IDLE)) {
-        /* clear IDLE flag */
-        usart_data_receive(usart1_config.usart_periph);
-        /* number of data received */
-        usart1_rx_count = 256 - (dma_transfer_number_get(usart1_config.dma_periph,
-                                                  usart1_config.dma_rx_channel));
-        dma_channel_disable(usart1_config.dma_periph, usart1_config.dma_rx_channel);
-        dma_flag_clear(usart1_config.dma_periph, usart1_config.dma_rx_channel, DMA_FLAG_FTF);
-        dma_transfer_number_config(usart1_config.dma_periph, usart1_config.dma_rx_channel,
-                                   256);
-        dma_channel_enable(usart1_config.dma_periph, usart1_config.dma_rx_channel);
-    }
+    handle_usart_interrupt(&usart1_config);
 }
 
-// extern "C" void USART2_IRQHandler(void) {
-//     if (RESET !=
-//         usart_interrupt_flag_get(usart2_config.usart_periph, USART_INT_FLAG_IDLE)) {
-//         /* clear IDLE flag */
-//         usart_data_receive(usart2_config.usart_periph);
-//         /* number of data received */
-//         usart2_rx_count = 256 - (dma_transfer_number_get(usart2_config.dma_periph,
-//                                                   usart2_config.dma_rx_channel));
-//         dma_channel_disable(usart2_config.dma_periph, usart2_config.dma_rx_channel);
-//         dma_flag_clear(usart2_config.dma_periph, usart2_config.dma_rx_channel, DMA_FLAG_FTF);
-//         dma_transfer_number_config(usart2_config.dma_periph, usart2_config.dma_rx_channel,
-//                                    256);
-//         dma_channel_enable(usart2_config.dma_periph, usart2_config.dma_rx_channel);
-//     }
-// }
+extern "C" void USART2_IRQHandler(void) {
+    handle_usart_interrupt(&usart2_config);
+}

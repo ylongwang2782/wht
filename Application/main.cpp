@@ -19,8 +19,6 @@ void ledTask() { led0.toggle(); }
 
 extern SerialConfig usart1_config;
 extern SerialConfig usart2_config;
-extern uint16_t usart1_rx_count;
-extern uint16_t usart2_rx_count;
 
 int main(void) {
     systick_config();
@@ -39,14 +37,14 @@ int main(void) {
     timer.init(50, ledTask);
 
     while (1) {
-        if (usart1_rx_count > 0) {
-            com1.dma_tx(com1.rxbuffer, usart1_rx_count);
-            usart1_rx_count = 0;
+        if (usart1_config.rx_count > 0) {
+            com1.dma_tx(com1.rxbuffer, usart1_config.rx_count);
+            usart1_config.rx_count = 0;
         }
 
-        if (usart2_rx_count > 0) {
-            com2.dma_tx(com2.rxbuffer, usart2_rx_count);
-            usart2_rx_count = 0;
+        if (usart2_config.rx_count > 0) {
+            com2.dma_tx(com2.rxbuffer, usart2_config.rx_count);
+            usart2_config.rx_count = 0;
         }
     }
 }
