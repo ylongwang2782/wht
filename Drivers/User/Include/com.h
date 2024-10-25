@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <cstdint>
 #include <cstdio>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {
