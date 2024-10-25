@@ -31,10 +31,6 @@ void (*usart0_callback)(void) = NULL;
 uint8_t com0_txbuffer[1] = {0x01};
 uint8_t com0_rxbuffer[com_idle_rx_size];
 
-void (*usart1_callback)(void) = NULL;
-uint8_t com1_txbuffer[1] = {0x01};
-uint8_t com1_rxbuffer[com_idle_rx_size];
-
 void (*usart2_callback)(void) = NULL;
 uint8_t com2_txbuffer[1] = {0x01};
 uint8_t com2_rxbuffer[com_idle_rx_size];
@@ -148,7 +144,38 @@ void wht_com0_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
     usart0_callback = callback;
 }
 
-void wht_com1_dma_tx_config(void) {
+extern void (*usart1_callback)(void);
+uint8_t com1_txbuffer[1] = {0x01};
+uint8_t com1_rxbuffer[com_idle_rx_size];
+void com1_init(uint32_t baudval) {
+    /* enable USART clock */
+    rcu_periph_clock_enable(RCU_USART1);
+    /* connect port to USARTx_Tx */
+    gpio_af_set(GPIOD, GPIO_AF_7, GPIO_PIN_5);
+    /* connect port to USARTx_Rx */
+    gpio_af_set(GPIOD, GPIO_AF_7, GPIO_PIN_6);
+    /* configure USART Tx as alternate function push-pull */
+    gpio_mode_set(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_5);
+    gpio_output_options_set(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                            GPIO_PIN_5);
+    /* configure USART Rx as alternate function push-pull */
+    gpio_mode_set(GPIOD, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO_PIN_6);
+    gpio_output_options_set(GPIOD, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                            GPIO_PIN_6);
+
+    /* USART configure */
+    usart_deinit(USART1);
+    usart_baudrate_set(USART1, baudval);
+    usart_receive_config(USART1, USART_RECEIVE_ENABLE);
+    usart_transmit_config(USART1, USART_TRANSMIT_ENABLE);
+    usart_dma_receive_config(USART1, USART_RECEIVE_DMA_ENABLE);
+    usart_dma_transmit_config(USART1, USART_RECEIVE_DMA_ENABLE);
+    usart_enable(USART1);
+
+    usart_interrupt_enable(USART1, USART_INT_IDLE);
+}
+
+void com1_dma_tx_config(void) {
     dma_single_data_parameter_struct dma_init_struct;
     /* enable DMA1 */
     rcu_periph_clock_enable(RCU_DMA0);
@@ -170,7 +197,7 @@ void wht_com1_dma_tx_config(void) {
     usart_dma_transmit_config(USART1, USART_TRANSMIT_DMA_ENABLE);
 }
 
-void wht_com1_dma_tx(uint8_t *data, uint16_t len) {
+void com1_dma_tx(uint8_t *data, uint16_t len) {
     dma_channel_disable(DMA0, DMA_CH6);
     dma_flag_clear(DMA0, DMA_CH6, DMA_FLAG_FTF);
     dma_memory_address_config(DMA0, DMA_CH6, DMA_MEMORY_0, (uint32_t)data);
@@ -179,7 +206,7 @@ void wht_com1_dma_tx(uint8_t *data, uint16_t len) {
     while (RESET == usart_flag_get(WHT_COM1, USART_FLAG_TC));
 }
 
-void wht_com1_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
+void com1_idle_dma_rx_config(uint32_t com, void (*callback)(void)) {
     dma_single_data_parameter_struct dma_init_struct;
 
     nvic_irq_enable(USART1_IRQn, COM1_IRQ_PRE_PRIO, COM1_IRQ_SUB_PRIO);

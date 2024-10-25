@@ -1,8 +1,12 @@
 #include <cstdint>
+#include <cstdint>
+#include <cstdio>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// #include "cstdio.h"
 #include "gd32f4xx.h"
 #include "gd32f4xx_dma.h"
 

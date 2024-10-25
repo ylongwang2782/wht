@@ -7,6 +7,7 @@
         "-IC:/code_project/GD32_WHT/Drivers/GD32F4xx_standard_peripheral/Include",
         "-IC:/code_project/GD32_WHT/Utilities",
         "-IC:/code_project/GD32_WHT/Application",
+        "-IC:/code_project/GD32_WHT/Application/inc",
         "-IC:/code_project/GD32_WHT/Drivers/GD32F4xx_standard_peripheral/Include",
         "-IC:/code_project/GD32_WHT/Drivers/User/Include",
         "-IC:/code_project/GD32_WHT/Drivers/User/Device",

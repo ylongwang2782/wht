@@ -1,7 +1,5 @@
 #include "com.h"
 
-#include <cstdint>
-
 SerialConfig usart1_config = {.baudrate = 115200,
                               .gpio_port = GPIOD,
                               .tx_pin = GPIO_PIN_5,
@@ -151,10 +149,16 @@ void handle_usart_interrupt(SerialConfig *config) {
     }
 }
 
-extern "C" void USART1_IRQHandler(void) {
-    handle_usart_interrupt(&usart1_config);
+extern "C" {
+
+void USART1_IRQHandler(void) { handle_usart_interrupt(&usart1_config); }
+void USART2_IRQHandler(void) { handle_usart_interrupt(&usart2_config); }
+
+int fputc(int ch, FILE *f) {
+    usart_data_transmit(USART1, (uint8_t)ch);
+    while (RESET == usart_flag_get(USART1, USART_FLAG_TBE)) {
+    }
+    return ch;
 }
 
-extern "C" void USART2_IRQHandler(void) {
-    handle_usart_interrupt(&usart2_config);
 }
