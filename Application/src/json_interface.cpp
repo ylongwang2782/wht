@@ -47,10 +47,13 @@ void FrameParser::FrameParse(std::vector<uint8_t> data) {
 void FrameParser::JsonParse(const char *data) {
     // const char *json_data = reinterpret_cast<const char *>(data.data());
 
+    // Define the JSON object
     cJSON *root = cJSON_Parse(data);
+    // Define the JSON reply object
+    cJSON *jsonReply = cJSON_CreateObject();
 
     if (root == NULL) {
-        printf("Error before: [%s]\n", cJSON_GetErrorPtr());
+        cJSON_AddStringToObject(jsonReply, "result", "error");
         return;
     }
 
@@ -62,7 +65,6 @@ void FrameParser::JsonParse(const char *data) {
             cJSON *config = cJSON_GetObjectItem(root, "config");
             if (cJSON_IsArray(config)) {
                 ChronoLink::sync_frame.clear();
-
                 int config_size = cJSON_GetArraySize(config);
                 for (int i = 0; i < config_size; i++) {
                     cJSON *config_item = cJSON_GetArrayItem(config, i);
@@ -82,13 +84,34 @@ void FrameParser::JsonParse(const char *data) {
                         ChronoLink::sync_frame.push_back(device);
                     }
                 }
+                cJSON_AddStringToObject(jsonReply, "config", "success");
+            }
+
+            if (1) {
+                // Print the received sync frame
+                printf("Sync frame received:\n");
+                for (auto device : ChronoLink::sync_frame) {
+                    printf("ID: %X%X%X%X, pinNum: %d\n", device.ID[0],
+                           device.ID[1], device.ID[2], device.ID[3],
+                           device.pin_num);
+                }
             }
 
             // Parse "control"
             cJSON *control = cJSON_GetObjectItem(root, "control");
             if (cJSON_IsString(control) && (control->valuestring != NULL)) {
-                printf("Control: %s\n", control->valuestring);
+                cJSON_AddStringToObject(jsonReply, "control",
+                                        control->valuestring);
             }
+
+            // Print the reply
+            cJSON *jsonRootReply = cJSON_CreateObject();
+            cJSON_AddItemToObject(jsonRootReply, "result", jsonReply);
+            char *jsonReplyStr = cJSON_PrintUnformatted(jsonRootReply);
+            printf("%s", jsonReplyStr);
+
+            cJSON_Delete(jsonRootReply);
+            free(jsonReplyStr);
 
         } else if (strcmp(instruction->valuestring, "unlock") == 0) {
             // Unlock instruction received
@@ -155,21 +178,5 @@ void FrameParser::FrameProc(Frame *frame) {
                 // Unlock instruction received
             }
         }
-
-        //     // Print the received JSON data
-        //     printf("receive json data\n");
-
-        // cJSON *result = cJSON_CreateObject();
-        // cJSON_AddStringToObject(result, "config", "success");
-        // cJSON_AddStringToObject(result, "control", "enable");
-
-        // cJSON *root = cJSON_CreateObject();
-        // cJSON_AddItemToObject(root, "result", result);
-
-        // char *reply = cJSON_PrintUnformatted(root);
-        // printf("%s", reply);
-
-        // cJSON_Delete(root);
-        // free(reply);
     }
 }
