@@ -108,8 +108,14 @@ void FrameParser::JsonParse(const char *data) {
             // Parse "control"
             cJSON *control = cJSON_GetObjectItem(root, "control");
             if (cJSON_IsString(control) && (control->valuestring != NULL)) {
-                cJSON_AddStringToObject(jsonReply, "control",
-                                        control->valuestring);
+                // Check value valid
+                if (strcmp(control->valuestring, "enable") == 0 ||
+                    strcmp(control->valuestring, "disable") == 0) {
+                    cJSON_AddStringToObject(jsonReply, "control",
+                                            control->valuestring);
+                } else {
+                    cJSON_AddStringToObject(jsonReply, "control", "error");
+                }
             }
 
         } else if (strcmp(instruction->valuestring, "unlock") == 0) {
@@ -134,9 +140,17 @@ void FrameParser::JsonParse(const char *data) {
                         ChronoLink::instruction_list.push_back(ID);
                     }
                 }
-                cJSON_AddStringToObject(jsonReply, instruction->string,
+                cJSON_AddStringToObject(jsonReply, instruction->valuestring,
                                         "success");
+            } else if (cJSON_IsString(param) && (param->valuestring != NULL)) {
+                if (strcmp(param->valuestring, "ALL") == 0) {
+                    cJSON_AddStringToObject(jsonReply, instruction->valuestring,
+                                            "success");
+                    cJSON_AddStringToObject(jsonReply, "param", "ALL");
+                }
             }
+        } else {
+            cJSON_AddStringToObject(jsonReply, "instruction", "error");
         }
         // Print the reply
         cJSON_AddItemToObject(jsonRootReply, "result", jsonReply);
