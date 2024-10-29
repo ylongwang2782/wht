@@ -51,6 +51,7 @@ void FrameParser::JsonParse(const char *data) {
     cJSON *jsonReply = cJSON_CreateObject();
 
     if (root == NULL) {
+        // Add error message to JSON reply
         cJSON_AddStringToObject(jsonReply, "result", "error");
         return;
     }
@@ -69,19 +70,30 @@ void FrameParser::JsonParse(const char *data) {
                     cJSON *id = cJSON_GetObjectItem(config_item, "id");
                     cJSON *pinNum = cJSON_GetObjectItem(config_item, "pinNum");
 
+                    // Check if "id" is an array of 4 elements and "pinNum" is a
+                    // number
                     if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
                         cJSON_IsNumber(pinNum)) {
                         ChronoLink::DeviceConfigInfo device;
 
                         for (int j = 0; j < 4; j++) {
-                            device.ID[j] = static_cast<uint8_t>(
-                                cJSON_GetArrayItem(id, j)->valueint);
+                            cJSON *id_item = cJSON_GetArrayItem(id, j);
+                            if (cJSON_IsString(id_item)) {
+                                // Convert hex string to uint8_t
+                                device.ID[j] = static_cast<uint8_t>(
+                                    strtol(id_item->valuestring, nullptr, 16));
+                            }
                         }
+
+                        // Set the pin number
                         device.pin_num = static_cast<uint8_t>(pinNum->valueint);
-                        // Store into sync frame
+
+                        // Store the device into sync_frame
                         ChronoLink::sync_frame.push_back(device);
                     }
                 }
+
+                // Add success message to JSON reply
                 cJSON_AddStringToObject(jsonReply, "config", "success");
             }
 
