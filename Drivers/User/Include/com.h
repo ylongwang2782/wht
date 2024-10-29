@@ -17,7 +17,7 @@ extern "C" {
 
 #define ARRAYNUM(arr_name) (uint32_t)(sizeof(arr_name) / sizeof(*(arr_name)))
 #define com_idle_rx_size   256
-
+#define DMA_RX_BUFFER_SIZE 1024
 typedef struct {
     uint32_t baudrate;                // 波特率
     uint32_t gpio_port;               // GPIO端口
@@ -42,7 +42,7 @@ class Serial {
     Serial(SerialConfig &config) : config(config) { setup(); }
     void dma_tx(uint8_t *data, uint16_t len);
     void data_send(uint8_t *data, uint16_t len);
-    uint8_t rxbuffer[256];
+    uint8_t rxbuffer[DMA_RX_BUFFER_SIZE];
 
    private:
     const SerialConfig &config;

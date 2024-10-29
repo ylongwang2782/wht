@@ -115,7 +115,7 @@ void Serial::idle_dma_rx_config() {
     dma_init_struct.direction = DMA_PERIPH_TO_MEMORY;
     dma_init_struct.memory0_addr = (uintptr_t)rxbuffer;
     dma_init_struct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
-    dma_init_struct.number = com_idle_rx_size;
+    dma_init_struct.number = DMA_RX_BUFFER_SIZE;
     dma_init_struct.periph_addr = (uintptr_t)&USART_DATA(config.usart_periph);
     dma_init_struct.periph_inc = DMA_PERIPH_INCREASE_DISABLE;
     dma_init_struct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
@@ -138,13 +138,13 @@ void handle_usart_interrupt(SerialConfig *config) {
         usart_data_receive(config->usart_periph);
         /* number of data received */
         config->rx_count =
-            256 - (dma_transfer_number_get(config->dma_periph,
+            DMA_RX_BUFFER_SIZE - (dma_transfer_number_get(config->dma_periph,
                                            config->dma_rx_channel));
         dma_channel_disable(config->dma_periph, config->dma_rx_channel);
         dma_flag_clear(config->dma_periph, config->dma_rx_channel,
                        DMA_FLAG_FTF);
         dma_transfer_number_config(config->dma_periph, config->dma_rx_channel,
-                                   256);
+                                   DMA_RX_BUFFER_SIZE);
         dma_channel_enable(config->dma_periph, config->dma_rx_channel);
     }
 }
@@ -160,5 +160,4 @@ int fputc(int ch, FILE *f) {
     }
     return ch;
 }
-
 }
