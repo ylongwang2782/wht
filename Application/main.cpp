@@ -52,13 +52,10 @@ int main(void) {
 
     FrameParser parser;
 
-    Timer timer;
-    timer.init(50, ledTask);
+    Timer timer(50, ledTask);
 
     UIDReader uidReader(0x1FFF7A10);
     const auto &uid = uidReader.getUID();
-
-    // print UID
     printf("UID: %X%X%X%X\n", uid[0], uid[1], uid[2], uid[3]);
 
     while (1) {
