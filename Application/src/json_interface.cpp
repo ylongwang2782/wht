@@ -45,8 +45,6 @@ void FrameParser::FrameParse(std::vector<uint8_t> data) {
 }
 
 void FrameParser::JsonParse(const char *data) {
-    // const char *json_data = reinterpret_cast<const char *>(data.data());
-
     // Define the JSON object
     cJSON *root = cJSON_Parse(data);
     // Define the JSON reply object
@@ -59,9 +57,9 @@ void FrameParser::JsonParse(const char *data) {
 
     cJSON *instruction = cJSON_GetObjectItem(root, "instruction");
     if (cJSON_IsString(instruction) && (instruction->valuestring != NULL)) {
+        cJSON *jsonRootReply = cJSON_CreateObject();
         if (strcmp(instruction->valuestring, "acquisition") == 0) {
             // Acquisition instruction received
-            printf("Acquisition instruction received\n");
             cJSON *config = cJSON_GetObjectItem(root, "config");
             if (cJSON_IsArray(config)) {
                 ChronoLink::sync_frame.clear();
@@ -73,14 +71,14 @@ void FrameParser::JsonParse(const char *data) {
 
                     if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
                         cJSON_IsNumber(pinNum)) {
-                        ChronoLink::DeviceInfo device;
+                        ChronoLink::DeviceConfigInfo device;
 
                         for (int j = 0; j < 4; j++) {
                             device.ID[j] = static_cast<uint8_t>(
                                 cJSON_GetArrayItem(id, j)->valueint);
                         }
                         device.pin_num = static_cast<uint8_t>(pinNum->valueint);
-
+                        // Store into sync frame
                         ChronoLink::sync_frame.push_back(device);
                     }
                 }
@@ -89,14 +87,12 @@ void FrameParser::JsonParse(const char *data) {
 
             if (1) {
                 // Print the received sync frame
-                printf("Sync frame received:\n");
                 for (auto device : ChronoLink::sync_frame) {
                     printf("ID: %X%X%X%X, pinNum: %d\n", device.ID[0],
                            device.ID[1], device.ID[2], device.ID[3],
                            device.pin_num);
                 }
             }
-
             // Parse "control"
             cJSON *control = cJSON_GetObjectItem(root, "control");
             if (cJSON_IsString(control) && (control->valuestring != NULL)) {
@@ -104,18 +100,38 @@ void FrameParser::JsonParse(const char *data) {
                                         control->valuestring);
             }
 
-            // Print the reply
-            cJSON *jsonRootReply = cJSON_CreateObject();
-            cJSON_AddItemToObject(jsonRootReply, "result", jsonReply);
-            char *jsonReplyStr = cJSON_PrintUnformatted(jsonRootReply);
-            printf("%s", jsonReplyStr);
-
-            cJSON_Delete(jsonRootReply);
-            free(jsonReplyStr);
-
         } else if (strcmp(instruction->valuestring, "unlock") == 0) {
             // Unlock instruction received
+            ChronoLink::instruction_list.clear();
+            cJSON *param = cJSON_GetObjectItem(root, "param");
+            if (cJSON_IsArray(param)) {
+                int arraySize = cJSON_GetArraySize(param);
+                for (int i = 0; i < arraySize; i++) {
+                    cJSON *subArray = cJSON_GetArrayItem(param, i);
+                    if (cJSON_IsArray(subArray)) {
+                        int subArraySize = cJSON_GetArraySize(subArray);
+                        std::array<uint8_t, 4> ID;
+                        for (int j = 0; j < subArraySize && j < 4; j++) {
+                            cJSON *value = cJSON_GetArrayItem(subArray, j);
+                            if (cJSON_IsString(value)) {
+                                // Convert hex string to integer
+                                ID[j] = static_cast<uint8_t>(
+                                    strtol(value->valuestring, nullptr, 16));
+                            }
+                        }
+                        ChronoLink::instruction_list.push_back(ID);
+                    }
+                }
+                cJSON_AddStringToObject(jsonReply, instruction->string,
+                                        "success");
+            }
         }
+        // Print the reply
+        cJSON_AddItemToObject(jsonRootReply, "result", jsonReply);
+        char *jsonReplyStr = cJSON_PrintUnformatted(jsonRootReply);
+        printf("%s", jsonReplyStr);
+        free(jsonReplyStr);
+        cJSON_Delete(jsonRootReply);
     }
     cJSON_Delete(root);
 }
@@ -152,7 +168,7 @@ void FrameParser::FrameProc(Frame *frame) {
 
                         if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
                             cJSON_IsNumber(pinNum)) {
-                            ChronoLink::DeviceInfo device;
+                            ChronoLink::DeviceConfigInfo device;
 
                             for (int j = 0; j < 4; j++) {
                                 device.ID[j] = static_cast<uint8_t>(
