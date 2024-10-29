@@ -18,6 +18,8 @@ class FrameParser {
         uint8_t frame_type;
         std::array<uint8_t, payload_size> data_pad;
     };
+    
+    void JsonParse(const char *data);
     void FrameParse(std::vector<uint8_t> data);
 
    private:

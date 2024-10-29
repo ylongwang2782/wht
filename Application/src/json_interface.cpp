@@ -1,7 +1,11 @@
 #include "json_interface.h"
 
-#include "cJSON.h"
+#include <cstdint>
+#include <cstdio>
+#include <vector>
 
+#include "cJSON.h"
+#include "chronolink.h"
 
 void FrameParser::FrameParse(std::vector<uint8_t> data) {
     static std::vector<uint8_t> serial_recv_buff;
@@ -37,27 +41,135 @@ void FrameParser::FrameParse(std::vector<uint8_t> data) {
                      serial_recv_buff_len - offset);
     }
     serial_recv_buff_len -= offset;
-    serial_recv_buff.resize(serial_recv_buff_len);  // 调整缓冲区大小
+    serial_recv_buff.resize(serial_recv_buff_len);
+}
+
+void FrameParser::JsonParse(const char *data) {
+    // const char *json_data = reinterpret_cast<const char *>(data.data());
+
+    cJSON *root = cJSON_Parse(data);
+
+    if (root == NULL) {
+        printf("Error before: [%s]\n", cJSON_GetErrorPtr());
+        return;
+    }
+
+    cJSON *instruction = cJSON_GetObjectItem(root, "instruction");
+    if (cJSON_IsString(instruction) && (instruction->valuestring != NULL)) {
+        if (strcmp(instruction->valuestring, "acquisition") == 0) {
+            // Acquisition instruction received
+            printf("Acquisition instruction received\n");
+            cJSON *config = cJSON_GetObjectItem(root, "config");
+            if (cJSON_IsArray(config)) {
+                ChronoLink::sync_frame.clear();
+
+                int config_size = cJSON_GetArraySize(config);
+                for (int i = 0; i < config_size; i++) {
+                    cJSON *config_item = cJSON_GetArrayItem(config, i);
+                    cJSON *id = cJSON_GetObjectItem(config_item, "id");
+                    cJSON *pinNum = cJSON_GetObjectItem(config_item, "pinNum");
+
+                    if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
+                        cJSON_IsNumber(pinNum)) {
+                        ChronoLink::DeviceInfo device;
+
+                        for (int j = 0; j < 4; j++) {
+                            device.ID[j] = static_cast<uint8_t>(
+                                cJSON_GetArrayItem(id, j)->valueint);
+                        }
+                        device.pin_num = static_cast<uint8_t>(pinNum->valueint);
+
+                        ChronoLink::sync_frame.push_back(device);
+                    }
+                }
+            }
+
+            // Parse "control"
+            cJSON *control = cJSON_GetObjectItem(root, "control");
+            if (cJSON_IsString(control) && (control->valuestring != NULL)) {
+                printf("Control: %s\n", control->valuestring);
+            }
+
+        } else if (strcmp(instruction->valuestring, "unlock") == 0) {
+            // Unlock instruction received
+        }
+    }
+    cJSON_Delete(root);
 }
 
 void FrameParser::FrameProc(Frame *frame) {
     uint8_t frame_type = frame->frame_type;
 
     if (frame_type == TYPE_JSON) {
-        // 处理JSON数据
-        printf("receive json data\n");
+        const char *json_data =
+            reinterpret_cast<const char *>(frame->data_pad.data());
 
-        cJSON *result = cJSON_CreateObject();
-        cJSON_AddStringToObject(result, "config", "success");
-        cJSON_AddStringToObject(result, "control", "enable");
+        cJSON *root = cJSON_Parse(json_data);
 
-        cJSON *root = cJSON_CreateObject();
-        cJSON_AddItemToObject(root, "result", result);
+        if (root == NULL) {
+            printf("Error before: [%s]\n", cJSON_GetErrorPtr());
+            return;
+        }
 
-        char *reply = cJSON_PrintUnformatted(root);
-        printf("%s", reply);
+        cJSON *instruction = cJSON_GetObjectItem(root, "instruction");
+        if (cJSON_IsString(instruction) && (instruction->valuestring != NULL)) {
+            if (strcmp(instruction->valuestring, "acquisition") == 0) {
+                // Acquisition instruction received
+                // Parse "config"
+                cJSON *config = cJSON_GetObjectItem(root, "config");
+                if (cJSON_IsArray(config)) {
+                    ChronoLink::sync_frame.clear();
 
-        cJSON_Delete(root);
-        free(reply);
+                    int config_size = cJSON_GetArraySize(config);
+                    for (int i = 0; i < config_size; i++) {
+                        cJSON *config_item = cJSON_GetArrayItem(config, i);
+                        cJSON *id = cJSON_GetObjectItem(config_item, "id");
+                        cJSON *pinNum =
+                            cJSON_GetObjectItem(config_item, "pinNum");
+
+                        if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
+                            cJSON_IsNumber(pinNum)) {
+                            ChronoLink::DeviceInfo device;
+
+                            for (int j = 0; j < 4; j++) {
+                                device.ID[j] = static_cast<uint8_t>(
+                                    cJSON_GetArrayItem(id, j)->valueint);
+                            }
+                            device.pin_num =
+                                static_cast<uint8_t>(pinNum->valueint);
+
+                            ChronoLink::sync_frame.push_back(device);
+                        }
+                    }
+                }
+
+                // Parse "control"
+                cJSON *control = cJSON_GetObjectItem(root, "control");
+                if (cJSON_IsString(control) && (control->valuestring != NULL)) {
+                    printf("Control: %s\n", control->valuestring);
+                }
+
+                cJSON_Delete(root);
+
+            } else if (strcmp(instruction->valuestring, "unlock") == 0) {
+                // Unlock instruction received
+            }
+        }
+
+        //     // Print the received JSON data
+        //     printf("receive json data\n");
+
+        // cJSON *result = cJSON_CreateObject();
+        // cJSON_AddStringToObject(result, "config", "success");
+        // cJSON_AddStringToObject(result, "control", "enable");
+
+        // cJSON *root = cJSON_CreateObject();
+        // cJSON_AddItemToObject(root, "result", result);
+
+        // char *reply = cJSON_PrintUnformatted(root);
+        // printf("%s", reply);
+
+        // cJSON_Delete(root);
+        // free(reply);
     }
 }
