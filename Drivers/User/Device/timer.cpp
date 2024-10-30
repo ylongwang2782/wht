@@ -7,14 +7,19 @@ const uint8_t timer_nvic_pre_prio = 0;
 const uint8_t timer_nvic_sub_prio = 0;
 TimerCallback timerCallback;
 
+uint32_t Timer::heartbeat = 0;
+uint32_t Timer::trigger_count_ = 1;
+
 extern "C" void TIMER1_IRQHandler(void) {
     if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP)) {
         // 清除定时器中断标志
         timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);
-
-        // 调用回调函数
-        if (timerCallback) {
-            timerCallback();
+        Timer::heartbeat++;
+        if (Timer::heartbeat >= Timer::trigger_count_) {
+            if (timerCallback) {
+                timerCallback();
+            }
+            Timer::heartbeat = 0;
         }
     }
 }
@@ -28,7 +33,8 @@ void Timer::init(uint32_t period_ms, TimerCallback cb) {
     /* Configure the TIMER1 to make a timer interrupt */
     timer_deinit(TIMER1);
     timer_initpara.prescaler = (TIMER_PRESCALER - 1);
-    timer_initpara.period = (period_ms * (240000000 / 1000 / TIMER_PRESCALER) - 1);
+    timer_initpara.period =
+        (period_ms * (240000000 / 1000 / TIMER_PRESCALER) - 1);
     timer_initpara.alignedmode = TIMER_COUNTER_EDGE;
     timer_initpara.counterdirection = TIMER_COUNTER_UP;
     timer_init(TIMER1, &timer_initpara);
@@ -45,3 +51,5 @@ void Timer::init(uint32_t period_ms, TimerCallback cb) {
 
 // 停止定时器
 void Timer::stop() { timer_disable(TIMER1); }
+
+void Timer::start() { timer_enable(TIMER1); }
