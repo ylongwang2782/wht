@@ -29,7 +29,6 @@ void FrameParser::FrameParse(std::vector<uint8_t> data) {
             frame->frame_delimiter[1] == 0xCD) {
             uint8_t frame_len = frame->frame_len;
             if (offset + frame_len <= serial_recv_buff_len) {
-                FrameParser::FrameProc(frame);
                 offset += frame_len;
             } else {
                 break;
@@ -74,19 +73,16 @@ void FrameParser::JsonParse(const char *data) {
                     cJSON *id = cJSON_GetObjectItem(config_item, "id");
                     cJSON *pinNum = cJSON_GetObjectItem(config_item, "pinNum");
 
-                    // Check if "id" is an array of 4 elements and "pinNum" is a
-                    // number
-                    if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
+                    if (cJSON_IsString(id) && strlen(id->valuestring) == 8 &&
                         cJSON_IsNumber(pinNum)) {
                         ChronoLink::DeviceConfigInfo device;
 
+                        // Parse the 8-character hex string into four bytes
                         for (int j = 0; j < 4; j++) {
-                            cJSON *id_item = cJSON_GetArrayItem(id, j);
-                            if (cJSON_IsString(id_item)) {
-                                // Convert hex string to uint8_t
-                                device.ID[j] = static_cast<uint8_t>(
-                                    strtol(id_item->valuestring, nullptr, 16));
-                            }
+                            std::string byteString =
+                                std::string(id->valuestring).substr(j * 2, 2);
+                            device.ID[j] = static_cast<uint8_t>(
+                                strtol(byteString.c_str(), nullptr, 16));
                         }
 
                         // Set the pin number
@@ -96,14 +92,15 @@ void FrameParser::JsonParse(const char *data) {
                         ChronoLink::sync_frame.push_back(device);
                     }
                 }
+
                 // Action according to sync_frame
                 // Get sum of total pinNum of all devices
                 int total_pin_num = 0;
                 for (auto device : ChronoLink::sync_frame) {
                     total_pin_num += device.pin_num;
                 }
-                // Set timer trigger count to total pinNum of all
-                // devices
+
+                // Set timer trigger count to total pinNum of all devices
                 Timer::trigger_count_ = total_pin_num;
                 DBGF("Trigger count: %d\n", Timer::trigger_count_);
 
@@ -135,7 +132,6 @@ void FrameParser::JsonParse(const char *data) {
                     cJSON_AddStringToObject(jsonReply, "control", "error");
                 }
             }
-
         } else if (strcmp(instruction->valuestring, "unlock") == 0) {
             // Unlock instruction received
             ChronoLink::instruction_list.clear();
@@ -178,65 +174,4 @@ void FrameParser::JsonParse(const char *data) {
         cJSON_Delete(jsonRootReply);
     }
     cJSON_Delete(root);
-}
-
-void FrameParser::FrameProc(Frame *frame) {
-    uint8_t frame_type = frame->frame_type;
-
-    if (frame_type == TYPE_JSON) {
-        const char *json_data =
-            reinterpret_cast<const char *>(frame->data_pad.data());
-
-        cJSON *root = cJSON_Parse(json_data);
-
-        if (root == NULL) {
-            printf("Error before: [%s]\n", cJSON_GetErrorPtr());
-            return;
-        }
-
-        cJSON *instruction = cJSON_GetObjectItem(root, "instruction");
-        if (cJSON_IsString(instruction) && (instruction->valuestring != NULL)) {
-            if (strcmp(instruction->valuestring, "acquisition") == 0) {
-                // Acquisition instruction received
-                // Parse "config"
-                cJSON *config = cJSON_GetObjectItem(root, "config");
-                if (cJSON_IsArray(config)) {
-                    ChronoLink::sync_frame.clear();
-
-                    int config_size = cJSON_GetArraySize(config);
-                    for (int i = 0; i < config_size; i++) {
-                        cJSON *config_item = cJSON_GetArrayItem(config, i);
-                        cJSON *id = cJSON_GetObjectItem(config_item, "id");
-                        cJSON *pinNum =
-                            cJSON_GetObjectItem(config_item, "pinNum");
-
-                        if (cJSON_IsArray(id) && cJSON_GetArraySize(id) == 4 &&
-                            cJSON_IsNumber(pinNum)) {
-                            ChronoLink::DeviceConfigInfo device;
-
-                            for (int j = 0; j < 4; j++) {
-                                device.ID[j] = static_cast<uint8_t>(
-                                    cJSON_GetArrayItem(id, j)->valueint);
-                            }
-                            device.pin_num =
-                                static_cast<uint8_t>(pinNum->valueint);
-
-                            ChronoLink::sync_frame.push_back(device);
-                        }
-                    }
-                }
-
-                // Parse "control"
-                cJSON *control = cJSON_GetObjectItem(root, "control");
-                if (cJSON_IsString(control) && (control->valuestring != NULL)) {
-                    printf("Control: %s\n", control->valuestring);
-                }
-
-                cJSON_Delete(root);
-
-            } else if (strcmp(instruction->valuestring, "unlock") == 0) {
-                // Unlock instruction received
-            }
-        }
-    }
 }
