@@ -7,8 +7,6 @@ extern "C" {
 #include "chronolink.h"
 #include "com.h"
 #include "json_interface.h"
-#include "led.h"
-#include "timer.h"
 
 class UIDReader {
    public:

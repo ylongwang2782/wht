@@ -6,6 +6,10 @@
 
 #include "cJSON.h"
 #include "chronolink.h"
+LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
+Timer timer(50, []() { led0.toggle(); });
+
+FrameParser::FrameParser() {}
 
 void FrameParser::FrameParse(std::vector<uint8_t> data) {
     static std::vector<uint8_t> serial_recv_buff;
@@ -92,6 +96,16 @@ void FrameParser::JsonParse(const char *data) {
                         ChronoLink::sync_frame.push_back(device);
                     }
                 }
+                // Action according to sync_frame
+                // Get sum of total pinNum of all devices
+                int total_pin_num = 0;
+                for (auto device : ChronoLink::sync_frame) {
+                    total_pin_num += device.pin_num;
+                }
+                // Set timer trigger count to total pinNum of all
+                // devices
+                Timer::trigger_count_ = total_pin_num;
+                DBGF("Trigger count: %d\n", Timer::trigger_count_);
 
                 // Add success message to JSON reply
                 cJSON_AddStringToObject(jsonReply, "config", "success");
@@ -100,19 +114,23 @@ void FrameParser::JsonParse(const char *data) {
             if (1) {
                 // Print the received sync frame
                 for (auto device : ChronoLink::sync_frame) {
-                    printf("ID: %X%X%X%X, pinNum: %d\n", device.ID[0],
-                           device.ID[1], device.ID[2], device.ID[3],
-                           device.pin_num);
+                    DBGF("ID: %X%X%X%X, pinNum: %d\n", device.ID[0],
+                         device.ID[1], device.ID[2], device.ID[3],
+                         device.pin_num);
                 }
             }
             // Parse "control"
             cJSON *control = cJSON_GetObjectItem(root, "control");
             if (cJSON_IsString(control) && (control->valuestring != NULL)) {
                 // Check value valid
-                if (strcmp(control->valuestring, "enable") == 0 ||
-                    strcmp(control->valuestring, "disable") == 0) {
+                if (strcmp(control->valuestring, "enable") == 0) {
                     cJSON_AddStringToObject(jsonReply, "control",
                                             control->valuestring);
+                    timer.start();
+                } else if (strcmp(control->valuestring, "disable") == 0) {
+                    cJSON_AddStringToObject(jsonReply, "control",
+                                            control->valuestring);
+                    timer.stop();
                 } else {
                     cJSON_AddStringToObject(jsonReply, "control", "error");
                 }

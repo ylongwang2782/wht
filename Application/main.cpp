@@ -1,7 +1,6 @@
 #include "main.h"
 
-LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
-void ledTask() { led0.toggle(); }
+// LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
 
 extern SerialConfig usart1_config;
 Serial com1(usart1_config);
@@ -13,7 +12,7 @@ int main(void) {
 
     FrameParser parser;
 
-    Timer timer(50, ledTask);
+    // Timer timer(50,  []() { led0.toggle(); });
 
     UIDReader uidReader(0x1FFF7A10);
     printf("UID: %X%X%X%X\n", UIDReader::UID[0], UIDReader::UID[1],
