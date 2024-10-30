@@ -414,6 +414,11 @@
               <FileType>8</FileType>
               <FilePath>..\Application\src\json_interface.cpp</FilePath>
             </File>
+            <File>
+              <FileName>chronolink.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Application\src\chronolink.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1034,6 +1039,11 @@
               <FileName>json_interface.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Application\src\json_interface.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>chronolink.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Application\src\chronolink.cpp</FilePath>
             </File>
           </Files>
         </Group>
