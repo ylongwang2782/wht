@@ -1,0 +1,78 @@
+#include "chronolink.h"
+
+#include <cstdint>
+#include <vector>
+
+std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
+std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
+std::vector<std::vector<uint8_t>> ChronoLink::castFrameBytes;
+
+std::vector<uint8_t> ChronoLink::serializeSyncFrame(
+    const std::vector<ChronoLink::DeviceConfigInfo>& sync_frame) {
+    std::vector<uint8_t> serialized;
+    serialized.reserve(sync_frame.size() * 5);  // 预留空间
+
+    for (const auto& device : sync_frame) {
+        serialized.insert(serialized.end(), device.ID.begin(), device.ID.end());
+        serialized.push_back(device.pin_num);
+    }
+
+    return serialized;
+}
+
+void ChronoLink::packSyncFrame(uint8_t slot, uint8_t type,
+                               std::vector<std::vector<uint8_t>>& output) {
+    std::vector<uint8_t> serializedData =
+        serializeSyncFrame(ChronoLink::sync_frame);
+    uint16_t len = serializedData.size();
+    ChronoLink::pack(slot, type, serializedData.data(), len, output);
+}
+
+uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
+                         uint16_t len,
+                         std::vector<std::vector<uint8_t>>& output) {
+    uint8_t fragments_num = (len + payload_size - 1) / payload_size;
+    output.resize(fragments_num);
+
+    for (uint8_t i = 0; i < fragments_num; i++) {
+        Frame frame;
+        frame.delimiter = {0xAB, 0xCD};
+
+        size_t current_payload_size =
+            (i == fragments_num - 1) ? (len % payload_size) : payload_size;
+        if (current_payload_size == 0) {
+            current_payload_size = payload_size;
+        }
+
+        frame.len = 8 + current_payload_size;
+        frame.slot = slot;
+        frame.type = type;
+        frame.fragment_sequence = i;
+        frame.more_fragments_flag = 1;
+        if (i == fragments_num - 1) {
+            frame.more_fragments_flag = 0;
+        }
+
+        frame.padding.resize(current_payload_size);
+        memcpy(frame.padding.data(), &data[i * payload_size],
+               current_payload_size);
+
+        // Append frame to output
+        std::vector<uint8_t>& fragment = output[i];
+        fragment.reserve(8 +
+                         current_payload_size);  // Reserve enough space to
+                                                 // avoid multiple allocations
+        fragment.insert(fragment.end(), frame.delimiter.begin(),
+                        frame.delimiter.end());
+        fragment.push_back((frame.len >> 8) & 0xFF);  // High byte of len
+        fragment.push_back(frame.len & 0xFF);         // Low byte of len
+        fragment.push_back(frame.slot);
+        fragment.push_back(frame.type);
+        fragment.push_back(frame.fragment_sequence);
+        fragment.push_back(frame.more_fragments_flag);
+        fragment.insert(fragment.end(), frame.padding.begin(),
+                        frame.padding.end());
+    }
+
+    return fragments_num;
+}

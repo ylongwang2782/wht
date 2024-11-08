@@ -6,8 +6,22 @@
 
 #include "cJSON.h"
 #include "chronolink.h"
+
+std::vector<std::vector<uint8_t>> output;
+
+ChronoLink chronoLink;
 LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
-Timer timer(50, []() { led0.toggle(); });
+
+Timer timer(50, []() {
+    led0.toggle();
+    if (!output.empty() ) {
+        for (size_t i = 0; i < output.size(); ++i) {
+            for (uint8_t byte : output[i]) {
+                printf("%02X ", byte);
+            }
+        }
+    }
+});
 
 FrameParser::FrameParser() {}
 
@@ -103,6 +117,8 @@ void FrameParser::JsonParse(const char *data) {
                 // Set timer trigger count to total pinNum of all devices
                 Timer::trigger_count_ = total_pin_num;
                 DBGF("Trigger count: %d\n", Timer::trigger_count_);
+
+                chronoLink.packSyncFrame(0, 0, output);
 
                 // Add success message to JSON reply
                 cJSON_AddStringToObject(jsonReply, "config", "success");
