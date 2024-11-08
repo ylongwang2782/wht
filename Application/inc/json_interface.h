@@ -31,5 +31,4 @@ class FrameParser {
     void FrameParse(std::vector<uint8_t> data);
 
    private:
-    void FrameProc(Frame *frame);
 };

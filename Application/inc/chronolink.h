@@ -11,16 +11,12 @@ class ChronoLink {
         uint8_t type;
         uint8_t fragment_sequence;
         uint8_t more_fragments_flag;
-
         std::vector<uint8_t> padding;
     };
-
     struct DeviceConfigInfo {
         std::array<uint8_t, 4> ID;
         uint8_t pin_num;
     };
-    static std::vector<DeviceConfigInfo> sync_frame;
-
     struct DeviceStatusInfo {
         // 颜色传感器匹配状态：0，颜色不匹配或无传感器；1，颜色匹配
         uint16_t colorSensorStatus : 1;
@@ -47,18 +43,27 @@ class ChronoLink {
         std::vector<uint8_t> ConductionData;
     };
 
-    static std::vector<std::vector<uint8_t>> castFrameBytes;
+    struct CommandFrame {
+        uint8_t type;
+        uint32_t slot_index;
+    };
 
+    static std::vector<DeviceConfigInfo> sync_frame;
+    static std::vector<uint8_t> ID_paired_list;
+    static CommandFrame command_frame;
     static std::vector<std::array<uint8_t, 4>> instruction_list;
 
     static uint8_t pack(uint8_t slot, uint8_t type, uint8_t* data, uint16_t len,
                         std::vector<std::vector<uint8_t>>& output);
-
     void packSyncFrame(uint8_t slot, uint8_t type,
                        std::vector<std::vector<uint8_t>>& output);
+    void packCommandFrame(std::vector<std::vector<uint8_t>>& output);
+    void setBit(uint32_t& num, int n);
 
    private:
     static constexpr size_t payload_size = 242;
     std::vector<uint8_t> serializeSyncFrame(
         const std::vector<DeviceConfigInfo>& sync_frame);
+    std::vector<uint8_t> serializeCommandFrame(
+        const CommandFrame& command_frame);
 };

@@ -7,19 +7,29 @@
 #include "cJSON.h"
 #include "chronolink.h"
 
-std::vector<std::vector<uint8_t>> output;
+std::vector<std::vector<uint8_t>> serializedSyncFrame;
+std::vector<std::vector<uint8_t>> serializedCommandFrame;
 
 ChronoLink chronoLink;
 LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
 
 Timer timer(50, []() {
     led0.toggle();
-    if (!output.empty() ) {
-        for (size_t i = 0; i < output.size(); ++i) {
-            for (uint8_t byte : output[i]) {
+    if (!serializedSyncFrame.empty()) {
+        for (size_t i = 0; i < serializedSyncFrame.size(); ++i) {
+            for (uint8_t byte : serializedSyncFrame[i]) {
                 printf("%02X ", byte);
             }
         }
+    }
+
+    if (!serializedCommandFrame.empty()) {
+        for (size_t i = 0; i < serializedCommandFrame.size(); ++i) {
+            for (uint8_t byte : serializedCommandFrame[i]) {
+                printf("%02X ", byte);
+            }
+        }
+        serializedCommandFrame.clear();
     }
 });
 
@@ -80,7 +90,7 @@ void FrameParser::JsonParse(const char *data) {
             // Acquisition instruction received
             cJSON *config = cJSON_GetObjectItem(root, "config");
             if (cJSON_IsArray(config)) {
-                ChronoLink::sync_frame.clear();
+                chronoLink.sync_frame.clear();
                 int config_size = cJSON_GetArraySize(config);
                 for (int i = 0; i < config_size; i++) {
                     cJSON *config_item = cJSON_GetArrayItem(config, i);
@@ -103,14 +113,14 @@ void FrameParser::JsonParse(const char *data) {
                         device.pin_num = static_cast<uint8_t>(pinNum->valueint);
 
                         // Store the device into sync_frame
-                        ChronoLink::sync_frame.push_back(device);
+                        chronoLink.sync_frame.push_back(device);
                     }
                 }
 
                 // Action according to sync_frame
                 // Get sum of total pinNum of all devices
                 int total_pin_num = 0;
-                for (auto device : ChronoLink::sync_frame) {
+                for (auto device : chronoLink.sync_frame) {
                     total_pin_num += device.pin_num;
                 }
 
@@ -118,7 +128,8 @@ void FrameParser::JsonParse(const char *data) {
                 Timer::trigger_count_ = total_pin_num;
                 DBGF("Trigger count: %d\n", Timer::trigger_count_);
 
-                chronoLink.packSyncFrame(0, 0, output);
+                serializedSyncFrame.clear();
+                chronoLink.packSyncFrame(0, 0, serializedSyncFrame);
 
                 // Add success message to JSON reply
                 cJSON_AddStringToObject(jsonReply, "config", "success");
@@ -126,7 +137,7 @@ void FrameParser::JsonParse(const char *data) {
 
             if (1) {
                 // Print the received sync frame
-                for (auto device : ChronoLink::sync_frame) {
+                for (auto device : chronoLink.sync_frame) {
                     DBGF("ID: %X%X%X%X, pinNum: %d\n", device.ID[0],
                          device.ID[1], device.ID[2], device.ID[3],
                          device.pin_num);
@@ -150,7 +161,8 @@ void FrameParser::JsonParse(const char *data) {
             }
         } else if (strcmp(instruction->valuestring, "unlock") == 0) {
             // Unlock instruction received
-            ChronoLink::instruction_list.clear();
+            chronoLink.instruction_list.clear();
+            chronoLink.command_frame.type = 0;
             cJSON *param = cJSON_GetObjectItem(root, "param");
             if (cJSON_IsArray(param)) {
                 int arraySize = cJSON_GetArraySize(param);
@@ -167,9 +179,25 @@ void FrameParser::JsonParse(const char *data) {
                                     strtol(value->valuestring, nullptr, 16));
                             }
                         }
-                        ChronoLink::instruction_list.push_back(ID);
+
+                        // compare the ID with the ID in sync_frame then add ID
+                        // index to the paired list
+                        chronoLink.command_frame.slot_index = 0;
+                        for (int j = 0; j < chronoLink.sync_frame.size(); j++) {
+                            if (chronoLink.sync_frame[j].ID[0] == ID[0] &&
+                                chronoLink.sync_frame[j].ID[1] == ID[1] &&
+                                chronoLink.sync_frame[j].ID[2] == ID[2] &&
+                                chronoLink.sync_frame[j].ID[3] == ID[3]) {
+                                // Set corresponding bit to 1 in slot_index
+                                chronoLink.setBit(
+                                    chronoLink.command_frame.slot_index, j);
+                            }
+                        }
+                        chronoLink.instruction_list.push_back(ID);
                     }
                 }
+                chronoLink.packCommandFrame(serializedCommandFrame);
+
                 cJSON_AddStringToObject(jsonReply, instruction->valuestring,
                                         "success");
             } else if (cJSON_IsString(param) && (param->valuestring != NULL)) {

@@ -5,7 +5,8 @@
 
 std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
-std::vector<std::vector<uint8_t>> ChronoLink::castFrameBytes;
+ChronoLink::CommandFrame ChronoLink::command_frame;
+void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }
 
 std::vector<uint8_t> ChronoLink::serializeSyncFrame(
     const std::vector<ChronoLink::DeviceConfigInfo>& sync_frame) {
@@ -19,11 +20,31 @@ std::vector<uint8_t> ChronoLink::serializeSyncFrame(
 
     return serialized;
 }
-
 void ChronoLink::packSyncFrame(uint8_t slot, uint8_t type,
                                std::vector<std::vector<uint8_t>>& output) {
     std::vector<uint8_t> serializedData =
         serializeSyncFrame(ChronoLink::sync_frame);
+    uint16_t len = serializedData.size();
+    ChronoLink::pack(slot, type, serializedData.data(), len, output);
+}
+
+std::vector<uint8_t> ChronoLink::serializeCommandFrame(
+    const CommandFrame& command_frame) {
+    std::vector<uint8_t> serialized;
+
+    serialized.push_back(command_frame.type);
+    serialized.push_back((command_frame.slot_index >> 24) & 0xFF);  // 高字节
+    serialized.push_back((command_frame.slot_index >> 16) & 0xFF);
+    serialized.push_back((command_frame.slot_index >> 8) & 0xFF);
+    serialized.push_back(command_frame.slot_index & 0xFF);  // 低字节
+
+    return serialized;
+}
+void ChronoLink::packCommandFrame(std::vector<std::vector<uint8_t>>& output) {
+    uint8_t slot = 0;
+    uint8_t type = 0x03;
+    std::vector<uint8_t> serializedData =
+        serializeCommandFrame(ChronoLink::command_frame);
     uint16_t len = serializedData.size();
     ChronoLink::pack(slot, type, serializedData.data(), len, output);
 }
