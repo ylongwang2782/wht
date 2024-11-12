@@ -99,7 +99,7 @@ void FrameParser::JsonParse(const char *data) {
 
                     if (cJSON_IsString(id) && strlen(id->valuestring) == 8 &&
                         cJSON_IsNumber(pinNum)) {
-                        ChronoLink::DeviceConfigInfo device;
+                        DeviceConfigInfo device;
 
                         // Parse the 8-character hex string into four bytes
                         for (int j = 0; j < 4; j++) {

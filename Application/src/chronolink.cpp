@@ -1,15 +1,51 @@
 #include "chronolink.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <vector>
 
-std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
+#include "log.h"
+
+std::vector<DeviceConfigInfo> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
-ChronoLink::CommandFrame ChronoLink::command_frame;
+CommandFrame ChronoLink::command_frame;
+
+void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
+    if (fragment.delimiter[0] == 0xAB || fragment.delimiter[1] == 0xCD) {
+        complete_frame.data.insert(complete_frame.data.end(),
+                                   fragment.padding.begin(),
+                                   fragment.padding.end());
+                                   DBGF("Insert padding data");
+    }
+
+    // Check if this is the last fragment
+    if (fragment.more_fragments_flag == 0) {
+        complete_frame.slot = fragment.slot;
+        complete_frame.type = fragment.type;
+        complete_frame.is_complete = true;
+        frameSorting(complete_frame);
+        // Clear buffer after assembly
+        complete_frame.data.clear();
+    }
+}
+
+void ChronoLink::frameSorting(CompleteFrame complete_frame) {
+    switch (complete_frame.type) {
+        case SYNC:
+            printf("RECV: SYNC FRAME\n");
+            break;
+        case COMMAND:
+            printf("RECV: COMMAND FRAME\n");
+            break;
+        default:
+            break;
+    }
+}
+
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }
 
 std::vector<uint8_t> ChronoLink::serializeSyncFrame(
-    const std::vector<ChronoLink::DeviceConfigInfo>& sync_frame) {
+    const std::vector<DeviceConfigInfo>& sync_frame) {
     std::vector<uint8_t> serialized;
     serialized.reserve(sync_frame.size() * 5);  // 预留空间
 
@@ -56,7 +92,7 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
     output.resize(fragments_num);
 
     for (uint8_t i = 0; i < fragments_num; i++) {
-        Frame frame;
+        FrameFragment frame;
         frame.delimiter = {0xAB, 0xCD};
 
         size_t current_payload_size =
