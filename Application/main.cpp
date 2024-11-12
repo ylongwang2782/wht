@@ -19,10 +19,13 @@ int main(void) {
     ChronoLink chronoLink;
     for (;;) {
         if (usart1_config.rx_count > 0) {
-            DBGF("Recv data");
-            memcpy(&frame_fragment, com1.rxbuffer, usart1_config.rx_count);
-            chronoLink.receiveAndAssembleFrame(frame_fragment);
-
+            DBGF("Recv data\n");
+            // FIXME: data copy is wrong cause vector is not contiguous
+            chronoLink.receiveData(com1.rxbuffer, usart1_config.rx_count);
+            while (chronoLink.parseFrameFragment(frame_fragment)) {
+                DBGF("Recv frame fragment\n");
+                chronoLink.receiveAndAssembleFrame(frame_fragment);
+            };
             usart1_config.rx_count = 0;
         }
     }

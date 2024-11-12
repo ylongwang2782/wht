@@ -1,38 +1,109 @@
 #include "chronolink.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
 
 #include "log.h"
+#include "uid.h"
 
-std::vector<DeviceConfigInfo> ChronoLink::sync_frame;
+std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
 
+void ChronoLink::receiveData(const uint8_t* data, size_t length) {
+    receive_buffer.insert(receive_buffer.end(), data, data + length);
+}
+
+bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
+    size_t min_packet_size = 8;  // Minimum packet size (2 bytes header + 2
+                                 // bytes len + 4 bytes fixed fields)
+
+    // Check if we have enough data to parse the minimum structure
+    if (receive_buffer.size() < min_packet_size) {
+        return false;
+    }
+
+    // Initialize index for parsing
+    size_t index = 0;
+
+    // Parse header
+    fragment.delimiter[0] = receive_buffer[index++];
+    fragment.delimiter[1] = receive_buffer[index++];
+
+    // Parse length (little-endian)
+    fragment.len = static_cast<uint16_t>(receive_buffer[index] |
+                                         (receive_buffer[index + 1] << 8));
+    index += 2;
+
+    // Check if the buffer contains the full packet
+    if (receive_buffer.size() < min_packet_size + fragment.len) {
+        return false;  // Incomplete packet
+    }
+
+    // Parse slot, type, fragment_sequence, and more_fragments_flag
+    fragment.slot = receive_buffer[index++];
+    fragment.type = receive_buffer[index++];
+    fragment.fragment_sequence = receive_buffer[index++];
+    fragment.more_fragments_flag = receive_buffer[index++];
+
+    // Parse padding (data field)
+    fragment.padding.assign(receive_buffer.begin() + index,
+                            receive_buffer.begin() + index + fragment.len);
+
+    // Remove parsed data from buffer
+    receive_buffer.erase(receive_buffer.begin(),
+                         receive_buffer.begin() + index + fragment.len);
+
+    return true;
+}
+
 void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
+    CompleteFrame complete_frame;
     if (fragment.delimiter[0] == 0xAB || fragment.delimiter[1] == 0xCD) {
         complete_frame.data.insert(complete_frame.data.end(),
                                    fragment.padding.begin(),
                                    fragment.padding.end());
-                                   DBGF("Insert padding data");
+        // DBGF("Insert padding data\n");
     }
 
     // Check if this is the last fragment
     if (fragment.more_fragments_flag == 0) {
         complete_frame.slot = fragment.slot;
         complete_frame.type = fragment.type;
-        complete_frame.is_complete = true;
         frameSorting(complete_frame);
         // Clear buffer after assembly
         complete_frame.data.clear();
     }
 }
 
+/**
+ * @brief frameSorting Sorts the received frame and excute corresponding actions
+ *
+ * @param complete_frame
+ */
 void ChronoLink::frameSorting(CompleteFrame complete_frame) {
+    std::vector<DeviceConfigInfo> device_configs;
     switch (complete_frame.type) {
         case SYNC:
-            printf("RECV: SYNC FRAME\n");
+            DBGF("RECV: SYNC FRAME\n");
+            // print complete_frame.data
+            for (auto byte : complete_frame.data) {
+                printf("%X ", byte);
+            }
+
+            // extract device config info from sync frame
+            parseDeviceConfigInfo(complete_frame.data, device_configs);
+            // find self device config in device_configs
+            DeviceConfigInfo self_device_config;
+            uid::get(self_device_config.ID);
+            for (const auto& device : device_configs) {
+                if (device.ID == self_device_config.ID) {
+                    self_device_config.pin_num = device.pin_num;
+                    DBGF("ID match\n");
+                }
+            }
             break;
         case COMMAND:
             printf("RECV: COMMAND FRAME\n");
@@ -40,6 +111,29 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
         default:
             break;
     }
+}
+
+ChronoLink::status ChronoLink::parseDeviceConfigInfo(
+    const std::vector<uint8_t>& data,
+    std::vector<DeviceConfigInfo>& device_configs) {
+    constexpr size_t deviceConfigSize =
+        sizeof(DeviceConfigInfo::ID) + sizeof(DeviceConfigInfo::pin_num);
+
+    if (data.size() % deviceConfigSize != 0) {
+        ERRF("Invalid device config data size\n");
+        return status::ERROR;
+    }
+
+    for (size_t i = 0; i < 1; i += deviceConfigSize) {
+        DeviceConfigInfo config;
+        std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
+        config.pin_num = data[i + 4];
+        DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
+             config.ID[2], config.ID[3], config.pin_num);
+        device_configs.push_back(config);
+    }
+
+    return status::OK;
 }
 
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }
