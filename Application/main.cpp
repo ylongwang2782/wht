@@ -8,16 +8,13 @@
 extern SerialConfig usart1_config;
 extern Serial com1;
 
-std::array<uint8_t, 4> UIDReader::UID;
 FrameFragment assembled_frame;
 FrameFragment frame_fragment;
 
 int main(void) {
     systick_config();
-
-    UIDReader uidReader(0x1FFF7A10);
-    printf("UID: %X%X%X%X\n", UIDReader::UID[0], UIDReader::UID[1],
-           UIDReader::UID[2], UIDReader::UID[3]);
+    std::array<uint8_t, 4> device_uid;
+    uid::get(device_uid);
 #ifdef WH_NODE
     ChronoLink chronoLink;
     for (;;) {
@@ -33,7 +30,7 @@ int main(void) {
 
 #ifdef WH_AP
     FrameParser parser;
-    while (1) {
+    for (;;) {
         if (usart1_config.rx_count > 0) {
             parser.JsonParse((char*)com1.rxbuffer);
             usart1_config.rx_count = 0;
