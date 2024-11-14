@@ -106,17 +106,7 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
                     self_device_config.pin_num = device.pin_num;
                     // Get conduction class
                     Conduction conduction;
-                    // reset all conduction pins
-                    rcu_periph_clock_enable(RCU_GPIOE);
-                    for (size_t i = 0; i < Conduction::pin_map.size(); i++) {
-                        conduction.master_pin_reset(i);
-                    }
-                    // Collect conduction data
-                    auto results = conduction.collect_pin_states();
-                    // Print conduction data to check
-                    for (auto hex_value : results) {
-                        printf("%08X\n", hex_value);  // 十六进制打印
-                    }
+                    conduction.run(2);
                 }
             }
             break;
