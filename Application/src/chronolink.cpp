@@ -6,9 +6,10 @@
 #include <vector>
 
 #include "conduction.h"
-#include "gd32f4xx_rcu.h"
 #include "log.h"
 #include "uid.h"
+
+extern Conduction conduction;
 
 std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
@@ -104,9 +105,8 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
                     DBGF("ID match\n");
                     // ID match, then update self_device_config
                     self_device_config.pin_num = device.pin_num;
-                    // Get conduction class
-                    Conduction conduction;
-                    conduction.run(2);
+                    conduction.config(self_device_config.pin_num);
+                    conduction.start();
                 }
             }
             break;
@@ -118,6 +118,7 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             break;
         case COMMAND:
             printf("RECV: COMMAND FRAME\n");
+            conduction.start();
             break;
         case COMMAND_REPLY:
             printf("RECV: COMMAND REPLY\n");
