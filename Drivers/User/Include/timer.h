@@ -18,21 +18,24 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-// 定义回调函数类型
-typedef void (*TimerCallback)(void);
-
 class Timer {
    public:
-    static uint32_t heartbeat;
-    static uint32_t trigger_count_;
-
-    Timer(uint32_t period_ms, TimerCallback cb) { init(period_ms, cb); }
-    void stop();
+    Timer(uint32_t period_ms) { setup(period_ms); }
+    // start the timer
     void start();
-    void setPeriod(uint32_t period_ms);
+    // stop the timer
+    void stop();
+    // define a timer interrupt handler
+    void handleInterrupt();
+    // set user callback function
+    void setCallback(void (*callback)());
+    // static member function to handle timer interrupt
+    static void timerISR();
+    // register an instance of Timer class
+    static void registerInstance(Timer* instance);
 
    private:
-    void init(uint32_t period_ms, TimerCallback cb);
-    int counter_; 
+    void setup(uint32_t period_ms);
+    void (*callback_)() = nullptr;
+    static Timer* instance_;
 };

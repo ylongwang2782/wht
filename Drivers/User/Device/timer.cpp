@@ -3,28 +3,33 @@
 #define TIMER_PRESCALER 2400
 #define TIMER_PERIOD    10000
 
-const uint8_t timer_nvic_pre_prio = 0;
-const uint8_t timer_nvic_sub_prio = 0;
-TimerCallback timerCallback;
+extern "C" void TIMER1_IRQHandler(void) { Timer::timerISR(); }
 
-uint32_t Timer::heartbeat = 0;
-uint32_t Timer::trigger_count_ = 1;
+void Timer::timerISR() {
+    if (instance_) {
+        instance_->handleInterrupt();
+    }
+}
 
-extern "C" void TIMER1_IRQHandler(void) {
+void Timer::registerInstance(Timer* instance) { instance_ = instance; }
+
+void Timer::handleInterrupt() {
     if (timer_interrupt_flag_get(TIMER1, TIMER_INT_FLAG_UP)) {
         // 清除定时器中断标志
         timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);
-        Timer::heartbeat++;
-        if (Timer::heartbeat >= Timer::trigger_count_) {
-            if (timerCallback) {
-                timerCallback();
-            }
-            Timer::heartbeat = 0;
+        // 执行用户定义的回调
+        if (callback_) {
+            callback_();
         }
     }
 }
 
-void Timer::init(uint32_t period_ms, TimerCallback cb) {
+void Timer::setCallback(void (*callback)()) { callback_ = callback; }
+
+
+const uint8_t timer_nvic_pre_prio = 0;
+const uint8_t timer_nvic_sub_prio = 0;
+void Timer::setup(uint32_t period_ms) {
     timer_parameter_struct timer_initpara;
 
     rcu_periph_clock_enable(RCU_TIMER1);
@@ -42,14 +47,9 @@ void Timer::init(uint32_t period_ms, TimerCallback cb) {
     timer_interrupt_enable(TIMER1, TIMER_INT_UP);
     timer_enable(TIMER1);
 
-    // 设置中断优先级
+    // set interrupt priority
     nvic_irq_enable(TIMER1_IRQn, timer_nvic_pre_prio, timer_nvic_sub_prio);
-
-    // 保存回调函数
-    timerCallback = cb;
 }
 
-// 停止定时器
 void Timer::stop() { timer_disable(TIMER1); }
-
 void Timer::start() { timer_enable(TIMER1); }
