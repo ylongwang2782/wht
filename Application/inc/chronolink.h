@@ -53,12 +53,19 @@ struct FrameFragment {
 
 class ChronoLink {
    public:
+    enum type : uint8_t {
+        DEVICE_CONFIG,
+        SYNC_SIGNAL,
+        CONDUCTION_DATA,
+        COMMAND,
+        COMMAND_REPLY
+    };
+    enum status : uint8_t { OK, ERROR };
+
     struct DeviceConfigInfo {
         std::array<uint8_t, 4> ID;
         uint8_t pin_num;
     };
-    enum type : uint8_t { SYNC, COMMAND };
-    enum status : uint8_t { OK, ERROR };
     // Structure to hold the complete frame data
     struct CompleteFrame {
         uint8_t slot;

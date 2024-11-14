@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <vector>
 
+#include "conduction.h"
+#include "gd32f4xx_rcu.h"
 #include "log.h"
 #include "uid.h"
 
@@ -39,6 +41,7 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
 
     // Check if the buffer contains the full packet
     if (receive_buffer.size() < min_packet_size + fragment.len) {
+        WARNF("Incomplete packet\n");
         return false;  // Incomplete packet
     }
 
@@ -86,13 +89,11 @@ void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
 void ChronoLink::frameSorting(CompleteFrame complete_frame) {
     std::vector<DeviceConfigInfo> device_configs;
     switch (complete_frame.type) {
-        case SYNC:
+        case DEVICE_CONFIG:
             DBGF("RECV: SYNC FRAME\n");
-            // print complete_frame.data
-            for (auto byte : complete_frame.data) {
-                printf("%X ", byte);
-            }
-
+            // for (auto byte : complete_frame.data) {
+            //     printf("%X ", byte);
+            // }
             // extract device config info from sync frame
             parseDeviceConfigInfo(complete_frame.data, device_configs);
             // find self device config in device_configs
@@ -100,13 +101,36 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             uid::get(self_device_config.ID);
             for (const auto& device : device_configs) {
                 if (device.ID == self_device_config.ID) {
-                    self_device_config.pin_num = device.pin_num;
                     DBGF("ID match\n");
+                    // ID match, then update self_device_config
+                    self_device_config.pin_num = device.pin_num;
+                    // Get conduction class
+                    Conduction conduction;
+                    // reset all conduction pins
+                    rcu_periph_clock_enable(RCU_GPIOE);
+                    for (size_t i = 0; i < Conduction::pin_map.size(); i++) {
+                        conduction.master_pin_reset(i);
+                    }
+                    // Collect conduction data
+                    auto results = conduction.collect_pin_states();
+                    // Print conduction data to check
+                    for (auto hex_value : results) {
+                        printf("%08X\n", hex_value);  // 十六进制打印
+                    }
                 }
             }
             break;
+        case SYNC_SIGNAL:
+            DBGF("RECV: SYNC SIGNAL\n");
+            break;
+        case CONDUCTION_DATA:
+            DBGF("RECV: CONDUCTION DATA\n");
+            break;
         case COMMAND:
             printf("RECV: COMMAND FRAME\n");
+            break;
+        case COMMAND_REPLY:
+            printf("RECV: COMMAND REPLY\n");
             break;
         default:
             break;
