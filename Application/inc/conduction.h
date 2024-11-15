@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <vector>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,6 +11,12 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+struct DeviceConfigInfo {
+    std::array<uint8_t, 4> ID;
+    uint16_t sys_enabled_pin_num;
+    uint8_t dev_conduction_pin_num;
+};
 
 class Conduction {
    public:
@@ -32,7 +37,7 @@ class Conduction {
                                                          {GPIOE, 1 << 9}}};
     std::vector<uint8_t> result;
     std::vector<uint8_t> collect_pin_states();
-    void config(uint8_t count);
+    void config(DeviceConfigInfo devConf);
     void start();
     bool data_get(uint8_t *data);
     void master_pin_set(uint8_t pin_num);

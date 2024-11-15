@@ -4,24 +4,23 @@
 
 #include "led.h"
 #include "timer.h"
-
 extern Timer timer;
 
 Conduction conduction;
 
-void Conduction::config(uint8_t count) {
+void Conduction::config(DeviceConfigInfo devConf) {
     // enable clock for corresponding GPIO port
     rcu_periph_clock_enable(RCU_GPIOE);
     // reset all pins
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < devConf.dev_conduction_pin_num; i++) {
         master_pin_reset(i);
     }
-    enabled_pin_num = count;
+    enabled_pin_num = devConf.dev_conduction_pin_num;
 }
 
 void Conduction::start() { timer.start(); }
 
-// TODO: optimize store format u32 to u8 
+// TODO: optimize store format u32 to u8
 std::vector<uint8_t> Conduction::collect_pin_states() {
     if (master_pin_index < enabled_pin_num) {
         for (int i = 0; i < enabled_pin_num; i++) {
@@ -45,7 +44,8 @@ std::vector<uint8_t> Conduction::collect_pin_states() {
     } else {
         // Store rest of data
         if (bit_position > 0) {
-            packed_data >>= (8 - bit_position);  // shift to right to fill 32 bits
+            packed_data >>=
+                (8 - bit_position);  // shift to right to fill 32 bits
             result.push_back(packed_data);
         }
         // print result then stop timer

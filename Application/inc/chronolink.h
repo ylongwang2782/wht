@@ -62,10 +62,11 @@ class ChronoLink {
     };
     enum status : uint8_t { OK, ERROR };
 
-    struct DeviceConfigInfo {
+    struct DevConf {
         std::array<uint8_t, 4> ID;
-        uint8_t pin_num;
+        uint8_t enabled_pin_num;
     };
+
     // Structure to hold the complete frame data
     struct CompleteFrame {
         uint8_t slot;
@@ -75,7 +76,7 @@ class ChronoLink {
 
     void receiveData(const uint8_t* data, size_t length);
     bool parseFrameFragment(FrameFragment& fragment);
-    static std::vector<DeviceConfigInfo> sync_frame;
+    static std::vector<DevConf> sync_frame;
     static std::vector<uint8_t> ID_paired_list;
     static CommandFrame command_frame;
     static std::vector<std::array<uint8_t, 4>> instruction_list;
@@ -95,9 +96,9 @@ class ChronoLink {
     std::vector<uint8_t> receive_buffer;
     static constexpr size_t payload_size = 242;
     std::vector<uint8_t> serializeSyncFrame(
-        const std::vector<DeviceConfigInfo>& sync_frame);
+        const std::vector<DevConf>& sync_frame);
     std::vector<uint8_t> serializeCommandFrame(
         const CommandFrame& command_frame);
     status parseDeviceConfigInfo(const std::vector<uint8_t>& data,
-                                 std::vector<DeviceConfigInfo>& device_configs);
+                                 std::vector<DevConf>& device_configs);
 };

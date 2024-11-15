@@ -11,7 +11,7 @@
 
 extern Conduction conduction;
 
-std::vector<ChronoLink::DeviceConfigInfo> ChronoLink::sync_frame;
+std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
 
@@ -88,27 +88,31 @@ void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
  * @param complete_frame
  */
 void ChronoLink::frameSorting(CompleteFrame complete_frame) {
-    std::vector<DeviceConfigInfo> device_configs;
+    std::vector<DevConf> device_configs;
     switch (complete_frame.type) {
         case DEVICE_CONFIG:
             DBGF("RECV: SYNC FRAME\n");
-            // for (auto byte : complete_frame.data) {
-            //     printf("%X ", byte);
-            // }
-            // extract device config info from sync frame
+
+            // Convert u8 byte array to DevConf struct
             parseDeviceConfigInfo(complete_frame.data, device_configs);
             // find self device config in device_configs
-            DeviceConfigInfo self_device_config;
-            uid::get(self_device_config.ID);
+            DeviceConfigInfo localDevInfo;
+            uid::get(localDevInfo.ID);
+
             for (const auto& device : device_configs) {
-                if (device.ID == self_device_config.ID) {
+                localDevInfo.sys_enabled_pin_num += device.enabled_pin_num;
+                if (device.ID == localDevInfo.ID) {
                     DBGF("ID match\n");
-                    // ID match, then update self_device_config
-                    self_device_config.pin_num = device.pin_num;
-                    conduction.config(self_device_config.pin_num);
-                    conduction.start();
+                    localDevInfo.dev_conduction_pin_num =
+                        device.enabled_pin_num;
                 }
             }
+
+            if (localDevInfo.dev_conduction_pin_num != 0) {
+                conduction.config(localDevInfo);
+                conduction.start();
+            }
+
             break;
         case SYNC_SIGNAL:
             DBGF("RECV: SYNC SIGNAL\n");
@@ -129,10 +133,9 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
 }
 
 ChronoLink::status ChronoLink::parseDeviceConfigInfo(
-    const std::vector<uint8_t>& data,
-    std::vector<DeviceConfigInfo>& device_configs) {
+    const std::vector<uint8_t>& data, std::vector<DevConf>& device_configs) {
     constexpr size_t deviceConfigSize =
-        sizeof(DeviceConfigInfo::ID) + sizeof(DeviceConfigInfo::pin_num);
+        sizeof(DevConf::ID) + sizeof(DevConf::enabled_pin_num);
 
     if (data.size() % deviceConfigSize != 0) {
         ERRF("Invalid device config data size\n");
@@ -140,11 +143,11 @@ ChronoLink::status ChronoLink::parseDeviceConfigInfo(
     }
 
     for (size_t i = 0; i < 1; i += deviceConfigSize) {
-        DeviceConfigInfo config;
+        DevConf config;
         std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
-        config.pin_num = data[i + 4];
+        config.enabled_pin_num = data[i + 4];
         DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-             config.ID[2], config.ID[3], config.pin_num);
+             config.ID[2], config.ID[3], config.enabled_pin_num);
         device_configs.push_back(config);
     }
 
@@ -154,13 +157,13 @@ ChronoLink::status ChronoLink::parseDeviceConfigInfo(
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }
 
 std::vector<uint8_t> ChronoLink::serializeSyncFrame(
-    const std::vector<DeviceConfigInfo>& sync_frame) {
+    const std::vector<DevConf>& sync_frame) {
     std::vector<uint8_t> serialized;
     serialized.reserve(sync_frame.size() * 5);  // 预留空间
 
     for (const auto& device : sync_frame) {
         serialized.insert(serialized.end(), device.ID.begin(), device.ID.end());
-        serialized.push_back(device.pin_num);
+        serialized.push_back(device.enabled_pin_num);
     }
 
     return serialized;
