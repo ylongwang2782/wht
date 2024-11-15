@@ -21,12 +21,13 @@ void Conduction::config(uint8_t count) {
 
 void Conduction::start() { timer.start(); }
 
-std::vector<uint32_t> Conduction::collect_pin_states() {
+// TODO: optimize store format u32 to u8 
+std::vector<uint8_t> Conduction::collect_pin_states() {
     if (master_pin_index < enabled_pin_num) {
         for (int i = 0; i < enabled_pin_num; i++) {
             const auto& gpio_pin = pin_map[i];
-            if (bit_position > 0 && bit_position % 32 == 0) {
-                result.push_back(packed_data);  // 每32位保存一次
+            if (bit_position > 0 && bit_position % 8 == 0) {
+                result.push_back(packed_data);  // store per 32 bits
                 packed_data = 0;
                 bit_position = 0;
             }
@@ -34,7 +35,7 @@ std::vector<uint32_t> Conduction::collect_pin_states() {
             // fill highest bit first, move then fill
             packed_data >>= 1;
             if (gpio_input_bit_get(gpio_pin.port, gpio_pin.pin) == SET) {
-                packed_data |= 0x80000000;  // 将最高位设置为1
+                packed_data |= 0x80;  // set highest bit
             }
 
             ++bit_position;
@@ -44,12 +45,12 @@ std::vector<uint32_t> Conduction::collect_pin_states() {
     } else {
         // Store rest of data
         if (bit_position > 0) {
-            packed_data >>= (32 - bit_position);  // 右移补齐高位填充
+            packed_data >>= (8 - bit_position);  // shift to right to fill 32 bits
             result.push_back(packed_data);
         }
         // print result then stop timer
         for (auto hex_value : result) {
-            printf("%08X\n", hex_value);
+            printf("%02X\n", hex_value);
         }
         timer.stop();
         master_pin_index = 0;

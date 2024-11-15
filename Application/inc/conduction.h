@@ -30,8 +30,8 @@ class Conduction {
                                                          {GPIOE, 1 << 7},
                                                          {GPIOE, 1 << 8},
                                                          {GPIOE, 1 << 9}}};
-    std::vector<uint32_t> result;
-    std::vector<uint32_t> collect_pin_states();
+    std::vector<uint8_t> result;
+    std::vector<uint8_t> collect_pin_states();
     void config(uint8_t count);
     void start();
     bool data_get(uint8_t *data);
