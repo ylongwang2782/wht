@@ -1,5 +1,7 @@
 #include "main.h"
 
+#include <cstdint>
+
 #include "conduction.h"
 
 #define WH_NODE
@@ -12,9 +14,14 @@ FrameFragment frame_fragment;
 Timer timer(50);
 ChronoLink chronoLink;
 
+uint8_t is_data_upload = 0;
+
 void onTimerInterrupt() {
     led0.toggle();
-    conduction.collect_pin_states();
+    if (conduction.collect_pin_states()) {
+        // Data Collect done, ready to upload
+        chronoLink.is_data_upload = true;
+    }
 }
 
 int main(void) {
@@ -33,6 +40,24 @@ int main(void) {
                 chronoLink.receiveAndAssembleFrame(frame_fragment);
             };
             usart1_config.rx_count = 0;
+        }
+
+        if (chronoLink.is_data_upload) {
+            chronoLink.is_data_upload = false;
+            // If conduction result is not empty, pack and upload
+            if (!conduction.result.empty()) {
+                std::vector<std::vector<uint8_t>> upload_buf;
+                ChronoLink::pack(1, ChronoLink::CONDUCTION_DATA,
+                                 conduction.result.data(),
+                                 conduction.result.size(), upload_buf);
+                conduction.result.clear();
+                // Print upload buf
+                for (auto& buf : upload_buf) {
+                    for (auto& b : buf) {
+                        printf("%02X ", b);
+                    }
+                };
+            }
         }
     }
 #endif

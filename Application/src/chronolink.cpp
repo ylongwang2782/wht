@@ -25,6 +25,7 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
 
     // Check if we have enough data to parse the minimum structure
     if (receive_buffer.size() < min_packet_size) {
+        receive_buffer.clear();
         return false;
     }
 
@@ -99,16 +100,16 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             DeviceConfigInfo localDevInfo;
             uid::get(localDevInfo.ID);
 
+            localDevInfo.deviceCount = device_configs.size();
             for (const auto& device : device_configs) {
-                localDevInfo.sys_enabled_pin_num += device.enabled_pin_num;
+                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
                 if (device.ID == localDevInfo.ID) {
                     DBGF("ID match\n");
-                    localDevInfo.dev_conduction_pin_num =
-                        device.enabled_pin_num;
+                    localDevInfo.devConductionPinNum = device.enabled_pin_num;
                 }
             }
 
-            if (localDevInfo.dev_conduction_pin_num != 0) {
+            if (localDevInfo.devConductionPinNum != 0) {
                 conduction.config(localDevInfo);
                 conduction.start();
             }
@@ -132,6 +133,7 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
     }
 }
 
+// Parse u8 byte vector to DevConf struct
 ChronoLink::status ChronoLink::parseDeviceConfigInfo(
     const std::vector<uint8_t>& data, std::vector<DevConf>& device_configs) {
     constexpr size_t deviceConfigSize =
@@ -142,7 +144,7 @@ ChronoLink::status ChronoLink::parseDeviceConfigInfo(
         return status::ERROR;
     }
 
-    for (size_t i = 0; i < 1; i += deviceConfigSize) {
+    for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
         DevConf config;
         std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
         config.enabled_pin_num = data[i + 4];
@@ -233,8 +235,8 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
                                                  // avoid multiple allocations
         fragment.insert(fragment.end(), frame.delimiter.begin(),
                         frame.delimiter.end());
-        fragment.push_back((frame.len >> 8) & 0xFF);  // High byte of len
         fragment.push_back(frame.len & 0xFF);         // Low byte of len
+        fragment.push_back((frame.len >> 8) & 0xFF);  // High byte of len
         fragment.push_back(frame.slot);
         fragment.push_back(frame.type);
         fragment.push_back(frame.fragment_sequence);

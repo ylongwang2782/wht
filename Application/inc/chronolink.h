@@ -76,6 +76,7 @@ class ChronoLink {
 
     void receiveData(const uint8_t* data, size_t length);
     bool parseFrameFragment(FrameFragment& fragment);
+    bool is_data_upload = false;
     static std::vector<DevConf> sync_frame;
     static std::vector<uint8_t> ID_paired_list;
     static CommandFrame command_frame;

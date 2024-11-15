@@ -1,9 +1,12 @@
 #include "conduction.h"
 
 #include <cstdint>
+#include <cstdio>
 
 #include "led.h"
+#include "log.h"
 #include "timer.h"
+
 extern Timer timer;
 
 Conduction conduction;
@@ -12,18 +15,23 @@ void Conduction::config(DeviceConfigInfo devConf) {
     // enable clock for corresponding GPIO port
     rcu_periph_clock_enable(RCU_GPIOE);
     // reset all pins
-    for (size_t i = 0; i < devConf.dev_conduction_pin_num; i++) {
+    for (size_t i = 0; i < devConf.devConductionPinNum; i++) {
         master_pin_reset(i);
     }
-    enabled_pin_num = devConf.dev_conduction_pin_num;
+    devConductionPinNum = devConf.devConductionPinNum;
+    DBGF("dev cond pin num: %d\n", devConductionPinNum);
+    sysConductionPinNum = devConf.sysConductionPinNum;
+    DBGF("sys cond pin num: %d\n", sysConductionPinNum);
+    deviceCount = devConf.deviceCount;
+    DBGF("sys device count: %d\n", devConf.deviceCount);
 }
 
 void Conduction::start() { timer.start(); }
 
 // TODO: optimize store format u32 to u8
-std::vector<uint8_t> Conduction::collect_pin_states() {
-    if (master_pin_index < enabled_pin_num) {
-        for (int i = 0; i < enabled_pin_num; i++) {
+uint8_t Conduction::collect_pin_states() {
+    if (master_pin_index < sysConductionPinNum) {
+        for (int i = 0; i < devConductionPinNum; i++) {
             const auto& gpio_pin = pin_map[i];
             if (bit_position > 0 && bit_position % 8 == 0) {
                 result.push_back(packed_data);  // store per 32 bits
@@ -48,17 +56,13 @@ std::vector<uint8_t> Conduction::collect_pin_states() {
                 (8 - bit_position);  // shift to right to fill 32 bits
             result.push_back(packed_data);
         }
-        // print result then stop timer
-        for (auto hex_value : result) {
-            printf("%02X\n", hex_value);
-        }
-        timer.stop();
         master_pin_index = 0;
         packed_data = 0;
         bit_position = 0;
-        result.clear();
+        timer.stop();
+        return 1;  // 1 means collect data done, then go to upload stage
     }
-    return result;
+    return 0;
 }
 
 bool Conduction::data_get(uint8_t* data) { return true; }

@@ -14,8 +14,9 @@ extern "C" {
 
 struct DeviceConfigInfo {
     std::array<uint8_t, 4> ID;
-    uint16_t sys_enabled_pin_num;
-    uint8_t dev_conduction_pin_num;
+    uint16_t sysConductionPinNum;
+    uint8_t devConductionPinNum;
+    uint8_t deviceCount;
 };
 
 class Conduction {
@@ -36,7 +37,7 @@ class Conduction {
                                                          {GPIOE, 1 << 8},
                                                          {GPIOE, 1 << 9}}};
     std::vector<uint8_t> result;
-    std::vector<uint8_t> collect_pin_states();
+    uint8_t collect_pin_states();
     void config(DeviceConfigInfo devConf);
     void start();
     bool data_get(uint8_t *data);
@@ -44,7 +45,9 @@ class Conduction {
     void master_pin_reset(uint8_t pin_num);
 
    private:
-    uint8_t enabled_pin_num;
+    uint8_t deviceCount;
+    uint8_t devConductionPinNum;
+    uint16_t sysConductionPinNum;
     uint8_t master_pin_index = 0;
     uint32_t packed_data = 0;
     int bit_position = 0;
