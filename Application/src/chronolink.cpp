@@ -111,11 +111,11 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
 
             if (localDevInfo.devConductionPinNum != 0) {
                 conduction.config(localDevInfo);
-                conduction.start();
             }
 
             break;
         case SYNC_SIGNAL:
+            conduction.start();
             DBGF("RECV: SYNC SIGNAL\n");
             break;
         case CONDUCTION_DATA:
