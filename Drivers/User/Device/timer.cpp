@@ -5,6 +5,7 @@
 
 extern "C" void TIMER1_IRQHandler(void) { Timer::timerISR(); }
 
+Timer* Timer::instance_ = nullptr;
 void Timer::timerISR() {
     if (instance_) {
         instance_->handleInterrupt();
@@ -26,7 +27,6 @@ void Timer::handleInterrupt() {
 
 void Timer::setCallback(void (*callback)()) { callback_ = callback; }
 
-
 const uint8_t timer_nvic_pre_prio = 0;
 const uint8_t timer_nvic_sub_prio = 0;
 void Timer::setup(uint32_t period_ms) {
@@ -45,7 +45,7 @@ void Timer::setup(uint32_t period_ms) {
     timer_init(TIMER1, &timer_initpara);
     timer_interrupt_flag_clear(TIMER1, TIMER_INT_FLAG_UP);
     timer_interrupt_enable(TIMER1, TIMER_INT_UP);
-    timer_enable(TIMER1);
+    timer_disable(TIMER1);
 
     // set interrupt priority
     nvic_irq_enable(TIMER1_IRQn, timer_nvic_pre_prio, timer_nvic_sub_prio);
