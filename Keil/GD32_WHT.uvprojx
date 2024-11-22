@@ -419,6 +419,11 @@
               <FileType>8</FileType>
               <FilePath>..\Application\src\chronolink.cpp</FilePath>
             </File>
+            <File>
+              <FileName>conduction.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Application\src\conduction.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -622,6 +627,11 @@
               <FileType>8</FileType>
               <FilePath>..\Drivers\User\Device\timer.cpp</FilePath>
             </File>
+            <File>
+              <FileName>uid.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Drivers\User\Device\uid.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -636,8 +646,8 @@
       <TargetName>master_mode</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060061::V5.06 update 1 (build 61)::ARMCC</pCCUsed>
-      <uAC6>8</uAC6>
+      <pCCUsed>5060960::V5.06 update 7 (build 960)::..\..\..\..\..\..\Keil_v5\ARM\ARM_Compiler_5.06u7</pCCUsed>
+      <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>GD32F470VK</Device>
@@ -1045,6 +1055,11 @@
               <FileType>8</FileType>
               <FilePath>..\Application\src\chronolink.cpp</FilePath>
             </File>
+            <File>
+              <FileName>conduction.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Application\src\conduction.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1247,6 +1262,11 @@
               <FileName>timer.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Drivers\User\Device\timer.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>uid.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\Drivers\User\Device\uid.cpp</FilePath>
             </File>
           </Files>
         </Group>
