@@ -34,14 +34,16 @@ void Conduction::start() { timer.start(); }
 
 // TODO: optimize store format u32 to u8
 uint8_t Conduction::collect_pin_states() {
-    // traver row
+    // row index
     if (matrix.row_index < sysConductionPinNum) {
         // host pin: high ouput and no store
-        // if (matrix.startCol < matrix.row_index < matrix.col + matrix.startCol) {
+        // if (matrix.startCol < matrix.row_index < matrix.col +
+        // matrix.startCol) {
         //     master_pin_set(matrix.row_index);
         // }
 
         for (int i = 0; i < devConductionPinNum; i++) {
+            // col index
             const auto& gpio_pin = pin_map[i];
 
             if (bit_position > 0 && bit_position % 8 == 0) {
@@ -62,8 +64,8 @@ uint8_t Conduction::collect_pin_states() {
     } else {
         // Store rest of data
         if (bit_position > 0) {
-            packed_data >>=
-                (8 - bit_position);  // shift to right to fill 32 bits
+            // shift to right to fill 32 bits
+            packed_data <<= bit_position;
             result.push_back(packed_data);
         }
         matrix.row_index = 0;
