@@ -19,6 +19,15 @@ struct DeviceConfigInfo {
     uint8_t deviceCount;
 };
 
+class Matrix {
+   public:
+    int row;
+    int col;
+    int row_index;
+    int col_index;
+    int startCol;
+};
+
 class Conduction {
    public:
     struct GpioPin {
@@ -43,6 +52,8 @@ class Conduction {
     bool data_get(uint8_t *data);
     void master_pin_set(uint8_t pin_num);
     void master_pin_reset(uint8_t pin_num);
+
+    Matrix matrix;
 
    private:
     uint8_t deviceCount;

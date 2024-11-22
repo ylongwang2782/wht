@@ -102,11 +102,14 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
 
             localDevInfo.deviceCount = device_configs.size();
             for (const auto& device : device_configs) {
-                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
                 if (device.ID == localDevInfo.ID) {
                     DBGF("ID match\n");
                     localDevInfo.devConductionPinNum = device.enabled_pin_num;
+                    conduction.matrix.col = device.enabled_pin_num;
+                    conduction.matrix.startCol =
+                        localDevInfo.sysConductionPinNum;
                 }
+                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
             }
 
             if (localDevInfo.devConductionPinNum != 0) {

@@ -7,6 +7,10 @@
 #include "log.h"
 #include "timer.h"
 
+extern "C" {
+#include "systick.h"
+}
+
 extern Timer timer;
 
 Conduction conduction;
@@ -30,25 +34,31 @@ void Conduction::start() { timer.start(); }
 
 // TODO: optimize store format u32 to u8
 uint8_t Conduction::collect_pin_states() {
-    if (master_pin_index < sysConductionPinNum) {
+    // traver row
+    if (matrix.row_index < sysConductionPinNum) {
+        // host pin: high ouput and no store
+        // if (matrix.startCol < matrix.row_index < matrix.col + matrix.startCol) {
+        //     master_pin_set(matrix.row_index);
+        // }
+
         for (int i = 0; i < devConductionPinNum; i++) {
             const auto& gpio_pin = pin_map[i];
+
             if (bit_position > 0 && bit_position % 8 == 0) {
-                result.push_back(packed_data);  // store per 32 bits
+                result.push_back(packed_data);  // store per 8 bits
                 packed_data = 0;
                 bit_position = 0;
             }
 
-            // fill highest bit first, move then fill
-            packed_data >>= 1;
+            packed_data <<= 1;
             if (gpio_input_bit_get(gpio_pin.port, gpio_pin.pin) == SET) {
-                packed_data |= 0x80;  // set highest bit
+                packed_data |= 0x01;  // set highest bit
             }
 
             ++bit_position;
         }
 
-        master_pin_index++;
+        matrix.row_index++;
     } else {
         // Store rest of data
         if (bit_position > 0) {
@@ -56,7 +66,7 @@ uint8_t Conduction::collect_pin_states() {
                 (8 - bit_position);  // shift to right to fill 32 bits
             result.push_back(packed_data);
         }
-        master_pin_index = 0;
+        matrix.row_index = 0;
         packed_data = 0;
         bit_position = 0;
         timer.stop();
