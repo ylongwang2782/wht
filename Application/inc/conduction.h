@@ -60,6 +60,6 @@ class Conduction {
     uint8_t devConductionPinNum;
     uint16_t sysConductionPinNum;
     uint8_t master_pin_index = 0;
-    uint32_t packed_data = 0;
+    uint8_t packed_data = 0;
     int bit_position = 0;
 };

@@ -600,16 +600,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Doc</GroupName>
-          <Files>
-            <File>
-              <FileName>readme.txt</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\readme.txt</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>Driver</GroupName>
           <Files>
             <File>
@@ -626,11 +616,6 @@
               <FileName>timer.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Drivers\User\Device\timer.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>uid.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Drivers\User\Device\uid.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -1236,16 +1221,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Doc</GroupName>
-          <Files>
-            <File>
-              <FileName>readme.txt</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\readme.txt</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>Driver</GroupName>
           <Files>
             <File>
@@ -1262,11 +1237,6 @@
               <FileName>timer.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\Drivers\User\Device\timer.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>uid.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\Drivers\User\Device\uid.cpp</FilePath>
             </File>
           </Files>
         </Group>

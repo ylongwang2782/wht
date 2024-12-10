@@ -51,12 +51,6 @@ int main(void) {
                                  conduction.result.data(),
                                  conduction.result.size(), upload_buf);
                 conduction.result.clear();
-                // Print upload buf
-                for (auto& buf : upload_buf) {
-                    for (auto& b : buf) {
-                        printf("%02X ", b);
-                    }
-                };
             }
         }
     }

@@ -25,4 +25,5 @@
         "--pch-storage=disk",
     ],
     "todo-tree.tree.showBadges": false,
+    "marscode.chatLanguage": "cn",
 }

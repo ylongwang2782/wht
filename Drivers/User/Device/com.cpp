@@ -139,9 +139,9 @@ void handle_usart_interrupt(SerialConfig *config) {
         /* clear IDLE flag */
         usart_data_receive(config->usart_periph);
         /* number of data received */
-        config->rx_count =
-            DMA_RX_BUFFER_SIZE - (dma_transfer_number_get(config->dma_periph,
-                                           config->dma_rx_channel));
+        config->rx_count = DMA_RX_BUFFER_SIZE -
+                           (dma_transfer_number_get(config->dma_periph,
+                                                    config->dma_rx_channel));
         dma_channel_disable(config->dma_periph, config->dma_rx_channel);
         dma_flag_clear(config->dma_periph, config->dma_rx_channel,
                        DMA_FLAG_FTF);
@@ -162,4 +162,5 @@ int fputc(int ch, FILE *f) {
     }
     return ch;
 }
+
 }

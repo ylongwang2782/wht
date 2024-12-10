@@ -42,9 +42,10 @@ uint8_t Conduction::collect_pin_states() {
         //     master_pin_set(matrix.row_index);
         // }
 
-        for (int i = 0; i < devConductionPinNum; i++) {
+        for (matrix.col_index = 0; matrix.col_index < matrix.col;
+             matrix.col_index++) {
             // col index
-            const auto& gpio_pin = pin_map[i];
+            const auto& gpio_pin = pin_map[matrix.col_index];
 
             if (bit_position > 0 && bit_position % 8 == 0) {
                 result.push_back(packed_data);  // store per 8 bits
@@ -52,20 +53,20 @@ uint8_t Conduction::collect_pin_states() {
                 bit_position = 0;
             }
 
-            packed_data <<= 1;
-            if (gpio_input_bit_get(gpio_pin.port, gpio_pin.pin) == SET) {
-                packed_data |= 0x01;  // set highest bit
-            }
-
-            ++bit_position;
+            if (matrix.col_index + matrix.startCol != matrix.row_index) {
+                packed_data <<= 1;
+                if (gpio_input_bit_get(gpio_pin.port, gpio_pin.pin) == SET) {
+                    packed_data |= 0x01;  // set highest bit
+                }
+                ++bit_position;
+            }   
         }
 
         matrix.row_index++;
     } else {
         // Store rest of data
         if (bit_position > 0) {
-            // shift to right to fill 32 bits
-            packed_data <<= bit_position;
+            packed_data <<= (8 - bit_position);
             result.push_back(packed_data);
         }
         matrix.row_index = 0;
