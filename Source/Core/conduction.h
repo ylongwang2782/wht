@@ -16,7 +16,7 @@ struct DeviceConfigInfo {
     std::array<uint8_t, 4> ID;
     uint16_t sysConductionPinNum;
     uint8_t devConductionPinNum;
-    uint8_t deviceCount;
+    uint8_t devNum;
 };
 
 class Matrix {
@@ -56,7 +56,7 @@ class Conduction {
     Matrix matrix;
 
    private:
-    uint8_t deviceCount;
+    uint8_t devNum;
     uint8_t devConductionPinNum;
     uint16_t sysConductionPinNum;
     uint8_t master_pin_index = 0;

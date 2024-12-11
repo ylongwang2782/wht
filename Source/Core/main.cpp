@@ -21,29 +21,14 @@ extern "C" {
 
 // 全局队列
 void led_task(void *pvParameters);
+void uartDMATask(void *pvParameters);
+
 extern SerialConfig usart1_info;
 FrameFragment frame_fragment;
 ChronoLink chronoLink;
 
 // 全局信号量
 extern SemaphoreHandle_t dmaCompleteSemaphore;
-
-void uartDMATask(void *pvParameters) {
-    printf("Usart DMA task start.\n");
-    UART_DMA_Handler *uartDMA = static_cast<UART_DMA_Handler *>(pvParameters);
-    for (;;) {
-        // 等待 DMA 完成信号
-        if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
-            LOGF("Usart recv.\n");
-            chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
-            while (chronoLink.parseFrameFragment(frame_fragment)) {
-                LOGF("Get frame fragment.\n");
-                chronoLink.receiveAndAssembleFrame(frame_fragment);
-            };
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
 
 int main(void) {
     // read uid
@@ -63,10 +48,27 @@ int main(void) {
     for (;;);
 }
 
+void uartDMATask(void *pvParameters) {
+    printf("Usart DMA task start.\n");
+    UART_DMA_Handler *uartDMA = static_cast<UART_DMA_Handler *>(pvParameters);
+    for (;;) {
+        // 等待 DMA 完成信号
+        if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
+            LOG("Usart recv.\n");
+            chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
+            while (chronoLink.parseFrameFragment(frame_fragment)) {
+                LOG("Get frame fragment.\n");
+                chronoLink.receiveAndAssembleFrame(frame_fragment);
+            };
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 void led_task(void *pvParameters) {
     LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
     for (;;) {
         led0.toggle();
-        vTaskDelay(500);
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

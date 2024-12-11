@@ -1,6 +1,4 @@
 build*/
 .cache
 bin/
-project/Objects/
 project/
-tool/

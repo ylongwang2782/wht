@@ -68,12 +68,11 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
 
 void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
     CompleteFrame complete_frame;
-    if (fragment.delimiter[0] == 0xAB || fragment.delimiter[1] == 0xCD) {
-        complete_frame.data.insert(complete_frame.data.end(),
-                                   fragment.padding.begin(),
-                                   fragment.padding.end());
-        // DBGF("Insert padding data\n");
-    }
+
+    // extract data from fragment
+    complete_frame.data.insert(complete_frame.data.end(),
+                               fragment.padding.begin(),
+                               fragment.padding.end());
 
     // Check if this is the last fragment
     if (fragment.more_fragments_flag == 0) {
@@ -94,25 +93,27 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
     std::vector<DevConf> device_configs;
     switch (complete_frame.type) {
         case DEVICE_CONFIG:
-            LOGF("Frm: Config\n");
-
-            // // Convert u8 byte array to DevConf struct
-            // parseDeviceConfigInfo(complete_frame.data, device_configs);
-            // // find self device config in device_configs
-            // DeviceConfigInfo localDevInfo;
-            // uid::get(localDevInfo.ID);
-
-            // localDevInfo.deviceCount = device_configs.size();
-            // for (const auto& device : device_configs) {
-            //     if (device.ID == localDevInfo.ID) {
-            //         DBGF("ID match\n");
-            //         localDevInfo.devConductionPinNum =
-            //         device.enabled_pin_num; conduction.matrix.col =
-            //         device.enabled_pin_num; conduction.matrix.startCol =
-            //             localDevInfo.sysConductionPinNum;
-            //     }
-            //     localDevInfo.sysConductionPinNum += device.enabled_pin_num;
-            // }
+            LOG("Frm: Config\n");
+            // Convert u8 byte array to DevConf struct
+            parseDeviceConfigInfo(complete_frame.data, device_configs);
+            // find self device config in device_configs
+            DeviceConfigInfo localDevInfo;
+            UIDReader::get(localDevInfo.ID);
+            LOG("1. Get Device ID ok.\n");
+            localDevInfo.devNum = device_configs.size();
+            LOG("2. Get Device Num ok.\n");
+            for (const auto& device : device_configs) {
+                if (device.ID == localDevInfo.ID) {
+                    LOG("ID match\n");
+                    localDevInfo.devConductionPinNum = device.enabled_pin_num;
+                    LOG("3. Get devConductionPinNum ok.\n");
+                    // conduction.matrix.col = device.enabled_pin_num;
+                    // conduction.matrix.startCol =
+                    //     localDevInfo.sysConductionPinNum;
+                }
+                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
+                LOG("4. Get sysConductionPinNum ok.\n");
+            }
 
             // if (localDevInfo.devConductionPinNum != 0) {
             //     conduction.config(localDevInfo);
@@ -121,10 +122,10 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             break;
         case SYNC_SIGNAL:
             // conduction.start();
-            LOGF("Frm: sync signal.\n");
+            LOG("Frm: sync signal.\n");
             break;
         case CONDUCTION_DATA:
-            LOGF("Frm: conduction data\n");
+            LOG("Frm: conduction data\n");
             break;
         case COMMAND:
             printf("Frm: command\n");

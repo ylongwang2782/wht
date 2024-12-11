@@ -26,8 +26,8 @@
 //     DBGF("dev cond pin num: %d\n", devConductionPinNum);
 //     sysConductionPinNum = devConf.sysConductionPinNum;
 //     DBGF("sys cond pin num: %d\n", sysConductionPinNum);
-//     deviceCount = devConf.deviceCount;
-//     DBGF("sys device count: %d\n", devConf.deviceCount);
+//     devNum = devConf.devNum;
+//     DBGF("sys device count: %d\n", devConf.devNum);
 // }
 
 // void Conduction::start() { timer.start(); }
