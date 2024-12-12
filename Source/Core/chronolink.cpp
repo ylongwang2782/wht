@@ -93,26 +93,26 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
     std::vector<DevConf> device_configs;
     switch (complete_frame.type) {
         case DEVICE_CONFIG:
-            LOG("Frm: Config\n");
+            LOGF("Frm: Config\n");
             // Convert u8 byte array to DevConf struct
             parseDeviceConfigInfo(complete_frame.data, device_configs);
             // find self device config in device_configs
             DeviceConfigInfo localDevInfo;
             UIDReader::get(localDevInfo.ID);
-            LOG("1. Get Device ID ok.\n");
+            LOGF("1. Get Device ID ok.\n");
             localDevInfo.devNum = device_configs.size();
-            LOG("2. Get Device Num ok.\n");
+            LOGF("2. Get Device Num ok.\n");
             for (const auto& device : device_configs) {
                 if (device.ID == localDevInfo.ID) {
-                    LOG("ID match\n");
+                    LOGF("ID match\n");
                     localDevInfo.devConductionPinNum = device.enabled_pin_num;
-                    LOG("3. Get devConductionPinNum ok.\n");
+                    LOGF("3. Get devConductionPinNum ok.\n");
                     // conduction.matrix.col = device.enabled_pin_num;
                     // conduction.matrix.startCol =
                     //     localDevInfo.sysConductionPinNum;
                 }
                 localDevInfo.sysConductionPinNum += device.enabled_pin_num;
-                LOG("4. Get sysConductionPinNum ok.\n");
+                LOGF("4. Get sysConductionPinNum ok.\n");
             }
 
             // if (localDevInfo.devConductionPinNum != 0) {
@@ -122,10 +122,10 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             break;
         case SYNC_SIGNAL:
             // conduction.start();
-            LOG("Frm: sync signal.\n");
+            LOGF("Frm: sync signal.\n");
             break;
         case CONDUCTION_DATA:
-            LOG("Frm: conduction data\n");
+            LOGF("Frm: conduction data\n");
             break;
         case COMMAND:
             printf("Frm: command\n");
