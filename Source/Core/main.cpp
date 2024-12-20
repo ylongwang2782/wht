@@ -31,7 +31,7 @@ ChronoLink chronoLink;
 // 全局信号量
 extern SemaphoreHandle_t dmaCompleteSemaphore;
 
-Logger logger;
+Logger Log;
 int main(void) {
     // read uid
     UIDReader &uid = UIDReader::getInstance();
@@ -40,13 +40,13 @@ int main(void) {
     dmaCompleteSemaphore = xSemaphoreCreateBinary();
 
     // 创建 UART_DMA_Handler 实例
-    UART_DMA_Handler uartDMA(usart1_info);
+    UART_DMA_Handler uartDMA = UART_DMA_Handler(usart1_info);
 
     printf("init done\n");
     xTaskCreate(uartDMATask, "UART DMA Task", 128, &uartDMA, 1, NULL);
     xTaskCreate(led_task, "Task 2", 128, NULL, 2, NULL);
 
-    logger.logQueue = xQueueCreate(10, 64);
+    Log.logQueue = xQueueCreate(10, 64);
     xTaskCreate(LogTask, "LogTask", 1024, nullptr, 3, nullptr);
     vTaskStartScheduler();
     for (;;);
@@ -58,10 +58,10 @@ void uartDMATask(void *pvParameters) {
     for (;;) {
         // 等待 DMA 完成信号
         if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
-            LOGF("Usart recv.\n");
+            Log.v("Usart recv.\n");
             chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
             while (chronoLink.parseFrameFragment(frame_fragment)) {
-                LOGF("Get frame fragment.\n");
+                Log.v("Get frame fragment.\n");
                 chronoLink.receiveAndAssembleFrame(frame_fragment);
             };
         }
@@ -72,7 +72,7 @@ void uartDMATask(void *pvParameters) {
 void led_task(void *pvParameters) {
     LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
     for (;;) {
-        logger.log(LogLevel::INFO, "led_task!");
+        Log.d("led_task!");
         led0.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
     }
@@ -81,7 +81,7 @@ void led_task(void *pvParameters) {
 void LogTask(void *pvParameters) {
     char buffer[30];
     for (;;) {
-        if (xQueueReceive(logger.logQueue, buffer, portMAX_DELAY)) {
+        if (xQueueReceive(Log.logQueue, buffer, portMAX_DELAY)) {
             // TODO 更换为dma发送
             for (const char *p = buffer; *p; ++p) {
                 while (RESET == usart_flag_get(USART1, USART_FLAG_TBE));

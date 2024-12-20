@@ -154,8 +154,8 @@ ChronoLink::status ChronoLink::parseDeviceConfigInfo(
         DevConf config;
         std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
         config.enabled_pin_num = data[i + 4];
-        DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-             config.ID[2], config.ID[3], config.enabled_pin_num);
+        // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
+        //      config.ID[2], config.ID[3], config.enabled_pin_num);
         device_configs.push_back(config);
     }
 
