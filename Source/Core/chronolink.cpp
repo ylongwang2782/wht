@@ -11,7 +11,7 @@
 #include "conduction.h"
 
 extern Conduction conduction;
-
+extern Logger Log;
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
@@ -93,26 +93,26 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
     std::vector<DevConf> device_configs;
     switch (complete_frame.type) {
         case DEVICE_CONFIG:
-            LOGF("Frm: Config\n");
+            Log.d("Frm: Config");
             // Convert u8 byte array to DevConf struct
             parseDeviceConfigInfo(complete_frame.data, device_configs);
             // find self device config in device_configs
             DeviceConfigInfo localDevInfo;
             UIDReader::get(localDevInfo.ID);
-            LOGF("1. Get Device ID ok.\n");
+            Log.d("1. Get Device ID ok.");
             localDevInfo.devNum = device_configs.size();
-            LOGF("2. Get Device Num ok.\n");
+            Log.d("2. Get Device Num ok.");
             for (const auto& device : device_configs) {
                 if (device.ID == localDevInfo.ID) {
-                    LOGF("ID match\n");
+                    // Log.d("ID match");
                     localDevInfo.devConductionPinNum = device.enabled_pin_num;
-                    LOGF("3. Get devConductionPinNum ok.\n");
+                    Log.d("3. Get devConductionPinNum ok.");
                     // conduction.matrix.col = device.enabled_pin_num;
                     // conduction.matrix.startCol =
                     //     localDevInfo.sysConductionPinNum;
                 }
                 localDevInfo.sysConductionPinNum += device.enabled_pin_num;
-                LOGF("4. Get sysConductionPinNum ok.\n");
+                Log.d("4. Get sysConductionPinNum ok.");
             }
 
             // if (localDevInfo.devConductionPinNum != 0) {
@@ -122,10 +122,10 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             break;
         case SYNC_SIGNAL:
             // conduction.start();
-            LOGF("Frm: sync signal.\n");
+            Log.d("Frm: sync signal.\n");
             break;
         case CONDUCTION_DATA:
-            LOGF("Frm: conduction data\n");
+            Log.d("Frm: conduction data\n");
             break;
         case COMMAND:
             printf("Frm: command\n");

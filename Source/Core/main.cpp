@@ -32,47 +32,47 @@ ChronoLink chronoLink;
 extern SemaphoreHandle_t dmaCompleteSemaphore;
 
 Logger Log;
+
+// 创建 UART_DMA_Handler 实例
+UART_DMA_Handler uartDMA = UART_DMA_Handler(usart1_info);
+
 int main(void) {
     // read uid
+    nvic_priority_group_set(NVIC_PRIGROUP_PRE4_SUB0);
+
     UIDReader &uid = UIDReader::getInstance();
 
-    // 创建信号量
-    dmaCompleteSemaphore = xSemaphoreCreateBinary();
+    Log.logQueue = xQueueCreate(10, 64);    
 
-    // 创建 UART_DMA_Handler 实例
-    UART_DMA_Handler uartDMA = UART_DMA_Handler(usart1_info);
-
-    printf("init done\n");
-    xTaskCreate(uartDMATask, "UART DMA Task", 128, &uartDMA, 1, NULL);
+    xTaskCreate(uartDMATask, "UART DMA Task", 1024, &uartDMA, 1, NULL);
     xTaskCreate(led_task, "Task 2", 128, NULL, 2, NULL);
-
-    Log.logQueue = xQueueCreate(10, 64);
     xTaskCreate(LogTask, "LogTask", 1024, nullptr, 3, nullptr);
     vTaskStartScheduler();
     for (;;);
 }
 
 void uartDMATask(void *pvParameters) {
-    printf("Usart DMA task start.\n");
+    // 创建信号量
+    dmaCompleteSemaphore = xSemaphoreCreateBinary();
+    // Log.d("Usart DMA task start.");
     UART_DMA_Handler *uartDMA = static_cast<UART_DMA_Handler *>(pvParameters);
     for (;;) {
         // 等待 DMA 完成信号
         if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
-            Log.v("Usart recv.\n");
+            Log.d("Usart recv.");
             chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
             while (chronoLink.parseFrameFragment(frame_fragment)) {
-                Log.v("Get frame fragment.\n");
+                Log.d("Get frame fragment.");
                 chronoLink.receiveAndAssembleFrame(frame_fragment);
             };
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 void led_task(void *pvParameters) {
     LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
     for (;;) {
-        Log.d("led_task!");
+        // Log.d("led_task!");
         led0.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
     }
