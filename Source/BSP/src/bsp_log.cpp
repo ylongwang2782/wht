@@ -1,5 +1,11 @@
 #include "bsp_log.h"
 
+void vAssertCalled(const char *file, int line) {
+    taskDISABLE_INTERRUPTS();
+    printf("Assert failed in file %s at line %d\n", file, line);
+    for (;;);
+}
+
 void Logger::log(LogLevel level, const char *format, ...) {
     // 定义日志级别的字符串表示
     static const char *levelStr[] = {"VERBOSE","DEBUG", "INFO", "WARN", "ERROR"};
@@ -18,7 +24,7 @@ void Logger::log(LogLevel level, const char *format, ...) {
 
     // 添加级别前缀
     char finalMessage[bufferSize];
-    snprintf(finalMessage, sizeof(finalMessage), "[%s] %s\n",
+    snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
              levelStr[static_cast<int>(level)], buffer);
 
     // 输出日志
