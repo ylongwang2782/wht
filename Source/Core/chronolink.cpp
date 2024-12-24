@@ -112,8 +112,8 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
                     //     localDevInfo.sysConductionPinNum;
                 }
                 localDevInfo.sysConductionPinNum += device.enabled_pin_num;
-                Log.d("4. Get sysConductionPinNum ok.");
             }
+            Log.d("4. Get sysConductionPinNum ok.");
 
             // if (localDevInfo.devConductionPinNum != 0) {
             //     conduction.config(localDevInfo);

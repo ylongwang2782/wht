@@ -8,10 +8,11 @@ void vAssertCalled(const char *file, int line) {
 
 void Logger::log(LogLevel level, const char *format, ...) {
     // 定义日志级别的字符串表示
-    static const char *levelStr[] = {"VERBOSE","DEBUG", "INFO", "WARN", "ERROR"};
+    static const char *levelStr[] = {"VERBOSE", "DEBUG", "INFO", "WARN",
+                                     "ERROR"};
 
     // 缓冲区大小
-    constexpr size_t bufferSize = 30;
+    constexpr size_t bufferSize = LOG_QUEUE_SIZE;
 
     // 缓存区，用于存储格式化后的日志内容
     char buffer[bufferSize];
@@ -23,7 +24,7 @@ void Logger::log(LogLevel level, const char *format, ...) {
     va_end(args);
 
     // 添加级别前缀
-    char finalMessage[bufferSize];
+    char finalMessage[bufferSize + 8];
     snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
              levelStr[static_cast<int>(level)], buffer);
 

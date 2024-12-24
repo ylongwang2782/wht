@@ -42,7 +42,7 @@ int main(void) {
 
     UIDReader &uid = UIDReader::getInstance();
 
-    Log.logQueue = xQueueCreate(10, 64);    
+    Log.logQueue = xQueueCreate(10, LOG_QUEUE_SIZE);    
 
     xTaskCreate(uartDMATask, "UART DMA Task", 1024, &uartDMA, 1, NULL);
     xTaskCreate(led_task, "Task 2", 128, NULL, 2, NULL);
