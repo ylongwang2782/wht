@@ -20,11 +20,11 @@ extern "C" {
 #endif
 
 // 全局队列
-void led_task(void *pvParameters);
+void ledBlinkTask(void *pvParameters);
 void uartDMATask(void *pvParameters);
-void LogTask(void *pvParameters);
+void logTask(void *pvParameters);
 
-extern SerialConfig usart1_info;
+extern UasrtConfig usart1_info;
 FrameFragment frame_fragment;
 ChronoLink chronoLink;
 
@@ -33,20 +33,19 @@ extern SemaphoreHandle_t dmaCompleteSemaphore;
 
 Logger Log;
 
-// 创建 UART_DMA_Handler 实例
-UART_DMA_Handler uartDMA = UART_DMA_Handler(usart1_info);
+// 创建 USART_DMA_Handler 实例
+USART_DMA_Handler uartDMA = USART_DMA_Handler(usart1_info);
 
 int main(void) {
-    // read uid
     nvic_priority_group_set(NVIC_PRIGROUP_PRE4_SUB0);
 
     UIDReader &uid = UIDReader::getInstance();
 
-    Log.logQueue = xQueueCreate(10, LOG_QUEUE_SIZE);    
+    Log.logQueue = xQueueCreate(10, LOG_QUEUE_SIZE);
 
-    xTaskCreate(uartDMATask, "UART DMA Task", 1024, &uartDMA, 1, NULL);
-    xTaskCreate(led_task, "Task 2", 128, NULL, 2, NULL);
-    xTaskCreate(LogTask, "LogTask", 1024, nullptr, 3, nullptr);
+    xTaskCreate(uartDMATask, "uartDMATask", 1024, &uartDMA, 1, NULL);
+    xTaskCreate(ledBlinkTask, "ledBlinkTask", 256, NULL, 2, NULL);
+    xTaskCreate(logTask, "logTask", 1024, nullptr, 3, nullptr);
     vTaskStartScheduler();
     for (;;);
 }
@@ -55,7 +54,7 @@ void uartDMATask(void *pvParameters) {
     // 创建信号量
     dmaCompleteSemaphore = xSemaphoreCreateBinary();
     // Log.d("Usart DMA task start.");
-    UART_DMA_Handler *uartDMA = static_cast<UART_DMA_Handler *>(pvParameters);
+    USART_DMA_Handler *uartDMA = static_cast<USART_DMA_Handler *>(pvParameters);
     for (;;) {
         // 等待 DMA 完成信号
         if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
@@ -69,17 +68,17 @@ void uartDMATask(void *pvParameters) {
     }
 }
 
-void led_task(void *pvParameters) {
+void ledBlinkTask(void *pvParameters) {
     LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
     for (;;) {
-        // Log.d("led_task!");
+        // Log.d("ledBlinkTask!");
         led0.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
-void LogTask(void *pvParameters) {
-    char buffer[30];
+void logTask(void *pvParameters) {
+    char buffer[LOG_QUEUE_SIZE + 8];
     for (;;) {
         if (xQueueReceive(Log.logQueue, buffer, portMAX_DELAY)) {
             // TODO 更换为dma发送

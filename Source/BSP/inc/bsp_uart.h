@@ -30,31 +30,13 @@ typedef struct {
     uint8_t nvic_irq_pre_priority;      // NVIC中断优先级
     uint8_t nvic_irq_sub_priority;      // NVIC中断子优先级
     uint16_t rx_count;
-} SerialConfig;
-
-class Serial {
-   public:
-    Serial(SerialConfig &config) : config(config) { setup(); }
-    void dma_tx(uint8_t *data, uint16_t len);
-    void data_send(uint8_t *data, uint16_t len);
-    uint8_t rxbuffer[DMA_RX_BUFFER_SIZE];
-    void sendString(const std::string &str);
-
-   private:
-    QueueHandle_t uartQueue;
-    const SerialConfig &config;
-    void setup();
-    void init();
-    void dma_tx_config();
-    void idle_dma_rx_config();
-    uint8_t txbuffer[1];
-};
+} UasrtConfig;
 
 #define DMA_BUFFER_SIZE 1024
 
-class UART_DMA_Handler {
+class USART_DMA_Handler {
    public:
-    UART_DMA_Handler(SerialConfig &config) : config(config) { setup(); }
+    USART_DMA_Handler(UasrtConfig &config) : config(config) { setup(); }
     uint8_t rxbuffer[DMA_RX_BUFFER_SIZE];
     uint8_t DMA_RX_Buffer[DMA_RX_BUFFER_SIZE];
 
@@ -65,5 +47,5 @@ class UART_DMA_Handler {
     void dma_tx_config();
     void idle_dma_rx_config();
     uint8_t txbuffer[1];
-    const SerialConfig &config;
+    const UasrtConfig &config;
 };
