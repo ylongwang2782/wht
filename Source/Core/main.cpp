@@ -69,7 +69,7 @@ void uartDMATask(void *pvParameters) {
 }
 
 void ledBlinkTask(void *pvParameters) {
-    LED led0(RCU_GPIOC, GPIOC, GPIO_PIN_6);
+    LED led0(GPIOC, GPIO_PIN_6);
     for (;;) {
         // Log.d("ledBlinkTask!");
         led0.toggle();
