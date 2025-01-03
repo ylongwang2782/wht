@@ -12,7 +12,7 @@ void Logger::log(LogLevel level, const char *format, ...) {
                                      "ERROR"};
 
     // 缓冲区大小
-    constexpr size_t bufferSize = LOG_QUEUE_SIZE;
+    constexpr size_t bufferSize = 100;
 
     // 缓存区，用于存储格式化后的日志内容
     char buffer[bufferSize];
@@ -25,7 +25,7 @@ void Logger::log(LogLevel level, const char *format, ...) {
 
     // 添加级别前缀
     char finalMessage[bufferSize + 8];
-    snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
+    snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s",
              levelStr[static_cast<int>(level)], buffer);
 
     // 输出日志

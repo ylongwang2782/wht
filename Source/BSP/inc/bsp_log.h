@@ -10,7 +10,9 @@ extern "C" {
 #include "task.h"
 }
 
-#define LOG_QUEUE_SIZE 64
+#define USART_LOG USART1
+
+#define LOG_QUEUE_SIZE 80
 
 #define LOGF(format, ...)  (void)printf("[LOG]: " format, ##__VA_ARGS__)
 #define INFOF(format, ...) (void)printf("[INFO]: " format, ##__VA_ARGS__)

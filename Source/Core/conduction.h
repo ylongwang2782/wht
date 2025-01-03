@@ -47,11 +47,11 @@ class Conduction {
                                                          {GPIOE, 1 << 9}}};
     std::vector<uint8_t> result;
     uint8_t collect_pin_states();
-    void config(DeviceConfigInfo devConf);
+    void init();
     void start();
     bool data_get(uint8_t *data);
     void master_pin_set(uint8_t pin_num);
-    void master_pin_reset(uint8_t pin_num);
+    void slave_pin_set(uint8_t pin_num);
 
     Matrix matrix;
 
