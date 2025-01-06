@@ -17,7 +17,7 @@ include_directories(Config # 配置文件目录
 )
 
 # 设置目标的私有编译定义，cpp需要提前定义__cpluscplus
-target_compile_definitions(${EXECUTABLE_NAME} PRIVATE GD32F470 __cpluscplus)
+target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470 __cpluscplus)
 
 add_subdirectory(BSP)
 add_subdirectory(Core)
