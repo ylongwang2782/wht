@@ -25,7 +25,7 @@ void Logger::log(LogLevel level, const char *format, ...) {
 
     // 添加级别前缀
     char finalMessage[bufferSize + 8];
-    snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s",
+    snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
              levelStr[static_cast<int>(level)], buffer);
 
     // 输出日志
