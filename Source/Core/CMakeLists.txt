@@ -1,8 +1,9 @@
 target_sources(${EXECUTABLE_NAME} PRIVATE
-    ./freertos.c
     ./gd32f4xx_it.c
     ./main.cpp
     ./chronolink.cpp
+    ./slave/slave_mode.cpp
+    ./master/master_mode.cpp
 )
 
 target_include_directories(${EXECUTABLE_NAME} PUBLIC

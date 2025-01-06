@@ -8,9 +8,7 @@ set(CMAKE_C_COMPILER_ID GNU)
 set(CMAKE_CXX_COMPILER_ID GNU)
 
 # 查找工具链
-set(TOOLCHAIN_PATH
-    "C:/code_configuration/arm-gnu-toolchain-13.2.Rel1-mingw-w64-i686-arm-none-eabi"
-)
+set(TOOLCHAIN_PATH $ENV{TOOLCHAIN_PATH})
 set(TOOLCHAIN_PREFIX arm-none-eabi-)
 
 list(APPEND CMAKE_PREFIX_PATH "${TOOLCHAIN_PATH}/bin")
