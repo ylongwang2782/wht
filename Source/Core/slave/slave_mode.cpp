@@ -127,7 +127,7 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
     ChronoLink::Instruction instruction;
     switch (complete_frame.type) {
         case ChronoLink::SYNC:
-            Log.d("Frm: SYNC");
+            Log.d("Frame: Sync");
             // // Convert u8 byte array to DevConf struct
             // parseDeviceConfigInfo(complete_frame.data, device_configs);
             // // find self device config in device_configs
@@ -153,13 +153,13 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
             // }
             break;
         case ChronoLink::COMMAND:
-            Log.d("Frm: COMMAND");
+            Log.d("Frame: Instuction");
 
             instruction = chronoLink.parseInstruction(complete_frame.data);
             if (instruction.type == 0x00) {
                 const ChronoLink::DeviceConfig &config =
                     std::get<ChronoLink::DeviceConfig>(instruction.context);
-                Log.d("Device Config Instruction");
+                Log.d("Instruction: Device Config");
                 Log.d("timeslot: %d", config.timeslot);
                 Log.d("totalHarnessNum: %d", config.totalHarnessNum);
                 Log.d("startHarnessNum: %d", config.startHarnessNum);
@@ -167,9 +167,9 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                 Log.d("clipNum: %d", config.clipNum);
 
             } else if (instruction.type == 0x01) {
-                Log.d("Data Request Instruction");
+                Log.d("Instruction: Data Request");
             } else if (instruction.type == 0x02) {
-                Log.d("Device Unlock Instruction");
+                Log.d("Instruction: Device Unlock");
                 const ChronoLink::DeviceUnlock &unlock =
                     std::get<ChronoLink::DeviceUnlock>(instruction.context);
                 Log.d("unlock: %d", unlock.lock);
@@ -178,7 +178,7 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
 
             break;
         case ChronoLink::REPLY:
-            Log.d("Frm: REPLY");
+            Log.d("Frame: Reply");
             break;
 
         default:
