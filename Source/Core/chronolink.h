@@ -1,7 +1,7 @@
 #include <array>
 #include <cstdint>
-#include <vector>
 #include <variant>
+#include <vector>
 
 struct DeviceStatusInfo {
     // Color sensor matching status: 0 - color not matching or no sensor; 1 -
@@ -60,8 +60,8 @@ class ChronoLink {
 
     struct DeviceConfig {
         uint8_t timeslot;               // 时隙
-        uint16_t totalHarnessNum;        // 总线束数量
-        uint16_t startHarnessNum;        // 总线束数量
+        uint16_t totalHarnessNum;       // 总线束数量
+        uint16_t startHarnessNum;       // 总线束数量
         uint8_t harnessNum;             // 线束检测数量
         uint8_t clipNum;                // 卡钉检测数量
         std::vector<uint8_t> resNum;    // 阻值检测索引列表
@@ -75,6 +75,36 @@ class ChronoLink {
         uint8_t type;                                        // 指令类型
         std::vector<uint8_t> targetID;                       // 目标 ID 列表
         std::variant<DeviceConfig, DeviceUnlock> context;    // 指令内容
+    };
+
+    struct DeviceStatus {
+        uint16_t colorSensor : 1;    // 颜色传感器匹配状态
+        uint16_t sleeveLimit : 1;    // 限位开关状态
+        uint16_t electromagnetUnlockButton : 1;    // 电磁锁解锁按钮状态
+        uint16_t batteryLowPowerAlarm : 1;         // 电池低电量报警
+        uint16_t pressureSensor : 1;               // 气压传感器状态
+        uint16_t electromagneticLock1 : 1;         // 电磁锁1状态
+        uint16_t electromagneticLock2 : 1;         // 电磁锁2状态
+        uint16_t accessory1 : 1;                   // 辅件1状态
+        uint16_t accessory2 : 1;                   // 辅件2状态
+        uint16_t reserved : 7;                     // 保留字段
+    };
+
+    struct DataReplyContext {
+        DeviceStatus deviceStatus;           // 状态字
+        uint8_t harnessLength;               // 线束数据字段长度
+        std::vector<uint8_t> harnessData;    // 线束数据
+        uint8_t clipLength;                  // 卡钉数据字段长度
+        std::vector<uint8_t> clipData;       // 卡钉数据
+    };
+
+    struct InstructionReply {
+        uint8_t type;                 // 指令类型 (0x00, 0x01, 0x02)
+        uint8_t ackStatus;            // 应答状态 (0x00: ACK, 0x01: ERROR)
+        std::variant<DeviceConfig,    // 设备配置
+                     DataReplyContext,    // 数据回复
+                     DeviceUnlock>
+            context;
     };
 
     struct DevConf {
@@ -111,6 +141,16 @@ class ChronoLink {
     void frameSorting(CompleteFrame complete_frame);
 
     Instruction parseInstruction(const std::vector<uint8_t>& rawData);
+
+    std::vector<uint8_t> generateReplyFrame(
+        uint8_t type, uint8_t ackStatus,
+        const std::variant<DeviceConfig, DataReplyContext, DeviceUnlock>&
+            context);
+
+    void sendReply(uint8_t slot, uint8_t type, uint8_t instructionType,
+                   uint8_t ackStatus,
+                   const std::variant<DeviceConfig, DataReplyContext,
+                                      DeviceUnlock>& context);
 
    private:
     std::vector<uint8_t> receive_buffer;

@@ -12,6 +12,7 @@
 
 extern Harness harness;
 extern Logger Log;
+extern USART_DMA_Handler uartDMA;
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
@@ -169,6 +170,60 @@ void ChronoLink::packCommandFrame(std::vector<std::vector<uint8_t>>& output) {
         serializeCommandFrame(ChronoLink::command_frame);
     uint16_t len = serializedData.size();
     ChronoLink::pack(slot, type, serializedData.data(), len, output);
+}
+
+// 生成回复数据帧
+std::vector<uint8_t> ChronoLink::generateReplyFrame(
+    uint8_t type, uint8_t ackStatus,
+    const std::variant<DeviceConfig, DataReplyContext, DeviceUnlock>& context) {
+    std::vector<uint8_t> frame;
+
+    // 添加指令类型
+    frame.push_back(type);
+
+    // 添加应答状态
+    frame.push_back(ackStatus);
+
+    // 根据上下文类型填充数据
+    if (std::holds_alternative<DeviceConfig>(context)) {
+    } else if (std::holds_alternative<DataReplyContext>(context)) {
+        const auto& dataReply = std::get<DataReplyContext>(context);
+
+        // 添加设备状态
+        uint16_t status = 0;
+        memcpy(&status, &dataReply.deviceStatus, sizeof(DeviceStatus));
+        frame.push_back(static_cast<uint8_t>(status & 0xFF));
+        frame.push_back(static_cast<uint8_t>((status >> 8) & 0xFF));
+
+        // 添加线束数据
+        frame.push_back(dataReply.harnessLength);
+        frame.insert(frame.end(), dataReply.harnessData.begin(),
+                     dataReply.harnessData.end());
+
+        // 添加卡钉数据
+        frame.push_back(dataReply.clipLength);
+        frame.insert(frame.end(), dataReply.clipData.begin(),
+                     dataReply.clipData.end());
+
+    } else if (std::holds_alternative<DeviceUnlock>(context)) {
+        const auto& unlock = std::get<DeviceUnlock>(context);
+
+        frame.push_back(unlock.lock);
+    }
+
+    return frame;
+}
+
+// 回复指令
+void ChronoLink::sendReply(
+    uint8_t slot, uint8_t type, uint8_t instructionType, uint8_t ackStatus,
+    const std::variant<DeviceConfig, DataReplyContext, DeviceUnlock>& context) {
+    // 生成数据帧
+    std::vector<uint8_t> frame =
+        generateReplyFrame(instructionType, ackStatus, context);
+
+    // 通过串口发送数据帧
+    uartDMA.dma_tx(frame.data(), frame.size());
 }
 
 uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,

@@ -103,24 +103,11 @@ void uartDMATask(void *pvParameters) {
     }
 }
 
-void parseDeviceConfigInfo(const std::vector<uint8_t> &data,
-                           std::vector<ChronoLink::DevConf> &device_configs) {
-    constexpr size_t deviceConfigSize = sizeof(ChronoLink::DevConf::ID) +
-                                        sizeof(ChronoLink::DevConf::harnessNum);
-
-    if (data.size() % deviceConfigSize != 0) {
-        Log.e("Invalid device config data size\n");
-    }
-
-    for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
-        ChronoLink::DevConf config;
-        std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
-        config.harnessNum = data[i + 4];
-        // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-        //      config.ID[2], config.ID[3], config.harnessNum);
-        device_configs.push_back(config);
-    }
-}
+ChronoLink::DataReplyContext dataReply = {.deviceStatus = 0x0002,
+                                          .harnessLength = 2,
+                                          .harnessData = {0x10, 0x20},
+                                          .clipLength = 1,
+                                          .clipData = {0x30}};
 
 void frameSorting(ChronoLink::CompleteFrame complete_frame) {
     std::vector<ChronoLink::DevConf> device_configs;
@@ -128,29 +115,6 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
     switch (complete_frame.type) {
         case ChronoLink::SYNC:
             Log.d("Frame: Sync");
-            // // Convert u8 byte array to DevConf struct
-            // parseDeviceConfigInfo(complete_frame.data, device_configs);
-            // // find self device config in device_configs
-            // DeviceConfigInfo localDevInfo;
-            // UIDReader::get(localDevInfo.ID);
-            // Log.d("1. Get Device ID ok.");
-            // localDevInfo.devNum = device_configs.size();
-            // Log.d("2. Get Device Num ok.");
-            // for (const auto &device : device_configs) {
-            //     if (device.ID == localDevInfo.ID) {
-            //         // Log.d("ID match");
-            //         Log.d("3. Get devHarnessNum ok.");
-            //         harness.matrix.col = device.harnessNum;
-            //         harness.matrix.startCol = device.harnessNum;
-            //         localDevInfo.devHarnessNum = device.harnessNum;
-            //     }
-            //     localDevInfo.sysHarnessNum += device.harnessNum;
-            // }
-            // Log.d("4. Get sysHarnessNum ok.");
-
-            // if (localDevInfo.devHarnessNum != 0) {
-            //     harness.config(localDevInfo);
-            // }
             break;
         case ChronoLink::COMMAND:
             Log.d("Frame: Instuction");
