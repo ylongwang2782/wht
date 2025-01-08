@@ -8,7 +8,7 @@
 #include "bsp_log.h"
 #include "bsp_uid.h"
 #include "chronolink.h"
-#include "conduction.h"
+#include "harness.h"
 #include "mode_entry.h"
 
 #ifdef __cplusplus

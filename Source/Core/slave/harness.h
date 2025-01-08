@@ -14,8 +14,8 @@ extern "C" {
 
 struct DeviceConfigInfo {
     std::array<uint8_t, 4> ID;
-    uint16_t sysConductionPinNum;
-    uint8_t devConductionPinNum;
+    uint16_t sysHarnessNum;
+    uint8_t devHarnessNum;
     uint8_t devNum;
 };
 
@@ -28,7 +28,7 @@ class Matrix {
     int startCol;
 };
 
-class Conduction {
+class Harness {
    public:
     struct GpioPin {
         uint32_t port;
@@ -57,8 +57,8 @@ class Conduction {
 
    private:
     uint8_t devNum;
-    uint8_t devConductionPinNum;
-    uint16_t sysConductionPinNum;
+    uint8_t devHarnessNum;
+    uint16_t sysHarnessNum;
     uint8_t master_pin_index = 0;
     uint8_t packed_data = 0;
     int bit_position = 0;

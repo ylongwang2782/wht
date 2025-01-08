@@ -8,9 +8,9 @@
 
 #include "bsp_log.h"
 #include "bsp_uid.h"
-#include "conduction.h"
+#include "harness.h"
 
-extern Conduction conduction;
+extern Harness harness;
 extern Logger Log;
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
@@ -105,30 +105,30 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
             for (const auto& device : device_configs) {
                 if (device.ID == localDevInfo.ID) {
                     // Log.d("ID match");
-                    Log.d("3. Get devConductionPinNum ok.");
-                    conduction.matrix.col = device.enabled_pin_num;
-                    conduction.matrix.startCol = device.enabled_pin_num;
-                    localDevInfo.devConductionPinNum = device.enabled_pin_num;
+                    Log.d("3. Get devHarnessNum ok.");
+                    harness.matrix.col = device.harnessNum;
+                    harness.matrix.startCol = device.harnessNum;
+                    localDevInfo.devHarnessNum = device.harnessNum;
                 }
-                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
+                localDevInfo.sysHarnessNum += device.harnessNum;
             }
-            Log.d("4. Get sysConductionPinNum ok.");
+            Log.d("4. Get sysHarnessNum ok.");
 
-            // if (localDevInfo.devConductionPinNum != 0) {
-            //     conduction.config(localDevInfo);
+            // if (localDevInfo.devHarnessNum != 0) {
+            //     harness.config(localDevInfo);
             // }
 
             break;
         case SYNC_SIGNAL:
-            // conduction.start();
+            // harness.start();
             Log.d("Frm: sync signal.\n");
             break;
         case CONDUCTION_DATA:
-            Log.d("Frm: conduction data\n");
+            Log.d("Frm: harness data\n");
             break;
         case COMMAND:
             printf("Frm: command\n");
-            // conduction.start();
+            // harness.start();
             break;
         case COMMAND_REPLY:
             printf("Frm: Command reply\n");
@@ -142,7 +142,7 @@ void ChronoLink::frameSorting(CompleteFrame complete_frame) {
 ChronoLink::status ChronoLink::parseDeviceConfigInfo(
     const std::vector<uint8_t>& data, std::vector<DevConf>& device_configs) {
     constexpr size_t deviceConfigSize =
-        sizeof(DevConf::ID) + sizeof(DevConf::enabled_pin_num);
+        sizeof(DevConf::ID) + sizeof(DevConf::harnessNum);
 
     if (data.size() % deviceConfigSize != 0) {
         ERRF("Invalid device config data size\n");
@@ -152,9 +152,9 @@ ChronoLink::status ChronoLink::parseDeviceConfigInfo(
     for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
         DevConf config;
         std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
-        config.enabled_pin_num = data[i + 4];
+        config.harnessNum = data[i + 4];
         // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-        //      config.ID[2], config.ID[3], config.enabled_pin_num);
+        //      config.ID[2], config.ID[3], config.harnessNum);
         device_configs.push_back(config);
     }
 
@@ -170,7 +170,7 @@ std::vector<uint8_t> ChronoLink::serializeSyncFrame(
 
     for (const auto& device : sync_frame) {
         serialized.insert(serialized.end(), device.ID.begin(), device.ID.end());
-        serialized.push_back(device.enabled_pin_num);
+        serialized.push_back(device.harnessNum);
     }
 
     return serialized;

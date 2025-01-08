@@ -62,7 +62,7 @@ class ChronoLink {
 
     struct DevConf {
         std::array<uint8_t, 4> ID;
-        uint8_t enabled_pin_num;
+        uint8_t harnessNum;
     };
 
     // Structure to hold the complete frame data

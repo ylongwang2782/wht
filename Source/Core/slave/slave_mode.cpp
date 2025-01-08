@@ -8,7 +8,7 @@
 #include "bsp_log.h"
 #include "bsp_uid.h"
 #include "chronolink.h"
-#include "conduction.h"
+#include "harness.h"
 #include "mode_entry.h"
 
 #ifdef __cplusplus
@@ -31,7 +31,7 @@ void uartDMATask(void *pvParameters);
 void logTask(void *pvParameters);
 
 extern UasrtConfig usart1_info;
-extern Conduction conduction;
+extern Harness harness;
 FrameFragment frame_fragment;
 ChronoLink chronoLink;
 
@@ -43,7 +43,7 @@ Logger Log;
 // 创建 USART_DMA_Handler 实例
 USART_DMA_Handler uartDMA = USART_DMA_Handler(usart1_info);
 
-void gpioCollectCallback(void) { conduction.collect_pin_states(); }
+void gpioCollectCallback(void) { harness.collect_pin_states(); }
 
 TimerHandle_t xTimerHandle;    // 定时器句柄
 TaskHandle_t xTaskHandle;      // 任务句柄
@@ -67,7 +67,7 @@ int Slave_Init(void) {
                                 timerCallback           // 回调函数
     );
 
-    conduction.init();
+    harness.init();
     xTaskCreate(uartDMATask, "uartDMATask", 1024, &uartDMA, 1, NULL);
     xTaskCreate(timerTask, "TimerTask", 256, NULL, 2, &xTaskHandle);
     xTaskCreate(ledBlinkTask, "ledBlinkTask", 256, NULL, 4, NULL);
