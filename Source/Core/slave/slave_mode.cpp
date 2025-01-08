@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 #include "FreeRTOS.h"
 #include "bsp_led.h"
@@ -123,33 +124,63 @@ void parseDeviceConfigInfo(const std::vector<uint8_t> &data,
 
 void frameSorting(ChronoLink::CompleteFrame complete_frame) {
     std::vector<ChronoLink::DevConf> device_configs;
+    ChronoLink::Instruction instruction;
     switch (complete_frame.type) {
-        case ChronoLink::DEVICE_CONFIG:
-            Log.d("Frm: Config");
-            // Convert u8 byte array to DevConf struct
-            parseDeviceConfigInfo(complete_frame.data, device_configs);
-            // find self device config in device_configs
-            DeviceConfigInfo localDevInfo;
-            UIDReader::get(localDevInfo.ID);
-            Log.d("1. Get Device ID ok.");
-            localDevInfo.devNum = device_configs.size();
-            Log.d("2. Get Device Num ok.");
-            for (const auto &device : device_configs) {
-                if (device.ID == localDevInfo.ID) {
-                    // Log.d("ID match");
-                    Log.d("3. Get devHarnessNum ok.");
-                    harness.matrix.col = device.harnessNum;
-                    harness.matrix.startCol = device.harnessNum;
-                    localDevInfo.devHarnessNum = device.harnessNum;
-                }
-                localDevInfo.sysHarnessNum += device.harnessNum;
-            }
-            Log.d("4. Get sysHarnessNum ok.");
+        case ChronoLink::SYNC:
+            Log.d("Frm: SYNC");
+            // // Convert u8 byte array to DevConf struct
+            // parseDeviceConfigInfo(complete_frame.data, device_configs);
+            // // find self device config in device_configs
+            // DeviceConfigInfo localDevInfo;
+            // UIDReader::get(localDevInfo.ID);
+            // Log.d("1. Get Device ID ok.");
+            // localDevInfo.devNum = device_configs.size();
+            // Log.d("2. Get Device Num ok.");
+            // for (const auto &device : device_configs) {
+            //     if (device.ID == localDevInfo.ID) {
+            //         // Log.d("ID match");
+            //         Log.d("3. Get devHarnessNum ok.");
+            //         harness.matrix.col = device.harnessNum;
+            //         harness.matrix.startCol = device.harnessNum;
+            //         localDevInfo.devHarnessNum = device.harnessNum;
+            //     }
+            //     localDevInfo.sysHarnessNum += device.harnessNum;
+            // }
+            // Log.d("4. Get sysHarnessNum ok.");
 
             // if (localDevInfo.devHarnessNum != 0) {
             //     harness.config(localDevInfo);
             // }
             break;
+        case ChronoLink::COMMAND:
+            Log.d("Frm: COMMAND");
+
+            instruction = chronoLink.parseInstruction(complete_frame.data);
+            if (instruction.type == 0x00) {
+                const ChronoLink::DeviceConfig &config =
+                    std::get<ChronoLink::DeviceConfig>(instruction.context);
+                Log.d("Device Config Instruction");
+                Log.d("timeslot: %d", config.timeslot);
+                Log.d("totalHarnessNum: %d", config.totalHarnessNum);
+                Log.d("startHarnessNum: %d", config.startHarnessNum);
+                Log.d("harnessNum: %d", config.harnessNum);
+                Log.d("clipNum: %d", config.clipNum);
+
+            } else if (instruction.type == 0x01) {
+                Log.d("Data Request Instruction");
+            } else if (instruction.type == 0x02) {
+                Log.d("Device Unlock Instruction");
+                const ChronoLink::DeviceUnlock &unlock =
+                    std::get<ChronoLink::DeviceUnlock>(instruction.context);
+                Log.d("unlock: %d", unlock.lock);
+            } else {
+            }
+
+            break;
+        case ChronoLink::REPLY:
+            Log.d("Frm: REPLY");
+            break;
+
         default:
             break;
     }

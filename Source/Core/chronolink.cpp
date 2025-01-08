@@ -37,22 +37,22 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
         fragment.delimiter[0] = receive_buffer[index++];
         fragment.delimiter[1] = receive_buffer[index++];
 
-        // Parse length (little-endian)
-        fragment.len = static_cast<uint16_t>(receive_buffer[index] |
-                                             (receive_buffer[index + 1] << 8));
-        index += 2;
-
-        // Check if the buffer contains the full packet
-        if (receive_buffer.size() < min_packet_size + fragment.len) {
-            WARNF("Incomplete packet\n");
-            return false;    // Incomplete packet
-        }
+        // // Check if the buffer contains the full packet
+        // if (receive_buffer.size() < min_packet_size + fragment.len) {
+        //     WARNF("Incomplete packet\n");
+        //     return false;    // Incomplete packet
+        // }
 
         // Parse slot, type, fragment_sequence, and more_fragments_flag
         fragment.slot = receive_buffer[index++];
         fragment.type = receive_buffer[index++];
         fragment.fragment_sequence = receive_buffer[index++];
         fragment.more_fragments_flag = receive_buffer[index++];
+
+        // Parse length (little-endian)
+        fragment.len = static_cast<uint16_t>(receive_buffer[index] |
+                                             (receive_buffer[index + 1] << 8));
+        index += 2;
 
         // Parse padding (data field)
         fragment.padding.assign(receive_buffer.begin() + index,
@@ -87,6 +87,45 @@ void ChronoLink::receiveAndAssembleFrame(
         // Clear buffer after assembly
         complete_frame.data.clear();
     }
+}
+
+ChronoLink::Instruction ChronoLink::parseInstruction(
+    const std::vector<uint8_t>& rawData) {
+    Instruction instruction;
+    size_t index = 0;
+
+    // 解析 type
+    instruction.type = rawData[index++];
+
+    // 解析 targetID（假设长度固定为 4 字节）
+    for (size_t i = 0; i < 4; ++i) {
+        instruction.targetID.push_back(rawData[index++]);
+    }
+
+    // 根据 type 解析 context
+    if (instruction.type == 0x00) {
+        // DeviceConfig
+        DeviceConfig config;
+        config.timeslot = rawData[index++];
+        config.totalHarnessNum = rawData[index++] | (rawData[index++] << 8);
+        config.startHarnessNum = rawData[index++] | (rawData[index++] << 8);
+        config.harnessNum = rawData[index++];
+        config.clipNum = rawData[index++];
+
+        // 剩余字节作为 resNum 列表
+        while (index < rawData.size()) {
+            config.resNum.push_back(rawData[index++]);
+        }
+        instruction.context = config;
+    } else if (instruction.type == 0x02) {
+        // DeviceUnlock
+        DeviceUnlock unlock;
+        unlock.lock = rawData[index++];
+        instruction.context = unlock;
+    } else {
+    }
+
+    return instruction;
 }
 
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }

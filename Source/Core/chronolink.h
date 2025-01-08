@@ -1,6 +1,7 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+#include <variant>
 
 struct DeviceStatusInfo {
     // Color sensor matching status: 0 - color not matching or no sensor; 1 -
@@ -51,14 +52,30 @@ struct FrameFragment {
 
 class ChronoLink {
    public:
-    enum type : uint8_t {
-        DEVICE_CONFIG,
-        SYNC_SIGNAL,
-        CONDUCTION_DATA,
-        COMMAND,
-        COMMAND_REPLY
-    };
+    enum type : uint8_t { SYNC, COMMAND, REPLY };
+
+    enum cmdType : uint8_t { DEV_CONF, DATA_REQ, DEV_UNLOCK };
+
     enum status : uint8_t { OK, ERROR };
+
+    struct DeviceConfig {
+        uint8_t timeslot;               // 时隙
+        uint16_t totalHarnessNum;        // 总线束数量
+        uint16_t startHarnessNum;        // 总线束数量
+        uint8_t harnessNum;             // 线束检测数量
+        uint8_t clipNum;                // 卡钉检测数量
+        std::vector<uint8_t> resNum;    // 阻值检测索引列表
+    };
+
+    struct DeviceUnlock {
+        uint8_t lock;    // 锁状态
+    };
+
+    struct Instruction {
+        uint8_t type;                                        // 指令类型
+        std::vector<uint8_t> targetID;                       // 目标 ID 列表
+        std::variant<DeviceConfig, DeviceUnlock> context;    // 指令内容
+    };
 
     struct DevConf {
         std::array<uint8_t, 4> ID;
@@ -92,6 +109,8 @@ class ChronoLink {
         const FrameFragment& fragment,
         void (*frameSorting)(ChronoLink::CompleteFrame complete_frame));
     void frameSorting(CompleteFrame complete_frame);
+
+    Instruction parseInstruction(const std::vector<uint8_t>& rawData);
 
    private:
     std::vector<uint8_t> receive_buffer;
