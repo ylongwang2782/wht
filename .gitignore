@@ -1,4 +1,10 @@
 build*/
 .cache
 bin/
-project/
+Project/Listings/
+Project/Objects/
+Project/GD32F4_pro.map
+Project/*.uvguix.*
+Project/*.uvoptx
+
+
