@@ -68,7 +68,7 @@ class ChronoLink {
     };
 
     struct DeviceUnlock {
-        uint8_t lock;    // 锁状态
+        uint8_t lockStatus;    // 锁状态
     };
 
     struct Instruction {

@@ -121,7 +121,7 @@ ChronoLink::Instruction ChronoLink::parseInstruction(
     } else if (instruction.type == 0x02) {
         // DeviceUnlock
         DeviceUnlock unlock;
-        unlock.lock = rawData[index++];
+        unlock.lockStatus = rawData[index++];
         instruction.context = unlock;
     } else {
     }
@@ -208,7 +208,7 @@ std::vector<uint8_t> ChronoLink::generateReplyFrame(
     } else if (std::holds_alternative<DeviceUnlock>(context)) {
         const auto& unlock = std::get<DeviceUnlock>(context);
 
-        frame.push_back(unlock.lock);
+        frame.push_back(unlock.lockStatus);
     }
 
     return frame;
@@ -222,8 +222,14 @@ void ChronoLink::sendReply(
     std::vector<uint8_t> frame =
         generateReplyFrame(instructionType, ackStatus, context);
 
-    // 通过串口发送数据帧
-    uartDMA.dma_tx(frame.data(), frame.size());
+    std::vector<std::vector<uint8_t>> fragments;
+
+    int fragmentNum = pack(slot, type, frame.data(), frame.size(), fragments);
+
+    for (int i = 0; i < fragmentNum; i++) {
+        std::vector<uint8_t>& fragment = fragments[i];
+        uartDMA.dma_tx(fragment.data(), fragment.size());
+    }
 }
 
 uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,

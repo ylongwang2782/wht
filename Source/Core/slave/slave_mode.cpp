@@ -130,13 +130,41 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                 Log.d("harnessNum: %d", config.harnessNum);
                 Log.d("clipNum: %d", config.clipNum);
 
+                ChronoLink::DeviceConfig deviceConfig = {.timeslot = 0,
+                                                         .totalHarnessNum = 0,
+                                                         .startHarnessNum = 0,
+                                                         .harnessNum = 0,
+                                                         .clipNum = 0,
+                                                         .resNum = {0}};
+
+                chronoLink.sendReply(config.timeslot, ChronoLink::COMMAND,
+                                     ChronoLink::DEV_CONF, ChronoLink::OK,
+                                     deviceConfig);
+
             } else if (instruction.type == 0x01) {
                 Log.d("Instruction: Data Request");
+
+                ChronoLink::DataReplyContext dataReply = {
+                    .deviceStatus = 0x0002,
+                    .harnessLength = 2,
+                    .harnessData = {0x10, 0x20},
+                    .clipLength = 1,
+                    .clipData = {0x30}};
+
+                chronoLink.sendReply(2, ChronoLink::COMMAND,
+                                     ChronoLink::DATA_REQ, ChronoLink::OK,
+                                     dataReply);
+
             } else if (instruction.type == 0x02) {
                 Log.d("Instruction: Device Unlock");
                 const ChronoLink::DeviceUnlock &unlock =
                     std::get<ChronoLink::DeviceUnlock>(instruction.context);
-                Log.d("unlock: %d", unlock.lock);
+                Log.d("unlock: %d", unlock.lockStatus);
+
+                ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 1};
+                chronoLink.sendReply(2, ChronoLink::COMMAND,
+                                     ChronoLink::DEV_UNLOCK, ChronoLink::OK,
+                                     unlockStatus);
             } else {
             }
 
