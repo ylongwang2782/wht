@@ -40,15 +40,6 @@ struct CommandFrame {
     uint8_t type;
     uint32_t slot_index;
 };
-struct FrameFragment {
-    std::array<uint8_t, 2> delimiter;
-    uint16_t len;
-    uint8_t slot;
-    uint8_t type;
-    uint8_t fragment_sequence;
-    uint8_t more_fragments_flag;
-    std::vector<uint8_t> padding;
-};
 
 class ChronoLink {
    public:
@@ -57,6 +48,16 @@ class ChronoLink {
     enum cmdType : uint8_t { DEV_CONF, DATA_REQ, DEV_UNLOCK };
 
     enum status : uint8_t { OK, ERROR };
+
+    struct Fragment {
+        std::array<uint8_t, 2> delimiter;
+        uint8_t slot;
+        uint8_t type;
+        uint8_t fragment_sequence;
+        uint8_t more_fragments_flag;
+        uint16_t len;
+        std::vector<uint8_t> padding;
+    };
 
     struct DeviceConfig {
         uint8_t timeslot;               // 时隙
@@ -120,7 +121,7 @@ class ChronoLink {
     };
 
     void push_back(const uint8_t* data, size_t length);
-    bool parseFrameFragment(FrameFragment& fragment);
+    bool parseFrameFragment(Fragment& fragment);
     bool is_data_upload = false;
     static std::vector<DevConf> sync_frame;
     static std::vector<uint8_t> ID_paired_list;
@@ -136,7 +137,7 @@ class ChronoLink {
     void setBit(uint32_t& num, int n);
 
     void receiveAndAssembleFrame(
-        const FrameFragment& fragment,
+        const Fragment& fragment,
         void (*frameSorting)(ChronoLink::CompleteFrame complete_frame));
     void frameSorting(CompleteFrame complete_frame);
 

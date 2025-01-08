@@ -21,7 +21,7 @@ void ChronoLink::push_back(const uint8_t* data, size_t length) {
     receive_buffer.insert(receive_buffer.end(), data, data + length);
 }
 
-bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
+bool ChronoLink::parseFrameFragment(Fragment& fragment) {
     size_t min_packet_size = 8;    // Minimum packet size (2 bytes header + 2
                                    // bytes len + 4 bytes fixed fields)
     size_t index = 0;
@@ -68,7 +68,7 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
 }
 
 void ChronoLink::receiveAndAssembleFrame(
-    const FrameFragment& fragment,
+    const Fragment& fragment,
     void (*frameSorting)(ChronoLink::CompleteFrame complete_frame)) {
     CompleteFrame complete_frame;
 
@@ -239,7 +239,7 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
     output.resize(fragments_num);
 
     for (uint8_t i = 0; i < fragments_num; i++) {
-        FrameFragment frame;
+        Fragment frame;
         frame.delimiter = {0xAB, 0xCD};
 
         size_t current_payload_size =
@@ -247,8 +247,7 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
         if (current_payload_size == 0) {
             current_payload_size = payload_size;
         }
-
-        frame.len = 8 + current_payload_size;
+        frame.len = current_payload_size;
         frame.slot = slot;
         frame.type = type;
         frame.fragment_sequence = i;
@@ -268,12 +267,12 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
                                                    // avoid multiple allocations
         fragment.insert(fragment.end(), frame.delimiter.begin(),
                         frame.delimiter.end());
-        fragment.push_back(frame.len & 0xFF);           // Low byte of len
-        fragment.push_back((frame.len >> 8) & 0xFF);    // High byte of len
         fragment.push_back(frame.slot);
         fragment.push_back(frame.type);
         fragment.push_back(frame.fragment_sequence);
         fragment.push_back(frame.more_fragments_flag);
+        fragment.push_back(frame.len & 0xFF);           // Low byte of len
+        fragment.push_back((frame.len >> 8) & 0xFF);    // High byte of len
         fragment.insert(fragment.end(), frame.padding.begin(),
                         frame.padding.end());
     }

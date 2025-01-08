@@ -35,7 +35,7 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame);
 
 extern UasrtConfig usart1_info;
 extern Harness harness;
-FrameFragment frame_fragment;
+ChronoLink::Fragment frame_fragment;
 ChronoLink chronoLink;
 
 // 全局信号量
@@ -137,7 +137,7 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                                                          .clipNum = 0,
                                                          .resNum = {0}};
 
-                chronoLink.sendReply(config.timeslot, ChronoLink::COMMAND,
+                chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
                                      ChronoLink::DEV_CONF, ChronoLink::OK,
                                      deviceConfig);
 
@@ -151,9 +151,8 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                     .clipLength = 1,
                     .clipData = {0x30}};
 
-                chronoLink.sendReply(2, ChronoLink::COMMAND,
-                                     ChronoLink::DATA_REQ, ChronoLink::OK,
-                                     dataReply);
+                chronoLink.sendReply(2, ChronoLink::REPLY, ChronoLink::DATA_REQ,
+                                     ChronoLink::OK, dataReply);
 
             } else if (instruction.type == 0x02) {
                 Log.d("Instruction: Device Unlock");
@@ -161,8 +160,8 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                     std::get<ChronoLink::DeviceUnlock>(instruction.context);
                 Log.d("unlock: %d", unlock.lockStatus);
 
-                ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 1};
-                chronoLink.sendReply(2, ChronoLink::COMMAND,
+                ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 0};
+                chronoLink.sendReply(2, ChronoLink::REPLY,
                                      ChronoLink::DEV_UNLOCK, ChronoLink::OK,
                                      unlockStatus);
             } else {
