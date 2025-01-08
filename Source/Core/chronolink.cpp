@@ -28,7 +28,7 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
         // 检查起始标志 0xAB 0xCD
         if (receive_buffer[index] != 0xAB ||
             receive_buffer[index + 1] != 0xCD) {
-            WARNF("Invalid header delimiter at index %d\n", index);
+            Log.w("Invalid header delimiter at index %d\n", index);
             ++index;    // 跳过无效字节，继续检查下一个可能的帧
             continue;
         }

@@ -109,7 +109,7 @@ void parseDeviceConfigInfo(const std::vector<uint8_t> &data,
                                         sizeof(ChronoLink::DevConf::harnessNum);
 
     if (data.size() % deviceConfigSize != 0) {
-        ERRF("Invalid device config data size\n");
+        Log.e("Invalid device config data size\n");
     }
 
     for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
