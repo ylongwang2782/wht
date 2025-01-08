@@ -66,10 +66,12 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
     return false;
 }
 
-void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
+void ChronoLink::receiveAndAssembleFrame(
+    const FrameFragment& fragment,
+    void (*frameSorting)(ChronoLink::CompleteFrame complete_frame)) {
     CompleteFrame complete_frame;
 
-    // extract data from fragment
+    // Extract data from fragment
     complete_frame.data.insert(complete_frame.data.end(),
                                fragment.padding.begin(),
                                fragment.padding.end());
@@ -78,87 +80,13 @@ void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
     if (fragment.more_fragments_flag == 0) {
         complete_frame.slot = fragment.slot;
         complete_frame.type = fragment.type;
+
+        // 调用传入的 frameSorting 函数指针
         frameSorting(complete_frame);
+
         // Clear buffer after assembly
         complete_frame.data.clear();
     }
-}
-
-/**
- * @brief frameSorting Sorts the received frame and excute corresponding actions
- *
- * @param complete_frame
- */
-void ChronoLink::frameSorting(CompleteFrame complete_frame) {
-    std::vector<DevConf> device_configs;
-    switch (complete_frame.type) {
-        case DEVICE_CONFIG:
-            Log.d("Frm: Config");
-            // Convert u8 byte array to DevConf struct
-            parseDeviceConfigInfo(complete_frame.data, device_configs);
-            // find self device config in device_configs
-            DeviceConfigInfo localDevInfo;
-            UIDReader::get(localDevInfo.ID);
-            Log.d("1. Get Device ID ok.");
-            localDevInfo.devNum = device_configs.size();
-            Log.d("2. Get Device Num ok.");
-            for (const auto& device : device_configs) {
-                if (device.ID == localDevInfo.ID) {
-                    // Log.d("ID match");
-                    Log.d("3. Get devHarnessNum ok.");
-                    harness.matrix.col = device.harnessNum;
-                    harness.matrix.startCol = device.harnessNum;
-                    localDevInfo.devHarnessNum = device.harnessNum;
-                }
-                localDevInfo.sysHarnessNum += device.harnessNum;
-            }
-            Log.d("4. Get sysHarnessNum ok.");
-
-            // if (localDevInfo.devHarnessNum != 0) {
-            //     harness.config(localDevInfo);
-            // }
-
-            break;
-        case SYNC_SIGNAL:
-            // harness.start();
-            Log.d("Frm: sync signal.\n");
-            break;
-        case CONDUCTION_DATA:
-            Log.d("Frm: harness data\n");
-            break;
-        case COMMAND:
-            printf("Frm: command\n");
-            // harness.start();
-            break;
-        case COMMAND_REPLY:
-            printf("Frm: Command reply\n");
-            break;
-        default:
-            break;
-    }
-}
-
-// Parse u8 byte vector to DevConf struct
-ChronoLink::status ChronoLink::parseDeviceConfigInfo(
-    const std::vector<uint8_t>& data, std::vector<DevConf>& device_configs) {
-    constexpr size_t deviceConfigSize =
-        sizeof(DevConf::ID) + sizeof(DevConf::harnessNum);
-
-    if (data.size() % deviceConfigSize != 0) {
-        ERRF("Invalid device config data size\n");
-        return status::ERROR;
-    }
-
-    for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
-        DevConf config;
-        std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
-        config.harnessNum = data[i + 4];
-        // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-        //      config.ID[2], config.ID[3], config.harnessNum);
-        device_configs.push_back(config);
-    }
-
-    return status::OK;
 }
 
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }

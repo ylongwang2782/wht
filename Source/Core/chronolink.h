@@ -88,7 +88,9 @@ class ChronoLink {
 
     void setBit(uint32_t& num, int n);
 
-    void receiveAndAssembleFrame(const FrameFragment& fragment);
+    void receiveAndAssembleFrame(
+        const FrameFragment& fragment,
+        void (*frameSorting)(ChronoLink::CompleteFrame complete_frame));
     void frameSorting(CompleteFrame complete_frame);
 
    private:

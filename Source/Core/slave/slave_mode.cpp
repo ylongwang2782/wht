@@ -30,6 +30,8 @@ void timerTask(void *pvParameters);
 void uartDMATask(void *pvParameters);
 void logTask(void *pvParameters);
 
+void frameSorting(ChronoLink::CompleteFrame complete_frame);
+
 extern UasrtConfig usart1_info;
 extern Harness harness;
 FrameFragment frame_fragment;
@@ -93,9 +95,63 @@ void uartDMATask(void *pvParameters) {
             chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
             while (chronoLink.parseFrameFragment(frame_fragment)) {
                 Log.d("Get frame fragment.");
-                chronoLink.receiveAndAssembleFrame(frame_fragment);
+                chronoLink.receiveAndAssembleFrame(frame_fragment,
+                                                   frameSorting);
             };
         }
+    }
+}
+
+void parseDeviceConfigInfo(const std::vector<uint8_t> &data,
+                           std::vector<ChronoLink::DevConf> &device_configs) {
+    constexpr size_t deviceConfigSize = sizeof(ChronoLink::DevConf::ID) +
+                                        sizeof(ChronoLink::DevConf::harnessNum);
+
+    if (data.size() % deviceConfigSize != 0) {
+        ERRF("Invalid device config data size\n");
+    }
+
+    for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
+        ChronoLink::DevConf config;
+        std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
+        config.harnessNum = data[i + 4];
+        // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
+        //      config.ID[2], config.ID[3], config.harnessNum);
+        device_configs.push_back(config);
+    }
+}
+
+void frameSorting(ChronoLink::CompleteFrame complete_frame) {
+    std::vector<ChronoLink::DevConf> device_configs;
+    switch (complete_frame.type) {
+        case ChronoLink::DEVICE_CONFIG:
+            Log.d("Frm: Config");
+            // Convert u8 byte array to DevConf struct
+            parseDeviceConfigInfo(complete_frame.data, device_configs);
+            // find self device config in device_configs
+            DeviceConfigInfo localDevInfo;
+            UIDReader::get(localDevInfo.ID);
+            Log.d("1. Get Device ID ok.");
+            localDevInfo.devNum = device_configs.size();
+            Log.d("2. Get Device Num ok.");
+            for (const auto &device : device_configs) {
+                if (device.ID == localDevInfo.ID) {
+                    // Log.d("ID match");
+                    Log.d("3. Get devHarnessNum ok.");
+                    harness.matrix.col = device.harnessNum;
+                    harness.matrix.startCol = device.harnessNum;
+                    localDevInfo.devHarnessNum = device.harnessNum;
+                }
+                localDevInfo.sysHarnessNum += device.harnessNum;
+            }
+            Log.d("4. Get sysHarnessNum ok.");
+
+            // if (localDevInfo.devHarnessNum != 0) {
+            //     harness.config(localDevInfo);
+            // }
+            break;
+        default:
+            break;
     }
 }
 
