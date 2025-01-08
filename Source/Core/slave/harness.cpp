@@ -1,4 +1,4 @@
-#include "conduction.h"
+#include "harness.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -8,9 +8,9 @@
 
 extern Logger Log;
 
-Conduction conduction;
+Harness conduction;
 
-void Conduction::init() {
+void Harness::init() {
     // enable clock for corresponding GPIO port
     rcu_periph_clock_enable(RCU_GPIOE);
     // reset all pins
@@ -19,7 +19,7 @@ void Conduction::init() {
     }
 }
 
-uint8_t Conduction::collect_pin_states() {
+uint8_t Harness::collect_pin_states() {
     for (matrix.col_index = 0; matrix.col_index < matrix.col;
          matrix.col_index++) {
         const auto& gpio_pin = pin_map[matrix.col_index];
@@ -28,12 +28,12 @@ uint8_t Conduction::collect_pin_states() {
     return 0;
 }
 
-bool Conduction::data_get(uint8_t* data) { return true; }
+bool Harness::data_get(uint8_t* data) { return true; }
 
 // PE0 - PE16 are the used pins. when pin_num = 0, set PE0 as master which is
 // output high, pin_num = 1, enable PE1, and so on.
 // Master Pin: ouput high
-void Conduction::master_pin_set(uint8_t pin_num) {
+void Harness::master_pin_set(uint8_t pin_num) {
     const GpioPin& selected_pin = pin_map[pin_num];
     gpio_mode_set(selected_pin.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
                   selected_pin.pin);
@@ -42,7 +42,7 @@ void Conduction::master_pin_set(uint8_t pin_num) {
 }
 
 // Master Pin Reset: set pin as input and reset it
-void Conduction::slave_pin_set(uint8_t pin_num) {
+void Harness::slave_pin_set(uint8_t pin_num) {
     const GpioPin& selected_pin = pin_map[pin_num];
     gpio_mode_set(selected_pin.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
                   selected_pin.pin);

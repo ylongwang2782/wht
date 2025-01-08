@@ -8,10 +8,11 @@
 
 #include "bsp_log.h"
 #include "bsp_uid.h"
-#include "conduction.h"
+#include "harness.h"
 
-extern Conduction conduction;
+extern Harness harness;
 extern Logger Log;
+extern USART_DMA_Handler uartDMA;
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
@@ -28,7 +29,7 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
         // 检查起始标志 0xAB 0xCD
         if (receive_buffer[index] != 0xAB ||
             receive_buffer[index + 1] != 0xCD) {
-            WARNF("Invalid header delimiter at index %d\n", index);
+            Log.w("Invalid header delimiter at index %d\n", index);
             ++index;    // 跳过无效字节，继续检查下一个可能的帧
             continue;
         }
@@ -37,22 +38,22 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
         fragment.delimiter[0] = receive_buffer[index++];
         fragment.delimiter[1] = receive_buffer[index++];
 
-        // Parse length (little-endian)
-        fragment.len = static_cast<uint16_t>(receive_buffer[index] |
-                                             (receive_buffer[index + 1] << 8));
-        index += 2;
-
-        // Check if the buffer contains the full packet
-        if (receive_buffer.size() < min_packet_size + fragment.len) {
-            WARNF("Incomplete packet\n");
-            return false;    // Incomplete packet
-        }
+        // // Check if the buffer contains the full packet
+        // if (receive_buffer.size() < min_packet_size + fragment.len) {
+        //     WARNF("Incomplete packet\n");
+        //     return false;    // Incomplete packet
+        // }
 
         // Parse slot, type, fragment_sequence, and more_fragments_flag
         fragment.slot = receive_buffer[index++];
         fragment.type = receive_buffer[index++];
         fragment.fragment_sequence = receive_buffer[index++];
         fragment.more_fragments_flag = receive_buffer[index++];
+
+        // Parse length (little-endian)
+        fragment.len = static_cast<uint16_t>(receive_buffer[index] |
+                                             (receive_buffer[index + 1] << 8));
+        index += 2;
 
         // Parse padding (data field)
         fragment.padding.assign(receive_buffer.begin() + index,
@@ -66,10 +67,12 @@ bool ChronoLink::parseFrameFragment(FrameFragment& fragment) {
     return false;
 }
 
-void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
+void ChronoLink::receiveAndAssembleFrame(
+    const FrameFragment& fragment,
+    void (*frameSorting)(ChronoLink::CompleteFrame complete_frame)) {
     CompleteFrame complete_frame;
 
-    // extract data from fragment
+    // Extract data from fragment
     complete_frame.data.insert(complete_frame.data.end(),
                                fragment.padding.begin(),
                                fragment.padding.end());
@@ -78,87 +81,52 @@ void ChronoLink::receiveAndAssembleFrame(const FrameFragment& fragment) {
     if (fragment.more_fragments_flag == 0) {
         complete_frame.slot = fragment.slot;
         complete_frame.type = fragment.type;
+
+        // 调用传入的 frameSorting 函数指针
         frameSorting(complete_frame);
+
         // Clear buffer after assembly
         complete_frame.data.clear();
     }
 }
 
-/**
- * @brief frameSorting Sorts the received frame and excute corresponding actions
- *
- * @param complete_frame
- */
-void ChronoLink::frameSorting(CompleteFrame complete_frame) {
-    std::vector<DevConf> device_configs;
-    switch (complete_frame.type) {
-        case DEVICE_CONFIG:
-            Log.d("Frm: Config");
-            // Convert u8 byte array to DevConf struct
-            parseDeviceConfigInfo(complete_frame.data, device_configs);
-            // find self device config in device_configs
-            DeviceConfigInfo localDevInfo;
-            UIDReader::get(localDevInfo.ID);
-            Log.d("1. Get Device ID ok.");
-            localDevInfo.devNum = device_configs.size();
-            Log.d("2. Get Device Num ok.");
-            for (const auto& device : device_configs) {
-                if (device.ID == localDevInfo.ID) {
-                    // Log.d("ID match");
-                    Log.d("3. Get devConductionPinNum ok.");
-                    conduction.matrix.col = device.enabled_pin_num;
-                    conduction.matrix.startCol = device.enabled_pin_num;
-                    localDevInfo.devConductionPinNum = device.enabled_pin_num;
-                }
-                localDevInfo.sysConductionPinNum += device.enabled_pin_num;
-            }
-            Log.d("4. Get sysConductionPinNum ok.");
+ChronoLink::Instruction ChronoLink::parseInstruction(
+    const std::vector<uint8_t>& rawData) {
+    Instruction instruction;
+    size_t index = 0;
 
-            // if (localDevInfo.devConductionPinNum != 0) {
-            //     conduction.config(localDevInfo);
-            // }
+    // 解析 type
+    instruction.type = rawData[index++];
 
-            break;
-        case SYNC_SIGNAL:
-            // conduction.start();
-            Log.d("Frm: sync signal.\n");
-            break;
-        case CONDUCTION_DATA:
-            Log.d("Frm: conduction data\n");
-            break;
-        case COMMAND:
-            printf("Frm: command\n");
-            // conduction.start();
-            break;
-        case COMMAND_REPLY:
-            printf("Frm: Command reply\n");
-            break;
-        default:
-            break;
-    }
-}
-
-// Parse u8 byte vector to DevConf struct
-ChronoLink::status ChronoLink::parseDeviceConfigInfo(
-    const std::vector<uint8_t>& data, std::vector<DevConf>& device_configs) {
-    constexpr size_t deviceConfigSize =
-        sizeof(DevConf::ID) + sizeof(DevConf::enabled_pin_num);
-
-    if (data.size() % deviceConfigSize != 0) {
-        ERRF("Invalid device config data size\n");
-        return status::ERROR;
+    // 解析 targetID（假设长度固定为 4 字节）
+    for (size_t i = 0; i < 4; ++i) {
+        instruction.targetID.push_back(rawData[index++]);
     }
 
-    for (size_t i = 0; i < data.size(); i += deviceConfigSize) {
-        DevConf config;
-        std::copy(data.begin() + i, data.begin() + i + 4, config.ID.begin());
-        config.enabled_pin_num = data[i + 4];
-        // DBGF("ID: %X%X%X%X, pin_num: %d\n", config.ID[0], config.ID[1],
-        //      config.ID[2], config.ID[3], config.enabled_pin_num);
-        device_configs.push_back(config);
+    // 根据 type 解析 context
+    if (instruction.type == 0x00) {
+        // DeviceConfig
+        DeviceConfig config;
+        config.timeslot = rawData[index++];
+        config.totalHarnessNum = rawData[index++] | (rawData[index++] << 8);
+        config.startHarnessNum = rawData[index++] | (rawData[index++] << 8);
+        config.harnessNum = rawData[index++];
+        config.clipNum = rawData[index++];
+
+        // 剩余字节作为 resNum 列表
+        while (index < rawData.size()) {
+            config.resNum.push_back(rawData[index++]);
+        }
+        instruction.context = config;
+    } else if (instruction.type == 0x02) {
+        // DeviceUnlock
+        DeviceUnlock unlock;
+        unlock.lock = rawData[index++];
+        instruction.context = unlock;
+    } else {
     }
 
-    return status::OK;
+    return instruction;
 }
 
 void ChronoLink::setBit(uint32_t& num, int n) { num |= (1 << n); }
@@ -170,7 +138,7 @@ std::vector<uint8_t> ChronoLink::serializeSyncFrame(
 
     for (const auto& device : sync_frame) {
         serialized.insert(serialized.end(), device.ID.begin(), device.ID.end());
-        serialized.push_back(device.enabled_pin_num);
+        serialized.push_back(device.harnessNum);
     }
 
     return serialized;
@@ -202,6 +170,60 @@ void ChronoLink::packCommandFrame(std::vector<std::vector<uint8_t>>& output) {
         serializeCommandFrame(ChronoLink::command_frame);
     uint16_t len = serializedData.size();
     ChronoLink::pack(slot, type, serializedData.data(), len, output);
+}
+
+// 生成回复数据帧
+std::vector<uint8_t> ChronoLink::generateReplyFrame(
+    uint8_t type, uint8_t ackStatus,
+    const std::variant<DeviceConfig, DataReplyContext, DeviceUnlock>& context) {
+    std::vector<uint8_t> frame;
+
+    // 添加指令类型
+    frame.push_back(type);
+
+    // 添加应答状态
+    frame.push_back(ackStatus);
+
+    // 根据上下文类型填充数据
+    if (std::holds_alternative<DeviceConfig>(context)) {
+    } else if (std::holds_alternative<DataReplyContext>(context)) {
+        const auto& dataReply = std::get<DataReplyContext>(context);
+
+        // 添加设备状态
+        uint16_t status = 0;
+        memcpy(&status, &dataReply.deviceStatus, sizeof(DeviceStatus));
+        frame.push_back(static_cast<uint8_t>(status & 0xFF));
+        frame.push_back(static_cast<uint8_t>((status >> 8) & 0xFF));
+
+        // 添加线束数据
+        frame.push_back(dataReply.harnessLength);
+        frame.insert(frame.end(), dataReply.harnessData.begin(),
+                     dataReply.harnessData.end());
+
+        // 添加卡钉数据
+        frame.push_back(dataReply.clipLength);
+        frame.insert(frame.end(), dataReply.clipData.begin(),
+                     dataReply.clipData.end());
+
+    } else if (std::holds_alternative<DeviceUnlock>(context)) {
+        const auto& unlock = std::get<DeviceUnlock>(context);
+
+        frame.push_back(unlock.lock);
+    }
+
+    return frame;
+}
+
+// 回复指令
+void ChronoLink::sendReply(
+    uint8_t slot, uint8_t type, uint8_t instructionType, uint8_t ackStatus,
+    const std::variant<DeviceConfig, DataReplyContext, DeviceUnlock>& context) {
+    // 生成数据帧
+    std::vector<uint8_t> frame =
+        generateReplyFrame(instructionType, ackStatus, context);
+
+    // 通过串口发送数据帧
+    uartDMA.dma_tx(frame.data(), frame.size());
 }
 
 uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,

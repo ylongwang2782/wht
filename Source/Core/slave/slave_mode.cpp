@@ -2,13 +2,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 #include "FreeRTOS.h"
 #include "bsp_led.h"
 #include "bsp_log.h"
 #include "bsp_uid.h"
 #include "chronolink.h"
-#include "conduction.h"
+#include "harness.h"
 #include "mode_entry.h"
 
 #ifdef __cplusplus
@@ -30,8 +31,10 @@ void timerTask(void *pvParameters);
 void uartDMATask(void *pvParameters);
 void logTask(void *pvParameters);
 
+void frameSorting(ChronoLink::CompleteFrame complete_frame);
+
 extern UasrtConfig usart1_info;
-extern Conduction conduction;
+extern Harness harness;
 FrameFragment frame_fragment;
 ChronoLink chronoLink;
 
@@ -43,7 +46,7 @@ Logger Log;
 // 创建 USART_DMA_Handler 实例
 USART_DMA_Handler uartDMA = USART_DMA_Handler(usart1_info);
 
-void gpioCollectCallback(void) { conduction.collect_pin_states(); }
+void gpioCollectCallback(void) { harness.collect_pin_states(); }
 
 TimerHandle_t xTimerHandle;    // 定时器句柄
 TaskHandle_t xTaskHandle;      // 任务句柄
@@ -67,7 +70,7 @@ int Slave_Init(void) {
                                 timerCallback           // 回调函数
     );
 
-    conduction.init();
+    harness.init();
     xTaskCreate(uartDMATask, "uartDMATask", 1024, &uartDMA, 1, NULL);
     xTaskCreate(timerTask, "TimerTask", 256, NULL, 2, &xTaskHandle);
     xTaskCreate(ledBlinkTask, "ledBlinkTask", 256, NULL, 4, NULL);
@@ -93,9 +96,57 @@ void uartDMATask(void *pvParameters) {
             chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
             while (chronoLink.parseFrameFragment(frame_fragment)) {
                 Log.d("Get frame fragment.");
-                chronoLink.receiveAndAssembleFrame(frame_fragment);
+                chronoLink.receiveAndAssembleFrame(frame_fragment,
+                                                   frameSorting);
             };
         }
+    }
+}
+
+ChronoLink::DataReplyContext dataReply = {.deviceStatus = 0x0002,
+                                          .harnessLength = 2,
+                                          .harnessData = {0x10, 0x20},
+                                          .clipLength = 1,
+                                          .clipData = {0x30}};
+
+void frameSorting(ChronoLink::CompleteFrame complete_frame) {
+    std::vector<ChronoLink::DevConf> device_configs;
+    ChronoLink::Instruction instruction;
+    switch (complete_frame.type) {
+        case ChronoLink::SYNC:
+            Log.d("Frame: Sync");
+            break;
+        case ChronoLink::COMMAND:
+            Log.d("Frame: Instuction");
+
+            instruction = chronoLink.parseInstruction(complete_frame.data);
+            if (instruction.type == 0x00) {
+                const ChronoLink::DeviceConfig &config =
+                    std::get<ChronoLink::DeviceConfig>(instruction.context);
+                Log.d("Instruction: Device Config");
+                Log.d("timeslot: %d", config.timeslot);
+                Log.d("totalHarnessNum: %d", config.totalHarnessNum);
+                Log.d("startHarnessNum: %d", config.startHarnessNum);
+                Log.d("harnessNum: %d", config.harnessNum);
+                Log.d("clipNum: %d", config.clipNum);
+
+            } else if (instruction.type == 0x01) {
+                Log.d("Instruction: Data Request");
+            } else if (instruction.type == 0x02) {
+                Log.d("Instruction: Device Unlock");
+                const ChronoLink::DeviceUnlock &unlock =
+                    std::get<ChronoLink::DeviceUnlock>(instruction.context);
+                Log.d("unlock: %d", unlock.lock);
+            } else {
+            }
+
+            break;
+        case ChronoLink::REPLY:
+            Log.d("Frame: Reply");
+            break;
+
+        default:
+            break;
     }
 }
 
