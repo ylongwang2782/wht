@@ -228,7 +228,7 @@ void ChronoLink::sendReply(
 
     for (int i = 0; i < fragmentNum; i++) {
         std::vector<uint8_t>& fragment = fragments[i];
-        uartDMA.dma_tx(fragment.data(), fragment.size());
+        uartDMA.dma_tx(fragment.data(), fragment.size()); // change to a general handle
     }
 }
 

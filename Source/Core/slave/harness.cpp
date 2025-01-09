@@ -8,7 +8,7 @@
 
 extern Logger Log;
 
-Harness conduction;
+Harness harness;
 
 void Harness::init() {
     // enable clock for corresponding GPIO port

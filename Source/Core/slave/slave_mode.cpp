@@ -30,21 +30,17 @@ void ledBlinkTask(void *pvParameters);
 void timerTask(void *pvParameters);
 void uartDMATask(void *pvParameters);
 void logTask(void *pvParameters);
-
 void frameSorting(ChronoLink::CompleteFrame complete_frame);
 
 extern UasrtConfig usart1_info;
+extern USART_DMA_Handler uartDMA;
 extern Harness harness;
-ChronoLink::Fragment frame_fragment;
-ChronoLink chronoLink;
-
+extern Logger Log;
 // 全局信号量
 extern SemaphoreHandle_t dmaCompleteSemaphore;
 
-Logger Log;
-
-// 创建 USART_DMA_Handler 实例
-USART_DMA_Handler uartDMA = USART_DMA_Handler(usart1_info);
+ChronoLink::Fragment frame_fragment;
+ChronoLink chronoLink;
 
 void gpioCollectCallback(void) { harness.collect_pin_states(); }
 
@@ -103,12 +99,6 @@ void uartDMATask(void *pvParameters) {
     }
 }
 
-ChronoLink::DataReplyContext dataReply = {.deviceStatus = 0x0002,
-                                          .harnessLength = 2,
-                                          .harnessData = {0x10, 0x20},
-                                          .clipLength = 1,
-                                          .clipData = {0x30}};
-
 void frameSorting(ChronoLink::CompleteFrame complete_frame) {
     std::vector<ChronoLink::DevConf> device_configs;
     ChronoLink::Instruction instruction;
@@ -161,17 +151,13 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame) {
                 Log.d("unlock: %d", unlock.lockStatus);
 
                 ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 0};
+
                 chronoLink.sendReply(2, ChronoLink::REPLY,
                                      ChronoLink::DEV_UNLOCK, ChronoLink::OK,
                                      unlockStatus);
             } else {
             }
-
             break;
-        case ChronoLink::REPLY:
-            Log.d("Frame: Reply");
-            break;
-
         default:
             break;
     }
