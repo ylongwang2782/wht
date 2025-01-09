@@ -36,6 +36,9 @@ UasrtConfig usart2_config = {.baudrate = 115200,
                               .nvic_irq_sub_priority = 2,
                               .rx_count = 0};
 
+// 创建 USART_DMA_Handler 实例
+USART_DMA_Handler uartDMA = USART_DMA_Handler(usart1_info);
+
 void USART_DMA_Handler::setup() {
     USART_DMA_Handler::init();
     USART_DMA_Handler::dma_tx_config();
