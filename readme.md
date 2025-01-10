@@ -41,6 +41,8 @@ os:
 
 ### Ubuntu
 
+#### 安装依赖
+
 - Vscode
 1. `sudo snap install --classic code`
 
@@ -67,6 +69,12 @@ export PATH=$PATH:/home/gd32-dev/Documents/tools/LLVM-19.1.6-Linux-X64/bin:/home
 
 - openocd
 1. 需要[自行编译安装最新版的openocd](https://blog.csdn.net/qq_39765790/article/details/133470373)
+
+#### 配置vscode
+- 指定clangd的编译器
+1. 将`arm-none-eabi-g++`的地址定义为环境变量`ARM_CXX_PATH`
+2. `export ARM_CXX_PATH="/home/gd32-dev/Documents/tools/xpack-arm-none-eabi-gcc-14.2.1-1.1/bin/arm-none-eabi-g++"`
+3. reboot生效环境变量   
 
 ### MacOS
 
