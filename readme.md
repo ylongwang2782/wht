@@ -22,66 +22,78 @@ os:
 
 ## 环境搭建
 
-### 需要的软件
+### Windows
 
 - [vscode](https://code.visualstudio.com/Download)
 - [cmake](https://cmake.org/download/)
+1. 添加环境变量`cmake\bin`
 - [ninja](https://github.com/ninja-build/ninja/releases/tag/v1.12.1)
-1. 下载[Arm GNU Toolchain Downlaods](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads/13-2-rel1)
-2. 添加环境变量`arm-gnu-toolchain-13.2.Rel1-mingw-w64-i686-arm-none-eabi\bin`
-- [LLVM](https://llvm.org/)
-- clang
-1. 安装`msys64`或者`LLVM`会自带`clang`
-2. 添加环境变量
+1. 添加环境变量`ninja\`
 - [GD32 Embedded Builder](https://www.gd32mcu.com/cn/download)
-GD32 Embedded Builder非常强大，其中包含了
-1. 交叉编译工具链
-2. .ld文件
-3. .s文件
-4. OpenOCD
-5. OpenOCD会用到的cfg文件
-- gcc-arm-none-eabi
-- openocd-xpack
-1. 先下载[GD32 Embedded Builder](https://www.gd32mcu.com/cn/download)
-2. 添加`EmbeddedBuilder_v1.4.7.26843\Tools\OpenOCD\xpack-openocd-0.11.0-3\bin`到环境变量
+1. 添加环境变量`EmbeddedBuilder_v1.4.7.26843\Tools\OpenOCD\xpack-openocd-0.11.0-3\bin`
+2. 添加环境变量`EmbeddedBuilder_v1.4.7.26843\Tools\GNU Tools ARM Embedded\xpack-arm-none-eabi-gcc\9.2.1-1.1\bin`
 
-以上软件均需要添加到环境变量
+可选安装项：
+- [clang]([optional](https://www.msys2.org/))
+1. `windows`下载`msys2`
+2. 默认地址为`C:\msys64\clang64\bin`
+- [LLVM](https://releases.llvm.org/download.html)(optional）
+
+### Ubuntu
+
+- Vscode
+1. `sudo snap install --classic code`
+
+- Ninja
+1. `sudo apt update`
+2. `sudo apt install ninja-build`
+3. `ninja --version`
+
+- Cmake
+1. `sudo apt update`
+2. `sudo apt install cmake`
+3. `cmake --version`
+
+- gcc-arm-none-eabi
+1. download [xPack GNU Arm Embedded GCC](https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/tag/v14.2.1-1.1)
+2. Add to `~/.bashrc`
+
+- llvm/clang/clangd/clang-format
+1. Download [LLVM](https://github.com/llvm/llvm-project/releases/tag/llvmorg-19.1.6)
+2. Add to `~/.bashrc`
+```
+export PATH=$PATH:/home/gd32-dev/Documents/tools/LLVM-19.1.6-Linux-X64/bin:/home/gd32-dev/Documents/tools/xpack-arm-none-eabi-gcc-14.2.1-1.1/bin
+```
+
+- openocd
+1. 需要[自行编译安装最新版的openocd](https://blog.csdn.net/qq_39765790/article/details/133470373)
+
+### MacOS
+
 ### 需要的vscode拓展
 
 可以在`vscode`拓展中搜索`@recommended`以便快速安装推荐的拓展
 
-### 需要更改的配置
+### 配置环境变量
 
-#### setting.json
+针对不同平台不同设备，工具链地址不同，因此需要根据不同平台不同设备配置环境变量，将以下变量以及对应的地址添加到环境变量中
 
-更改`clangd.exe`的地址
-```json
-"clangd.path": "C:/msys64/clang64/bin/clangd.exe"
+1. ARM_TOOLCHAIN_CPP
+2. CROSS_COMPILE_TOOLCHAIN
+3. OPENOCD_SCRIPTS_PATH
+
+#### windows
+
+```bash
+set ARM_TOOLCHAIN_CPP=C:/code_configuration/arm-gnu-toolchain-13.2.Rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-g++.exe
+set CROSS_COMPILE_TOOLCHAIN=C:/code_configuration/EmbeddedBuilder_v1.4.7.26843/Tools/GNU Tools ARM Embedded/xpack-arm-none-eabi-gcc/9.2.1-1.1
+set OPENOCD_SCRIPTS_PATH=C:/code_configuration/EmbeddedBuilder_v1.4.7.26843/Tools/OpenOCD/xpack-openocd-0.11.0-3/scripts/
 ```
 
-更改clangd的编译器地址
-```json
-"--query-driver=C:/code_configuration/arm-gnu-toolchain-13.2.Rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-g++.exe"
-```
+#### Linux
 
-#### lauch.json
+### 选择Cmake Kits
 
-修改以下文件地址
-```json
-"configFiles": [
-    "interface/cmsis-dap.cfg",
-    "target/gd32f4xx.cfg",
-],
-"svdFile": "${workspaceRoot}/OpenOCD/GD32F4xx.svd",
-"searchDir": [
-    "C:/code_configuration/EmbeddedBuilder_v1.4.7.26843/Tools/OpenOCD/xpack-openocd-0.11.0-3/scripts/"
-],
-```
-
-#### FreeRTOS
-
-FreeRTOS系统无需更改，可直接使用，支持c和cpp
+在`vscode`中选择`Select a Kit`,选择`Unspecified`
 
 ## TODO
-
-- [ ] add log system
