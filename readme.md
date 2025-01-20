@@ -24,20 +24,27 @@ os:
 
 ### Windows
 
+#### 安装依赖
+
 - [vscode](https://code.visualstudio.com/Download)
 - [cmake](https://cmake.org/download/)
-1. 添加环境变量`cmake\bin`
+1. Add to Path `cmake\bin`
 - [ninja](https://github.com/ninja-build/ninja/releases/tag/v1.12.1)
-1. 添加环境变量`ninja\`
+1. Add to Path `ninja\`
 - [GD32 Embedded Builder](https://www.gd32mcu.com/cn/download)
-1. 添加环境变量`EmbeddedBuilder_v1.4.7.26843\Tools\OpenOCD\xpack-openocd-0.11.0-3\bin`
-2. 添加环境变量`EmbeddedBuilder_v1.4.7.26843\Tools\GNU Tools ARM Embedded\xpack-arm-none-eabi-gcc\9.2.1-1.1\bin`
+1. Add to Path `EmbeddedBuilder_v1.4.7.26843\Tools\OpenOCD\xpack-openocd-0.11.0-3\bin`
+- gcc-arm-none-eabi
+1. download [xPack GNU Arm Embedded GCC](https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/tag/v14.2.1-1.1)
+2. Add to Path `xpack-arm-none-eabi-gcc-14.2.1-1.1/bin`
+- llvm/clang/clangd/clang-format
+1. Download [LLVM](https://github.com/llvm/llvm-project/releases/tag/llvmorg-19.1.6)
+2. Add to Path `LLVM-19.1.64/bin`
 
-可选安装项：
-- [clang]([optional](https://www.msys2.org/))
-1. `windows`下载`msys2`
-2. 默认地址为`C:\msys64\clang64\bin`
-- [LLVM](https://releases.llvm.org/download.html)(optional）
+#### 配置vscode
+- 指定clangd的编译器
+1. 将`arm-none-eabi-g++`的地址定义为环境变量`ARM_CXX_PATH`
+2. `export ARM_CXX_PATH="your_path/xpack-arm-none-eabi-gcc-14.2.1-1.1/bin/arm-none-eabi-g++"`
+3. reboot生效环境变量 
 
 ### Ubuntu
 
@@ -67,41 +74,16 @@ os:
 export PATH=$PATH:/home/gd32-dev/Documents/tools/LLVM-19.1.6-Linux-X64/bin:/home/gd32-dev/Documents/tools/xpack-arm-none-eabi-gcc-14.2.1-1.1/bin
 ```
 
-- openocd
-1. 需要[自行编译安装最新版的openocd](https://blog.csdn.net/qq_39765790/article/details/133470373)
-
 #### 配置vscode
 - 指定clangd的编译器
 1. 将`arm-none-eabi-g++`的地址定义为环境变量`ARM_CXX_PATH`
 2. `export ARM_CXX_PATH="/home/gd32-dev/Documents/tools/xpack-arm-none-eabi-gcc-14.2.1-1.1/bin/arm-none-eabi-g++"`
 3. reboot生效环境变量   
 
-### MacOS
-
 ### 需要的vscode拓展
 
 可以在`vscode`拓展中搜索`@recommended`以便快速安装推荐的拓展
 
-### 配置环境变量
-
-针对不同平台不同设备，工具链地址不同，因此需要根据不同平台不同设备配置环境变量，将以下变量以及对应的地址添加到环境变量中
-
-1. ARM_TOOLCHAIN_CPP
-2. CROSS_COMPILE_TOOLCHAIN
-3. OPENOCD_SCRIPTS_PATH
-
-#### windows
-
-```bash
-set ARM_TOOLCHAIN_CPP=C:/code_configuration/arm-gnu-toolchain-13.2.Rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-g++.exe
-set CROSS_COMPILE_TOOLCHAIN=C:/code_configuration/EmbeddedBuilder_v1.4.7.26843/Tools/GNU Tools ARM Embedded/xpack-arm-none-eabi-gcc/9.2.1-1.1
-set OPENOCD_SCRIPTS_PATH=C:/code_configuration/EmbeddedBuilder_v1.4.7.26843/Tools/OpenOCD/xpack-openocd-0.11.0-3/scripts/
-```
-
-#### Linux
-
 ### 选择Cmake Kits
 
 在`vscode`中选择`Select a Kit`,选择`Unspecified`
-
-## TODO
