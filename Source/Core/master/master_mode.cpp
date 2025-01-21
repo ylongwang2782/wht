@@ -3,6 +3,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <cstddef> // For size_t
+#include "bsp_allocate.hpp"
+
+
 static void Master_Task(void *pvParameters) {
     while (1) {
         // 主节点的操作
@@ -15,3 +19,4 @@ int Master_Init(void) {
     xTaskCreate(Master_Task, "MasterTask", 1024, NULL, 2, NULL);
     return 0;
 }
+

@@ -15,10 +15,10 @@ include("CMake/arm-none-eabi-gcc.cmake")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-enable_language(ASM C CXX)
-
 # 设置项目名称和版本号
 project(GD32_Clang_Cmake_template VERSION 0.1.0)
+
+enable_language(ASM C CXX)
 
 add_compile_options(
   -Wno-unused-parameter # 忽略未使用的参数警告
