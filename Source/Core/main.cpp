@@ -4,7 +4,6 @@
 #include <cstdio>
 
 #include "FreeRTOS.h"
-#include "bsp_led.h"
 #include "bsp_log.h"
 #include "bsp_uid.h"
 #include "chronolink.h"
