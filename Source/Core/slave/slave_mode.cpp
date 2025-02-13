@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "FreeRTOS.h"
-#include "bsp_log.h"
+#include "bsp_log.hpp"
 #include "bsp_uid.h"
 #include "bsp_led.hpp"
 #include "chronolink.h"
@@ -35,7 +35,7 @@ void frameSorting(ChronoLink::CompleteFrame complete_frame);
 extern UasrtConfig usart1_info;
 extern USART_DMA_Handler uartDMA;
 extern Harness harness;
-extern Logger Log;
+Logger &Log = Logger::getInstance();
 // 全局信号量
 extern SemaphoreHandle_t dmaCompleteSemaphore;
 

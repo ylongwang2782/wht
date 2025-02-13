@@ -6,13 +6,13 @@
 #include <cstring>
 #include <vector>
 
-#include "bsp_log.h"
+#include "bsp_log.hpp"
 #include "bsp_uid.h"
 #include "harness.h"
-
+extern Logger &Log;
 extern Harness harness;
-extern Logger Log;
 extern USART_DMA_Handler uartDMA;
+
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
