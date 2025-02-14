@@ -5,9 +5,9 @@
 #include <cstring>
 
 #include "FreeRTOS.h"
+#include "bsp_led.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uid.hpp"
-#include "bsp_led.hpp"
 #include "chronolink.h"
 #include "harness.h"
 #include "mode_entry.h"
@@ -32,12 +32,12 @@ void uartDMATask(void *pvParameters);
 void logTask(void *pvParameters);
 void frameSorting(ChronoLink::CompleteFrame complete_frame);
 
-extern UasrtConfig usart1_info;
-extern USART_DMA_Handler uartDMA;
+extern UasrtInfo usart1_info;
+UartConfig uart1Conf(usart1_info);
+Uart uart1(uart1Conf);
+
 extern Harness harness;
 Logger &Log = Logger::getInstance();
-// 全局信号量
-extern SemaphoreHandle_t dmaCompleteSemaphore;
 
 ChronoLink::Fragment frame_fragment;
 ChronoLink chronoLink;
@@ -67,7 +67,7 @@ int Slave_Init(void) {
     );
 
     harness.init();
-    xTaskCreate(uartDMATask, "uartDMATask", 1024, &uartDMA, 1, NULL);
+    xTaskCreate(uartDMATask, "uartDMATask", 1024, NULL, 1, NULL);
     xTaskCreate(timerTask, "TimerTask", 256, NULL, 2, &xTaskHandle);
     xTaskCreate(ledBlinkTask, "ledBlinkTask", 256, NULL, 4, NULL);
     xTaskCreate(logTask, "logTask", 1024, nullptr, 5, nullptr);
@@ -81,15 +81,12 @@ int Slave_Init(void) {
 }
 
 void uartDMATask(void *pvParameters) {
-    // 创建信号量
-    dmaCompleteSemaphore = xSemaphoreCreateBinary();
-    // Log.d("Usart DMA task start.");
-    USART_DMA_Handler *uartDMA = static_cast<USART_DMA_Handler *>(pvParameters);
     for (;;) {
-        // 等待 DMA 完成信号
-        if (xSemaphoreTake(dmaCompleteSemaphore, portMAX_DELAY) == pdPASS) {
+        if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) == pdPASS) {
             Log.d("Usart recv.");
-            chronoLink.push_back(uartDMA->DMA_RX_Buffer, usart1_info.rx_count);
+            uint8_t buffer[DMA_RX_BUFFER_SIZE];
+            uint16_t len = uart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+            chronoLink.push_back(buffer, len);
             while (chronoLink.parseFrameFragment(frame_fragment)) {
                 Log.d("Get frame fragment.");
                 chronoLink.receiveAndAssembleFrame(frame_fragment,
