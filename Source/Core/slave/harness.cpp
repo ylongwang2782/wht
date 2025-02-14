@@ -3,10 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "bsp_led.h"
-#include "bsp_log.h"
-
-extern Logger Log;
+#include "bsp_log.hpp"
 
 Harness harness;
 

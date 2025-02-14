@@ -6,13 +6,15 @@
 #include <cstring>
 #include <vector>
 
-#include "bsp_log.h"
-#include "bsp_uid.h"
+#include "bsp_log.hpp"
+#include "bsp_uid.hpp"
 #include "harness.h"
 
+extern Logger& Log;
 extern Harness harness;
-extern Logger Log;
-extern USART_DMA_Handler uartDMA;
+
+extern Uart uart1;
+
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
 CommandFrame ChronoLink::command_frame;
@@ -228,7 +230,7 @@ void ChronoLink::sendReply(
 
     for (int i = 0; i < fragmentNum; i++) {
         std::vector<uint8_t>& fragment = fragments[i];
-        uartDMA.dma_tx(fragment.data(), fragment.size()); // change to a general handle
+        uart1.send(fragment.data(), fragment.size());
     }
 }
 
