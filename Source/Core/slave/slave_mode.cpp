@@ -6,6 +6,7 @@
 
 #include "FreeRTOS.h"
 #include "TaskCPP.h"
+#include "TimerCPP.h"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uid.hpp"
@@ -29,7 +30,6 @@ extern "C" {
 // 任务列表
 void timerTask(void *pvParameters);
 
-ChronoLink::Fragment frame_fragment;
 ChronoLink chronoLink;
 
 extern UasrtInfo usart1_info;
@@ -97,6 +97,7 @@ class UsartDMATask : public TaskClassS<1024> {
     }
 
    private:
+    ChronoLink::Fragment frame_fragment;
     static void frameSorting(ChronoLink::CompleteFrame complete_frame) {
         std::vector<ChronoLink::DevConf> device_configs;
         ChronoLink::Instruction instruction;
@@ -134,7 +135,7 @@ class UsartDMATask : public TaskClassS<1024> {
                     Log.d("Instruction: Data Request");
 
                     ChronoLink::DataReplyContext dataReply = {
-                        .deviceStatus = 0x0002,
+                        .deviceStatus = {0x0001, 1, 1, 1, 1, 1, 1, 1, 1, 1},
                         .harnessLength = 2,
                         .harnessData = {0x10, 0x20},
                         .clipLength = 1,
@@ -164,59 +165,35 @@ class UsartDMATask : public TaskClassS<1024> {
     }
 };
 
+class MyTimer {
+   public:
+   MyTimer()
+        : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
+                  pdMS_TO_TICKS(1000), pdTRUE) {
+        // pdMS_TO_TICKS(1000) 表示定时器周期为 1000 毫秒
+        // pdTRUE 表示定时器是自动重载的
+        myTimer.start();    // 启动定时器
+    }
+
+    void myTimerCallback() {
+        // 这里是你希望在定时器触发时执行的代码
+        printf("Timer triggered!\n");
+    }
+
+   private:
+    FreeRTOScpp::TimerMember<MyTimer> myTimer;
+};
+
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;
-
-void gpioCollectCallback(void) { harness.collect_pin_states(); }
+MyTimer myTimer;
 
 TimerHandle_t xTimerHandle;    // 定时器句柄
 TaskHandle_t xTaskHandle;      // 任务句柄
 
-// 定时器回调函数
-void timerCallback(TimerHandle_t xTimer) {
-    // Log.v("Timer callback triggered.");
-    xTaskNotifyGive(xTaskHandle);
-}
-
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
-
-    // 创建定时器
-    xTimerHandle = xTimerCreate("Timer",                // 定时器名称
-                                pdMS_TO_TICKS(1000),    // 周期 10ms
-                                pdTRUE,                 // 自动重装
-                                NULL,                   // 定时器 ID
-                                timerCallback           // 回调函数
-    );
-
     harness.init();
-    xTaskCreate(timerTask, "TimerTask", 256, NULL, 2, &xTaskHandle);
-
-    // 启动定时器
-    if (xTimerStart(xTimerHandle, 0) != pdPASS) {
-        printf("Error: Timer start failed!\n");
-        return -1;
-    }
     return 0;
-}
-
-// 任务函数
-void timerTask(void *pvParameters) {
-    Log.d("Timer task started.");
-
-    uint8_t trigger_count = 0;
-
-    Log.v("trigger_count: %d", trigger_count);
-
-    for (;;) {
-        // 等待通知
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-        // 增加触发次数
-        trigger_count++;
-    }
-
-    // 删除任务
-    vTaskDelete(NULL);
 }
