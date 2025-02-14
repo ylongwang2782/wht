@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "bsp_log.hpp"
-#include "bsp_uid.h"
+#include "bsp_uid.hpp"
 #include "harness.h"
 extern Logger &Log;
 extern Harness harness;

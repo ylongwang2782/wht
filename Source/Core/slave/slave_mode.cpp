@@ -6,7 +6,7 @@
 
 #include "FreeRTOS.h"
 #include "bsp_log.hpp"
-#include "bsp_uid.h"
+#include "bsp_uid.hpp"
 #include "bsp_led.hpp"
 #include "chronolink.h"
 #include "harness.h"
