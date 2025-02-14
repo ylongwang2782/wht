@@ -1,5 +1,7 @@
 #include "bsp_log.hpp"
 
+Logger &Log = Logger::getInstance();
+
 void vAssertCalled(const char *file, int line) {
     taskDISABLE_INTERRUPTS();
     printf("Assert failed in file %s at line %d\n", file, line);

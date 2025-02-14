@@ -27,17 +27,12 @@ extern "C" {
 }
 #endif
 
-// 任务列表
-void timerTask(void *pvParameters);
-
-ChronoLink chronoLink;
-
 extern UasrtInfo usart1_info;
 UartConfig uart1Conf(usart1_info);
 Uart uart1(uart1Conf);
 
+ChronoLink chronoLink;
 extern Harness harness;
-Logger &Log = Logger::getInstance();
 
 class LogTask : public TaskClassS<1024> {
    public:
@@ -188,9 +183,6 @@ UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;
 MyTimer myTimer;
-
-TimerHandle_t xTimerHandle;    // 定时器句柄
-TaskHandle_t xTaskHandle;      // 任务句柄
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();

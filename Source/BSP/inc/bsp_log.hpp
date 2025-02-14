@@ -97,4 +97,6 @@ class Logger {
     }
 };
 
+extern Logger& Log;
+
 #endif
