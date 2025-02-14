@@ -34,42 +34,9 @@ Uart uart1(uart1Conf);
 ChronoLink chronoLink;
 extern Harness harness;
 
-class LogTask : public TaskClassS<1024> {
-   public:
-    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
-
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        Logger &log = Logger::getInstance();
-        for (;;) {
-            if (xQueueReceive(log.logQueue, buffer, portMAX_DELAY)) {
-                for (const char *p = buffer; *p; ++p) {
-                    while (RESET == usart_flag_get(USART_LOG, USART_FLAG_TBE));
-                    usart_data_transmit(USART_LOG, (uint8_t)*p);
-                }
-            }
-        }
-    }
-};
-
-class LedBlinkTask : public TaskClassS<256> {
-   public:
-    LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
-
-    void task() override {
-        Logger &log = Logger::getInstance();
-        LED led0(GPIOC, GPIO_PIN_6);
-
-        for (;;) {
-            led0.toggle();
-            TaskBase::delay(500);
-        }
-    }
-};
-
 class UsartDMATask : public TaskClassS<1024> {
    public:
-    UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_Mid) {}
+    UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
 
     void task() override {
         Logger &log = Logger::getInstance();
@@ -178,6 +145,39 @@ class MyTimer {
    private:
     FreeRTOScpp::TimerMember<MyTimer> myTimer;
 };
+
+class LogTask : public TaskClassS<1024> {
+    public:
+     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
+ 
+     void task() override {
+         char buffer[LOG_QUEUE_SIZE + 8];
+         Logger &log = Logger::getInstance();
+         for (;;) {
+             if (xQueueReceive(log.logQueue, buffer, portMAX_DELAY)) {
+                 for (const char *p = buffer; *p; ++p) {
+                     while (RESET == usart_flag_get(USART_LOG, USART_FLAG_TBE));
+                     usart_data_transmit(USART_LOG, (uint8_t)*p);
+                 }
+             }
+         }
+     }
+ };
+ 
+ class LedBlinkTask : public TaskClassS<256> {
+    public:
+     LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
+ 
+     void task() override {
+         Logger &log = Logger::getInstance();
+         LED led0(GPIOC, GPIO_PIN_6);
+ 
+         for (;;) {
+             led0.toggle();
+             TaskBase::delay(500);
+         }
+     }
+ };
 
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
