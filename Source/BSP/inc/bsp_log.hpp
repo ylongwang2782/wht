@@ -2,6 +2,7 @@
 #define _LOG_H_
 
 #include <stdarg.h>
+
 #include "bsp_uart.hpp"
 
 extern "C" {
@@ -12,16 +13,19 @@ extern "C" {
 
 #define USART_LOG      USART1
 #define LOG_QUEUE_SIZE 64
-enum class LogLevel { VERBOSE, DEBUGL, INFO, WARN, ERROR };
-
 class Logger {
    public:
+    // 日志级别枚举
+    enum class Level { VERBOSE, DEBUGL, INFO, WARN, ERROR };
+
+    // 获取单例实例
     static Logger &getInstance() {
         static Logger instance;
         return instance;
     }
 
-    void log(LogLevel level, const char *format, va_list args) {
+    // 日志记录方法
+    void log(Level level, const char *format, va_list args) {
         // 定义日志级别的字符串表示
         static const char *levelStr[] = {"VERBOSE", "DEBUG", "INFO", "WARN",
                                          "ERROR"};
@@ -43,60 +47,67 @@ class Logger {
         // 输出日志
         output(level, finalMessage);
     }
+
+    // 快捷方法：VERBOSE 级别日志
     void v(const char *format, ...) {
         va_list args;
         va_start(args, format);
-
-        log(LogLevel::VERBOSE, format, args);
-
+        log(Level::VERBOSE, format, args);
         va_end(args);
     }
+
+    // 快捷方法：DEBUG 级别日志
     void d(const char *format, ...) {
         va_list args;
         va_start(args, format);
-
-        log(LogLevel::DEBUGL, format, args);
-
+        log(Level::DEBUGL, format, args);
         va_end(args);
     }
+
+    // 快捷方法：INFO 级别日志
     void i(const char *format, ...) {
         va_list args;
         va_start(args, format);
-
-        log(LogLevel::INFO, format, args);
-
+        log(Level::INFO, format, args);
         va_end(args);
     }
+
+    // 快捷方法：WARN 级别日志
     void w(const char *format, ...) {
         va_list args;
         va_start(args, format);
-
-        log(LogLevel::WARN, format, args);
-
+        log(Level::WARN, format, args);
         va_end(args);
     }
+
+    // 快捷方法：ERROR 级别日志
     void e(const char *format, ...) {
         va_list args;
         va_start(args, format);
-
-        log(LogLevel::ERROR, format, args);
-
+        log(Level::ERROR, format, args);
         va_end(args);
     }
 
+    // 获取日志队列
+    QueueHandle_t getLogQueue() const { return logQueue; }
+    // 日志队列
     QueueHandle_t logQueue;
 
    private:
-    Logger() {
-        logQueue = xQueueCreate(10, LOG_QUEUE_SIZE);
-    }    // 私有构造，确保只能通过 `getInstance()` 获取
+    // 私有构造函数，确保单例模式
+    Logger() { logQueue = xQueueCreate(10, LOG_QUEUE_SIZE); }
 
-    void output(LogLevel level, const char *message) {
+    // 禁止拷贝和赋值
+    Logger(const Logger &) = delete;
+    Logger &operator=(const Logger &) = delete;
+
+    // 日志输出方法
+    void output(Level level, const char *message) {
         // 将日志消息添加到队列中
         xQueueSend(logQueue, message, portMAX_DELAY);
     }
 };
 
-extern Logger& Log;
+extern Logger &Log;
 
 #endif
