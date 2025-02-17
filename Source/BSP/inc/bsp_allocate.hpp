@@ -1,4 +1,6 @@
 // #include "FreeRTOS.h"
+#ifndef BSP_ALLOCATE_HPP
+#define BSP_ALLOCATE_HPP
 #include <cstddef>
 #include <utility>    
 
@@ -98,3 +100,4 @@ public:
         typedef OSallocator<_Up> other;
     };
 };
+#endif
