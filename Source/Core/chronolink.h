@@ -1,3 +1,5 @@
+#ifndef CHRONOLINK_H
+#define CHRONOLINK_H
 #include <array>
 #include <cstdint>
 #include <variant>
@@ -163,3 +165,4 @@ class ChronoLink {
     status parseDeviceConfigInfo(const std::vector<uint8_t>& data,
                                  std::vector<DevConf>& device_configs);
 };
+#endif
