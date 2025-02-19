@@ -259,6 +259,7 @@ class ChronoLink {
                     complete_frame.type = fragment.header.type;
                     return true;
                 }
+                index += fragment.header.len;
             }
             return false;
         }
