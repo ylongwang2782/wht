@@ -157,6 +157,38 @@ class ChronoLink {
                    uint8_t ackStatus,
                    const std::variant<DeviceConfig, DataReplyContext,
                                       DeviceUnlock>& context);
+
+    class DeviceConfigType {
+       public:
+#pragma pack(push, 1)    // 设置按 1 字节对齐
+        typedef struct {
+            uint8_t timeslot;            // 时隙
+            uint16_t totalHarnessNum;    // 总线束数量
+            uint16_t startHarnessNum;    // 总线束数量
+            uint8_t harnessNum;          // 线束检测数量
+            uint8_t clipNum;             // 卡钉检测数量
+        } __NormalInfo;
+        typedef struct {
+            __NormalInfo normalInfo;
+            std::vector<uint8_t> resNum;    // 阻值检测索引列表
+        } __DeviceConfig;
+#pragma pack(pop)    // 恢复原来的对齐方式
+        DeviceConfigType(){}
+        ~DeviceConfigType(){}
+
+        void pack(std::vector<uint8_t>& output) {
+
+                     
+                  }
+        void prase()
+        {
+
+        }
+
+       private:
+       __DeviceConfig deviceConfig;
+    };
+
     template <type frameType>
     class FrameBase {
        public:
@@ -196,7 +228,7 @@ class ChronoLink {
                     fragment.header.more_fragments_flag = 0;
                 }
                 fragment.header.slot = slot;
-
+            
                 memcpy(output.data() + offset, &fragment.header,
                        sizeof(__FragmentHeader));
                 offset += sizeof(__FragmentHeader);
