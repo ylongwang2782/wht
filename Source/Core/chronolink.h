@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "bsp_allocate.hpp"
-
+#include "bsp_log.hpp"
 struct DeviceStatusInfo {
     // Color sensor matching status: 0 - color not matching or no sensor; 1 -
     // color matching
@@ -157,15 +157,16 @@ class ChronoLink {
                    uint8_t ackStatus,
                    const std::variant<DeviceConfig, DataReplyContext,
                                       DeviceUnlock>& context);
-    template <type T>
+    template <type frameType>
     class FrameBase {
        public:
         FrameBase(size_t reserve = 100) {
             output.reserve(reserve);
-            __header.delimiter = {0xAB, 0xCD};
-            __header.slot = 0;
-            __header.type = T;
-            __header.fragment_sequence = 0;
+            fragment.header.delimiter[0] = 0xAB;
+            fragment.header.delimiter[1] = 0xCD;
+            fragment.header.slot = 0;
+            fragment.header.type = frameType;
+            fragment.header.fragment_sequence = 0;
         }
         void pack(uint8_t slot, uint8_t* payload, uint16_t payload_len) {
             size_t offset = 0;
@@ -174,8 +175,8 @@ class ChronoLink {
 
             // 预留空间
             if (output.capacity() <
-                sizeof(FragmentHeader) * fragments_num + payload_len) {
-                output.reserve(sizeof(FragmentHeader) * fragments_num +
+                sizeof(__FragmentHeader) * fragments_num + payload_len) {
+                output.reserve(sizeof(__FragmentHeader) * fragments_num +
                                payload_len);
             }
 
@@ -188,17 +189,17 @@ class ChronoLink {
                 if (current_payload_size == 0) {
                     current_payload_size = payload_size;
                 }
-                __header.len = current_payload_size;
-                __header.fragment_sequence = i;
-                __header.more_fragments_flag = 1;
+                fragment.header.len = current_payload_size;
+                fragment.header.fragment_sequence = i;
+                fragment.header.more_fragments_flag = 1;
                 if (i == fragments_num - 1) {
-                    __header.more_fragments_flag = 0;
+                    fragment.header.more_fragments_flag = 0;
                 }
-                __header.slot = slot;
+                fragment.header.slot = slot;
 
-                memcpy(output.data() + offset, &__header,
-                       sizeof(FragmentHeader));
-                offset += sizeof(FragmentHeader);
+                memcpy(output.data() + offset, &fragment.header,
+                       sizeof(__FragmentHeader));
+                offset += sizeof(__FragmentHeader);
 
                 memcpy(output.data() + offset, payload + i * payload_size,
                        current_payload_size);
@@ -207,12 +208,61 @@ class ChronoLink {
             output.resize(offset);
         }
 
-        void parse()
-        {
-            
-        }
+        bool parse(std::vector<uint8_t>& recv_buf,
+                   CompleteFrame& complete_frame) {
+            // Fragment fragment;
+            std::vector<uint8_t> payload;
+            payload.reserve(payload_size);
+            // fragment.padding.reserve(payload_size);
 
-        std::vector<uint8_t, OSallocator<uint8_t>> output;
+            size_t min_packet_size = 8;
+            size_t index = 0;
+
+            // Clear buffer befor assembly
+            complete_frame.data.clear();
+
+            while (index + min_packet_size <= recv_buf.size()) {
+                // 检查起始标志 0xAB 0xCD
+                if (recv_buf[index] != 0xAB || recv_buf[index + 1] != 0xCD) {
+                    Log.w("Invalid header delimiter at index %d\n", index);
+                    ++index;    // 跳过无效字节，继续检查下一个可能的帧
+                    continue;
+                }
+
+                // Parse header
+                fragment.header.delimiter[0] = recv_buf[index++];
+                fragment.header.delimiter[1] = recv_buf[index++];
+
+                // Parse slot, type, fragment_sequence, and more_fragments_flag
+                fragment.header.slot = recv_buf[index++];
+                fragment.header.type = recv_buf[index++];
+                fragment.header.fragment_sequence = recv_buf[index++];
+                fragment.header.more_fragments_flag = recv_buf[index++];
+
+                // Parse length (little-endian)
+                fragment.header.len = static_cast<uint16_t>(
+                    recv_buf[index] | (recv_buf[index + 1] << 8));
+                index += 2;
+
+                // Parse padding (data field)
+                fragment.payload.assign(
+                    recv_buf.begin() + index,
+                    recv_buf.begin() + index + fragment.header.len);
+
+                complete_frame.data.insert(complete_frame.data.end(),
+                                           fragment.payload.begin(),
+                                           fragment.payload.end());
+
+                // Check if this is the last fragment
+                if (fragment.header.more_fragments_flag == 0) {
+                    complete_frame.slot = fragment.header.slot;
+                    complete_frame.type = fragment.header.type;
+                    return true;
+                }
+            }
+            return false;
+        }
+        std::vector<uint8_t> output;
 
        private:
 #pragma pack(push, 1)    // 设置按 1 字节对齐
@@ -223,9 +273,14 @@ class ChronoLink {
             uint8_t fragment_sequence;
             uint8_t more_fragments_flag;
             uint16_t len;
-        } FragmentHeader;
+        } __FragmentHeader;
+
+        typedef struct {
+            __FragmentHeader header;
+            std::vector<uint8_t> payload;
+        } __Fragment;
 #pragma pack(pop)    // 恢复原来的对齐方式
-        FragmentHeader __header;
+        __Fragment fragment;
         size_t __remain() { return output.capacity() - output.size(); }
     };
 
