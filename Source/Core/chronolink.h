@@ -1,7 +1,12 @@
 #include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <ostream>
 #include <variant>
 #include <vector>
+
+#include "bsp_allocate.hpp"
 
 struct DeviceStatusInfo {
     // Color sensor matching status: 0 - color not matching or no sensor; 1 -
@@ -79,8 +84,8 @@ class ChronoLink {
     };
 
     struct DeviceStatus {
-        uint16_t colorSensor : 1;    // 颜色传感器匹配状态
-        uint16_t sleeveLimit : 1;    // 限位开关状态
+        uint16_t colorSensor : 1;                  // 颜色传感器匹配状态
+        uint16_t sleeveLimit : 1;                  // 限位开关状态
         uint16_t electromagnetUnlockButton : 1;    // 电磁锁解锁按钮状态
         uint16_t batteryLowPowerAlarm : 1;         // 电池低电量报警
         uint16_t pressureSensor : 1;               // 气压传感器状态
@@ -100,9 +105,9 @@ class ChronoLink {
     };
 
     struct InstructionReply {
-        uint8_t type;                 // 指令类型 (0x00, 0x01, 0x02)
-        uint8_t ackStatus;            // 应答状态 (0x00: ACK, 0x01: ERROR)
-        std::variant<DeviceConfig,    // 设备配置
+        uint8_t type;                     // 指令类型 (0x00, 0x01, 0x02)
+        uint8_t ackStatus;                // 应答状态 (0x00: ACK, 0x01: ERROR)
+        std::variant<DeviceConfig,        // 设备配置
                      DataReplyContext,    // 数据回复
                      DeviceUnlock>
             context;
@@ -152,6 +157,77 @@ class ChronoLink {
                    uint8_t ackStatus,
                    const std::variant<DeviceConfig, DataReplyContext,
                                       DeviceUnlock>& context);
+    template <type T>
+    class FrameBase {
+       public:
+        FrameBase(size_t reserve = 100) {
+            output.reserve(reserve);
+            __header.delimiter = {0xAB, 0xCD};
+            __header.slot = 0;
+            __header.type = T;
+            __header.fragment_sequence = 0;
+        }
+        void pack(uint8_t slot, uint8_t* payload, uint16_t payload_len) {
+            size_t offset = 0;
+            uint8_t fragments_num =
+                (payload_len + payload_size - 1) / payload_size;
+
+            // 预留空间
+            if (output.capacity() <
+                sizeof(FragmentHeader) * fragments_num + payload_len) {
+                output.reserve(sizeof(FragmentHeader) * fragments_num +
+                               payload_len);
+            }
+
+            output.clear();
+
+            for (uint8_t i = 0; i < fragments_num; i++) {
+                size_t current_payload_size = (i == fragments_num - 1)
+                                                  ? (payload_len % payload_size)
+                                                  : payload_size;
+                if (current_payload_size == 0) {
+                    current_payload_size = payload_size;
+                }
+                __header.len = current_payload_size;
+                __header.fragment_sequence = i;
+                __header.more_fragments_flag = 1;
+                if (i == fragments_num - 1) {
+                    __header.more_fragments_flag = 0;
+                }
+                __header.slot = slot;
+
+                memcpy(output.data() + offset, &__header,
+                       sizeof(FragmentHeader));
+                offset += sizeof(FragmentHeader);
+
+                memcpy(output.data() + offset, payload + i * payload_size,
+                       current_payload_size);
+                offset += current_payload_size;
+            }
+            output.resize(offset);
+        }
+
+        void parse()
+        {
+            
+        }
+
+        std::vector<uint8_t, OSallocator<uint8_t>> output;
+
+       private:
+#pragma pack(push, 1)    // 设置按 1 字节对齐
+        typedef struct {
+            uint8_t delimiter[2];
+            uint8_t slot;
+            uint8_t type;
+            uint8_t fragment_sequence;
+            uint8_t more_fragments_flag;
+            uint16_t len;
+        } FragmentHeader;
+#pragma pack(pop)    // 恢复原来的对齐方式
+        FragmentHeader __header;
+        size_t __remain() { return output.capacity() - output.size(); }
+    };
 
    private:
     std::vector<uint8_t> receive_buffer;
