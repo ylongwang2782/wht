@@ -200,15 +200,15 @@ class ChronoLink {
     template <type frameType>
     class FrameBase {
        public:
-        FrameBase(size_t reserve = 100) {
-            output.reserve(reserve);
+        FrameBase() {
             fragment.header.delimiter[0] = 0xAB;
             fragment.header.delimiter[1] = 0xCD;
             fragment.header.slot = 0;
             fragment.header.type = frameType;
             fragment.header.fragment_sequence = 0;
         }
-        void pack(uint8_t slot, uint8_t* payload, uint16_t payload_len) {
+        void pack(uint8_t slot, uint8_t* payload, uint16_t payload_len,
+                  std::vector<uint8_t>& output) {
             size_t offset = 0;
             uint8_t fragments_num =
                 (payload_len + payload_size - 1) / payload_size;
@@ -302,7 +302,6 @@ class ChronoLink {
             }
             return false;
         }
-        std::vector<uint8_t> output;
 
        private:
 #pragma pack(push, 1)    // 设置按 1 字节对齐
@@ -321,7 +320,6 @@ class ChronoLink {
         } __Fragment;
 #pragma pack(pop)    // 恢复原来的对齐方式
         __Fragment fragment;
-        size_t __remain() { return output.capacity() - output.size(); }
     };
 
     class CommandFrameType : private FrameBase<COMMAND>, DeviceConfigType {
