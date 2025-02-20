@@ -182,7 +182,16 @@ class ChronoLink {
             output.insert(output.end(), p, p + sizeof(__NormalCfg));
             output.insert(output.end(), cfg.resNum.begin(), cfg.resNum.end());
         }
-        void prase() {}
+        void prase(std::vector<uint8_t>& input) {
+            uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
+            memcpy(p, input.data(), sizeof(__NormalCfg));
+            cfg.resNum.assign(input.begin() + sizeof(__NormalCfg), input.end());
+        }
+        void prase(uint8_t* input) {
+            uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
+            memcpy(p, input, sizeof(__NormalCfg));
+            cfg.resNum.assign(input + sizeof(__NormalCfg), input + sizeof(__NormalCfg) + cfg.resNum.size());
+        }
 
        private:
     };
