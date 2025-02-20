@@ -167,20 +167,24 @@ class ChronoLink {
             uint16_t startHarnessNum;    // 总线束数量
             uint8_t harnessNum;          // 线束检测数量
             uint8_t clipNum;             // 卡钉检测数量
-        } __NormalInfo;
+        } __NormalCfg;
         typedef struct {
-            __NormalInfo normalInfo;
+            __NormalCfg normalCfg;
             std::vector<uint8_t> resNum;    // 阻值检测索引列表
         } __DeviceConfig;
 #pragma pack(pop)    // 恢复原来的对齐方式
+        __DeviceConfig cfg;
         DeviceConfigType() {}
         ~DeviceConfigType() {}
 
-        void pack(std::vector<uint8_t>& output) {}
+        void pack(std::vector<uint8_t>& output) {
+            uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
+            output.insert(output.end(), p, p + sizeof(__NormalCfg));
+            output.insert(output.end(), cfg.resNum.begin(), cfg.resNum.end());
+        }
         void prase() {}
 
        private:
-        __DeviceConfig deviceConfig;
     };
 
     template <type frameType>
