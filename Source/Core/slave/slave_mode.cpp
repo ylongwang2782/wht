@@ -60,7 +60,7 @@ class UsartDMATask : public TaskClassS<1024> {
 
    private:
     ChronoLink::Fragment frame_fragment;
-    static ChronoLink::DeviceConfig &config;
+    static ChronoLink::DeviceConfig config;
     static void frameSorting(ChronoLink::CompleteFrame complete_frame) {
         std::vector<ChronoLink::DevConf> device_configs;
         ChronoLink::Instruction instruction;
@@ -149,7 +149,7 @@ class MyTimer {
 
     void myTimerCallback() {
         // 这里是你希望在定时器触发时执行的代码
-        printf("Timer triggered!\n");
+        // printf("Timer triggered!\n");
     }
 
    private:
