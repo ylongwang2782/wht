@@ -173,20 +173,14 @@ class ChronoLink {
             std::vector<uint8_t> resNum;    // 阻值检测索引列表
         } __DeviceConfig;
 #pragma pack(pop)    // 恢复原来的对齐方式
-        DeviceConfigType(){}
-        ~DeviceConfigType(){}
+        DeviceConfigType() {}
+        ~DeviceConfigType() {}
 
-        void pack(std::vector<uint8_t>& output) {
-
-                     
-                  }
-        void prase()
-        {
-
-        }
+        void pack(std::vector<uint8_t>& output) {}
+        void prase() {}
 
        private:
-       __DeviceConfig deviceConfig;
+        __DeviceConfig deviceConfig;
     };
 
     template <type frameType>
@@ -208,8 +202,8 @@ class ChronoLink {
             // 预留空间
             if (output.capacity() <
                 sizeof(__FragmentHeader) * fragments_num + payload_len) {
-                output.reserve(sizeof(__FragmentHeader) * fragments_num +
-                               payload_len);
+                output.resize(sizeof(__FragmentHeader) * fragments_num +
+                              payload_len);
             }
 
             output.clear();
@@ -228,7 +222,7 @@ class ChronoLink {
                     fragment.header.more_fragments_flag = 0;
                 }
                 fragment.header.slot = slot;
-            
+
                 memcpy(output.data() + offset, &fragment.header,
                        sizeof(__FragmentHeader));
                 offset += sizeof(__FragmentHeader);
@@ -237,7 +231,6 @@ class ChronoLink {
                        current_payload_size);
                 offset += current_payload_size;
             }
-            output.resize(offset);
         }
 
         bool parse(std::vector<uint8_t>& recv_buf,
