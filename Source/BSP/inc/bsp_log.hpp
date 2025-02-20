@@ -16,7 +16,7 @@ extern "C" {
 class Logger {
    public:
     // 日志级别枚举
-    enum class Level { VERBOSE, DEBUGL, INFO, WARN, ERROR };
+    enum class Level { VERBOSE, DEBUGL, INFO, WARN, ERROR, RAW };
 
     // 获取单例实例
     static Logger &getInstance() {
@@ -39,13 +39,19 @@ class Logger {
         // 格式化日志内容
         vsnprintf(buffer, sizeof(buffer), format, args);
 
-        // 添加级别前缀
-        char finalMessage[bufferSize + 8];
-        snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
-                 levelStr[static_cast<int>(level)], buffer);
-
-        // 输出日志
-        output(level, finalMessage);
+        if (level != Level::RAW) {
+            // 添加级别前缀
+            char finalMessage[bufferSize + 8];
+            snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
+                     levelStr[static_cast<int>(level)], buffer);
+            // 输出日志
+            output(level, finalMessage);
+        } else {
+            char finalMessage[bufferSize];
+            snprintf(finalMessage, sizeof(finalMessage), "%s\n", buffer);
+            // 输出日志
+            output(level, finalMessage);
+        }
     }
 
     // 快捷方法：VERBOSE 级别日志
@@ -85,6 +91,13 @@ class Logger {
         va_list args;
         va_start(args, format);
         log(Level::ERROR, format, args);
+        va_end(args);
+    }
+
+    void r(const char *format, ...) {
+        va_list args;
+        va_start(args, format);
+        log(Level::RAW, format, args);
         va_end(args);
     }
 
