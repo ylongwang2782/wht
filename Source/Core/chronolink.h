@@ -190,7 +190,8 @@ class ChronoLink {
         void prase(uint8_t* input) {
             uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
             memcpy(p, input, sizeof(__NormalCfg));
-            cfg.resNum.assign(input + sizeof(__NormalCfg), input + sizeof(__NormalCfg) + cfg.resNum.size());
+            cfg.resNum.assign(input + sizeof(__NormalCfg),
+                              input + sizeof(__NormalCfg) + cfg.resNum.size());
         }
 
        private:
@@ -321,6 +322,22 @@ class ChronoLink {
 #pragma pack(pop)    // 恢复原来的对齐方式
         __Fragment fragment;
         size_t __remain() { return output.capacity() - output.size(); }
+    };
+
+    class CommandFrameType : private FrameBase<COMMAND>, DeviceConfigType {
+       public:
+#pragma pack(push, 1)    // 设置按 1 字节对齐
+
+        typedef struct {
+            uint8_t type;           // 指令类型
+            uint8_t targetID[4];    // 目标 ID 列表
+        } InstructionHeader;
+#pragma pack(pop)    // 恢复原来的对齐方式
+        using DeviceConfig = __DeviceConfig;
+        CommandFrameType() {}
+        ~CommandFrameType() {}
+
+       private:
     };
 
    private:
