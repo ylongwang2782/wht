@@ -206,7 +206,6 @@ class ChronoLink {
     class DeviceUnlockType {
        public:
     };
-
     template <type frameType>
     class FrameBase {
        public:
@@ -222,16 +221,12 @@ class ChronoLink {
             size_t offset = 0;
             uint8_t fragments_num =
                 (payload_len + payload_size - 1) / payload_size;
-
             // 预留空间
             if (output.capacity() <
                 sizeof(__FragmentHeader) * fragments_num + payload_len) {
                 output.resize(sizeof(__FragmentHeader) * fragments_num +
                               payload_len);
             }
-
-            output.clear();
-
             for (uint8_t i = 0; i < fragments_num; i++) {
                 size_t current_payload_size = (i == fragments_num - 1)
                                                   ? (payload_len % payload_size)
@@ -367,11 +362,6 @@ class ChronoLink {
                 // 复制指令内容
                 this->DeviceConfigType::pack(payload +
                                              sizeof(InstructionHeader));
-                                             
-                Logger &log = Logger::getInstance();
-                for(uint8_t i = 0; i < sizeof(payload); i++){
-                    log.r("%X ", payload[i]);
-                }
                 // 组包
                 this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
                                                output);
