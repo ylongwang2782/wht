@@ -33,7 +33,7 @@ UartConfig uart1Conf(usart1_info);
 Uart uart1(uart1Conf);
 
 ChronoLink chronoLink;
-extern Harness harness;
+Harness harness(2,4);
 
 class UsartDMATask : public TaskClassS<1024> {
    public:
@@ -68,6 +68,7 @@ class UsartDMATask : public TaskClassS<1024> {
         switch (complete_frame.type) {
             case ChronoLink::SYNC:
                 Log.d("Frame: Sync");
+                harness.run();
                 break;
             case ChronoLink::COMMAND:
                 Log.d("Frame: Instuction");
@@ -109,8 +110,8 @@ class UsartDMATask : public TaskClassS<1024> {
                                          .accessory1 = 1,
                                          .accessory2 = 1,
                                          .reserved = 1},
-                        .harnessLength = 2,
-                        .harnessData = {0x10, 0x20},
+                        .harnessLength = harness.data.getSize(),
+                        .harnessData = harness.data.flatten(),
                         .clipLength = 1,
                         .clipData = {0x30}};
 
@@ -198,5 +199,6 @@ MyTimer myTimer;
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
     harness.init();
+    
     return 0;
 }
