@@ -176,12 +176,18 @@ class ChronoLink {
         __DeviceConfig cfg;
         DeviceConfigType() {}
         ~DeviceConfigType() {}
-
         void pack(std::vector<uint8_t>& output) {
             uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
             output.insert(output.end(), p, p + sizeof(__NormalCfg));
             output.insert(output.end(), cfg.resNum.begin(), cfg.resNum.end());
         }
+        void pack(uint8_t* output) {
+            uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
+            memcpy(output, p, sizeof(__NormalCfg));
+            memcpy(output + sizeof(__NormalCfg), cfg.resNum.data(),
+                   cfg.resNum.size());
+        }
+
         void prase(std::vector<uint8_t>& input) {
             uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
             memcpy(p, input.data(), sizeof(__NormalCfg));
@@ -195,6 +201,10 @@ class ChronoLink {
         }
 
        private:
+    };
+
+    class DeviceUnlockType {
+       public:
     };
 
     template <type frameType>
@@ -322,7 +332,11 @@ class ChronoLink {
         __Fragment fragment;
     };
 
-    class CommandFrameType : private FrameBase<COMMAND>, DeviceConfigType {
+    template <cmdType __cmdType>
+    class CommandFrameType
+        : private FrameBase<COMMAND>,
+          public std::conditional<__cmdType == DEV_CONF, DeviceConfigType,
+                                  void>::type {
        public:
 #pragma pack(push, 1)    // 设置按 1 字节对齐
 
@@ -330,10 +344,59 @@ class ChronoLink {
             uint8_t type;           // 指令类型
             uint8_t targetID[4];    // 目标 ID 列表
         } InstructionHeader;
+
 #pragma pack(pop)    // 恢复原来的对齐方式
-        using DeviceConfig = __DeviceConfig;
+        using DeviceConfig = DeviceConfigType::__DeviceConfig;
         CommandFrameType() {}
         ~CommandFrameType() {}
+
+        void pack(uint8_t* target_id, std::vector<uint8_t>& output) {
+            if constexpr (__cmdType == DEV_CONF) {
+                uint8_t payload[sizeof(InstructionHeader) +
+                                sizeof(DeviceConfigType::__NormalCfg) +
+                                this->cfg.resNum.size()];
+
+                // 组成指令帧头
+                InstructionHeader header;
+                header.type = DEV_CONF;
+                memcpy(header.targetID, target_id, sizeof(header.targetID));
+
+                // 复制指令帧头
+                memcpy(payload, &header, sizeof(InstructionHeader));
+
+                // 复制指令内容
+                this->DeviceConfigType::pack(payload +
+                                             sizeof(InstructionHeader));
+                                             
+                Logger &log = Logger::getInstance();
+                for(uint8_t i = 0; i < sizeof(payload); i++){
+                    log.r("%X ", payload[i]);
+                }
+                // 组包
+                this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
+                                               output);
+            }
+        }
+
+        // template <cmdType T = __cmdType>
+        // auto pack(uint8_t* target_id, std::vector<uint8_t>& output)
+        //     -> std::enable_if_t<std::is_same_v<T, DEV_CONF>, void> {
+        //     // if (std::holds_alternative<DeviceConfig>(cmd)) {
+        //     //     uint8_t payload[sizeof(InstructionHeader) +
+        //     //                     sizeof(__NormalCfg) +
+        //     // std::get<DeviceConfig>(cmd).resNum.size()];
+        //     //     // 组成帧头
+        //     //     InstructionHeader header;
+        //     //     header.type = DEV_CONF;
+        //     //     memcpy(header.targetID, target_id, 4);
+
+        //     //     // 复制指令帧头
+        //     //     memcpy(payload, &header, sizeof(InstructionHeader));
+
+        //     //     // DeviceConfigType::pack(payload +
+        //     //     sizeof(InstructionHeader));
+        //     // }
+        // }
 
        private:
     };
