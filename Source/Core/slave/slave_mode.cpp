@@ -181,7 +181,7 @@ class LedBlinkTask : public TaskClassS<256> {
 
     void task() override {
         Logger &log = Logger::getInstance();
-        GPIO led(GPIO::Port::C, GPIO::Pin::PIN_6, GPIO::Mode::OUTPUT);
+        LED led(GPIO::Port::C, GPIO::Pin::PIN_6);
 
         for (;;) {
             led.toggle();
