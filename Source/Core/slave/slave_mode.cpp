@@ -10,6 +10,7 @@
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uid.hpp"
+#include "bsp_gpio.hpp"
 #include "chronolink.h"
 #include "harness.h"
 #include "mode_entry.h"
@@ -180,10 +181,10 @@ class LedBlinkTask : public TaskClassS<256> {
 
     void task() override {
         Logger &log = Logger::getInstance();
-        LED led0(GPIOC, GPIO_PIN_6);
+        GPIO led(GPIO::Port::C, GPIO::Pin::PIN_6, GPIO::Mode::OUTPUT);
 
         for (;;) {
-            led0.toggle();
+            led.toggle();
             TaskBase::delay(500);
         }
     }
