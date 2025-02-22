@@ -478,13 +478,31 @@ class CommandFrameType
             this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
                                            output);
         }
+        if constexpr (__cmdType == DEV_UNLOCK) {
+            uint8_t payload[sizeof(Header) +
+                            sizeof(DeviceUnlockType::__DeviceUnlock)];
+            // 组成指令帧头
+            header.type = DEV_UNLOCK;
+            memcpy(header.targetID, target_id, sizeof(header.targetID));
+
+            // 复制指令帧头
+            memcpy(payload, &header, sizeof(Header));
+
+            // 复制指令内容
+            this->DeviceUnlockType::pack(payload + sizeof(Header));
+            // 组包
+            this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
+                                           output);
+        }
     }
 
     void prase(std::vector<uint8_t>& rawData) {
+        rawData.erase(rawData.begin(), rawData.begin() + sizeof(Header));
         if constexpr (__cmdType == DEV_CONF) {
-            rawData.erase(rawData.begin(),
-                          rawData.begin() + sizeof(Header));
             this->DeviceConfigType::prase(rawData);
+        }
+        if constexpr (__cmdType == DEV_UNLOCK) {
+            this->DeviceUnlockType::prase(rawData);
         }
     }
 
@@ -522,26 +540,26 @@ class DataReply {
         uint16_t reserved : 7;                     // 保留字段
     };
 #pragma pack(pop)    // 恢复原来的对齐方式
-DeviceStatus status;
-uint8_t harnessLength;    // 线束数据字段长度
-std::vector<uint8_t> harnessData;
-uint8_t clipLength;    // 卡钉数据字段长度
-std::vector<uint8_t> clipData;
+    DeviceStatus status;
+    uint8_t harnessLength;    // 线束数据字段长度
+    std::vector<uint8_t> harnessData;
+    uint8_t clipLength;    // 卡钉数据字段长度
+    std::vector<uint8_t> clipData;
 
-void pack(uint8_t* output){
-    uint16_t offset = 0;
-    uint8_t* p = reinterpret_cast<uint8_t*>(&status);
-    memcpy(output + offset, p, sizeof(DeviceStatus));
-    offset += sizeof(DeviceStatus);
-    output[offset] = harnessLength;
-    offset++;
-    memcpy(output + offset, harnessData.data(), harnessData.size());
-    offset += harnessData.size();
-    output[offset] = clipLength;
-    offset++;
-    memcpy(output + offset, clipData.data(), clipData.size());
-    offset += clipData.size();
-}
+    void pack(uint8_t* output) {
+        uint16_t offset = 0;
+        uint8_t* p = reinterpret_cast<uint8_t*>(&status);
+        memcpy(output + offset, p, sizeof(DeviceStatus));
+        offset += sizeof(DeviceStatus);
+        output[offset] = harnessLength;
+        offset++;
+        memcpy(output + offset, harnessData.data(), harnessData.size());
+        offset += harnessData.size();
+        output[offset] = clipLength;
+        offset++;
+        memcpy(output + offset, clipData.data(), clipData.size());
+        offset += clipData.size();
+    }
 };
 
 class UnlockReply {
@@ -551,15 +569,16 @@ class UnlockReply {
         uint8_t lockStatus;
     };
 #pragma pack(pop)    // 恢复原来的对齐方式
-
 };
 
-template<cmdType __cmdType>
-class ReplyFrameType : private FrameBase<REPLY> ,
-private ReplyHeader,
-public std::conditional<__cmdType == DEV_CONF, void,
-typename std::conditional<__cmdType == DATA_REQ, DataReply,
-                              UnlockReply>::type>::type {
+template <cmdType __cmdType>
+class ReplyFrameType
+    : private FrameBase<REPLY>,
+      private ReplyHeader,
+      public std::conditional<
+          __cmdType == DEV_CONF, void,
+          typename std::conditional<__cmdType == DATA_REQ, DataReply,
+                                    UnlockReply>::type>::type {
    public:
     ReplyFrameType() {}
     ~ReplyFrameType() {}
