@@ -317,7 +317,7 @@ class ChronoLink {
                         if (__header_index < sizeof(__FragmentHeader)) {
                             __header_buffer[__header_index++] = __rawdata;
                         }
-                        if(__header_index == sizeof(__FragmentHeader)) {
+                        if (__header_index == sizeof(__FragmentHeader)) {
                             memcpy(&fragment.header, __header_buffer,
                                    sizeof(__FragmentHeader));
                             __status = PARSE_PAYLOAD;
@@ -401,20 +401,29 @@ class ChronoLink {
        private:
     };
 
+    class InstructionType {
+       public:
+#pragma pack(push, 1)    // 设置按 1 字节对齐
+        typedef struct {
+            cmdType type;           // 指令类型
+            uint8_t targetID[4];    // 目标 ID 列表
+        } InstructionHeader;
+#pragma pack(pop)    // 恢复原来的对齐方式
+        void get(std::vector<uint8_t>& rawData)
+        {
+            memcpy(&header, rawData.data(), sizeof(InstructionHeader));
+            
+        }
+        InstructionHeader header;
+    };
+
     template <cmdType __cmdType>
     class CommandFrameType
-        : private FrameBase<COMMAND>,
+        : public InstructionType,
+          private FrameBase<COMMAND>,
           public std::conditional<__cmdType == DEV_CONF, DeviceConfigType,
                                   DeviceUnlockType>::type {
        public:
-#pragma pack(push, 1)    // 设置按 1 字节对齐
-
-        typedef struct {
-            uint8_t type;           // 指令类型
-            uint8_t targetID[4];    // 目标 ID 列表
-        } InstructionHeader;
-
-#pragma pack(pop)    // 恢复原来的对齐方式
         using DeviceConfig = DeviceConfigType::__DeviceConfig;
         CommandFrameType() {}
         ~CommandFrameType() {}
@@ -424,7 +433,6 @@ class ChronoLink {
                                 sizeof(DeviceConfigType::__NormalCfg) +
                                 this->cfg.resNum.size()];
                 // 组成指令帧头
-                InstructionHeader header;
                 header.type = DEV_CONF;
                 memcpy(header.targetID, target_id, sizeof(header.targetID));
 
@@ -442,8 +450,9 @@ class ChronoLink {
 
         void prase(std::vector<uint8_t>& rawData) {
             if constexpr (__cmdType == DEV_CONF) {
+                rawData.erase(rawData.begin(),
+                              rawData.begin() + sizeof(InstructionHeader));
                 this->DeviceConfigType::prase(rawData);
-                CompleteFrame complete_frame;
             }
         }
 
@@ -460,3 +469,4 @@ class ChronoLink {
     status parseDeviceConfigInfo(const std::vector<uint8_t>& data,
                                  std::vector<DevConf>& device_configs);
 };
+
