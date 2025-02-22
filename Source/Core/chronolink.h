@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-#include "bsp_allocate.hpp"
+#include "QueueCPP.h"
 #include "bsp_log.hpp"
 struct DeviceStatusInfo {
     // Color sensor matching status: 0 - color not matching or no sensor; 1 -
@@ -48,7 +48,7 @@ struct CommandFrame {
 
 class ChronoLink {
    public:
-    enum type : uint8_t { SYNC, COMMAND, REPLY };
+    enum type : uint8_t { SYNC, COMMAND, REPLY, UNKNOWN };
 
     enum cmdType : uint8_t { DEV_CONF, DATA_REQ, DEV_UNLOCK };
 
@@ -206,12 +206,13 @@ class ChronoLink {
     class DeviceUnlockType {
        public:
     };
-    template <type frameType>
+    template <type frameType = UNKNOWN>
     class FrameBase {
        public:
+        const uint8_t delimiter[2] = {0xAB, 0xCD};
         FrameBase() {
-            fragment.header.delimiter[0] = 0xAB;
-            fragment.header.delimiter[1] = 0xCD;
+            fragment.header.delimiter[0] = delimiter[0];
+            fragment.header.delimiter[1] = delimiter[1];
             fragment.header.slot = 0;
             fragment.header.type = frameType;
             fragment.header.fragment_sequence = 0;
@@ -252,63 +253,8 @@ class ChronoLink {
             }
         }
 
-        bool parse(std::vector<uint8_t>& recv_buf,
-                   CompleteFrame& complete_frame) {
-            // Fragment fragment;
-            std::vector<uint8_t> payload;
-            payload.reserve(payload_size);
-            // fragment.padding.reserve(payload_size);
-
-            size_t min_packet_size = 8;
-            size_t index = 0;
-
-            // Clear buffer befor assembly
-            complete_frame.data.clear();
-
-            while (index + min_packet_size <= recv_buf.size()) {
-                // 检查起始标志 0xAB 0xCD
-                if (recv_buf[index] != 0xAB || recv_buf[index + 1] != 0xCD) {
-                    Log.w("Invalid header delimiter at index %d\n", index);
-                    ++index;    // 跳过无效字节，继续检查下一个可能的帧
-                    continue;
-                }
-
-                // Parse header
-                fragment.header.delimiter[0] = recv_buf[index++];
-                fragment.header.delimiter[1] = recv_buf[index++];
-
-                // Parse slot, type, fragment_sequence, and more_fragments_flag
-                fragment.header.slot = recv_buf[index++];
-                fragment.header.type = recv_buf[index++];
-                fragment.header.fragment_sequence = recv_buf[index++];
-                fragment.header.more_fragments_flag = recv_buf[index++];
-
-                // Parse length (little-endian)
-                fragment.header.len = static_cast<uint16_t>(
-                    recv_buf[index] | (recv_buf[index + 1] << 8));
-                index += 2;
-
-                // Parse padding (data field)
-                fragment.payload.assign(
-                    recv_buf.begin() + index,
-                    recv_buf.begin() + index + fragment.header.len);
-
-                complete_frame.data.insert(complete_frame.data.end(),
-                                           fragment.payload.begin(),
-                                           fragment.payload.end());
-
-                // Check if this is the last fragment
-                if (fragment.header.more_fragments_flag == 0) {
-                    complete_frame.slot = fragment.header.slot;
-                    complete_frame.type = fragment.header.type;
-                    return true;
-                }
-                index += fragment.header.len;
-            }
-            return false;
-        }
-
-       private:
+        // bool parse(std::vector<uint8_t>& recv_buf,
+        //            CompleteFrame& complete_frame) {}
 #pragma pack(push, 1)    // 设置按 1 字节对齐
         typedef struct {
             uint8_t delimiter[2];
@@ -324,14 +270,142 @@ class ChronoLink {
             std::vector<uint8_t> payload;
         } __Fragment;
 #pragma pack(pop)    // 恢复原来的对齐方式
+       public:
         __Fragment fragment;
+    };
+
+    class CompleteFrameType : private FrameBase<UNKNOWN> {
+       public:
+        CompleteFrameType() {}
+        ~CompleteFrameType() {}
+        uint8_t slot;
+        uint8_t type;
+        std::vector<uint8_t> data;
+
+       private:
+        enum status : uint8_t { FIND_DELIMITER, PARSE_HEADER, PARSE_PAYLOAD };
+        status __status = FIND_DELIMITER;
+        uint8_t __header_buffer[sizeof(__FragmentHeader)];
+        uint16_t __header_index = 0;
+        uint16_t __payload_index = 0;
+        bool __get_complete_frame = false;
+
+       public:
+        bool assemble(Queue<uint8_t>& rawData) {
+            size_t min_packet_size = 8;
+            size_t index = 0;
+            uint8_t __rawdata;
+            while (rawData.pop(__rawdata, 0)) {
+                switch (__status) {
+                    case FIND_DELIMITER:
+                        __get_complete_frame = false;
+                        if (__rawdata == delimiter[__header_index]) {
+                            __header_buffer[__header_index] = __rawdata;
+                            __header_index++;
+                        } else {
+                            // 重置
+                            __header_index = 0;
+                        }
+
+                        if (__header_index == sizeof(delimiter)) {
+                            // 检测到完整帧分隔符
+                            __status = PARSE_HEADER;
+                        }
+
+                        break;
+                    case PARSE_HEADER:
+                        if (__header_index < sizeof(__FragmentHeader)) {
+                            __header_buffer[__header_index++] = __rawdata;
+                        }
+                        if(__header_index == sizeof(__FragmentHeader)) {
+                            memcpy(&fragment.header, __header_buffer,
+                                   sizeof(__FragmentHeader));
+                            __status = PARSE_PAYLOAD;
+                            __header_index = 0;
+
+                            // 为接收实际负载数据做准备
+                            __payload_index = 0;
+                            data.clear();
+                        }
+                        break;
+                    case PARSE_PAYLOAD:
+                        if (__payload_index < fragment.header.len) {
+                            data.push_back(__rawdata);
+                            __payload_index++;
+                        }
+                        if (__payload_index == fragment.header.len) {
+                            // 检测到完整单包
+                            __status = FIND_DELIMITER;
+                            __payload_index = 0;
+                            if (fragment.header.more_fragments_flag == 0) {
+                                // 组包完成
+                                slot = fragment.header.slot;
+                                type = fragment.header.type;
+                                __get_complete_frame = true;
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return __get_complete_frame;
+        }
+        bool assemble(std::vector<uint8_t>& recv_buf) {
+            size_t min_packet_size = 8;
+            size_t index = 0;
+
+            while (index + min_packet_size <= recv_buf.size()) {
+                // 检查起始标志 0xAB 0xCD
+                if (recv_buf[index] != 0xAB || recv_buf[index + 1] != 0xCD) {
+                    Log.w("Invalid header delimiter at index %d\n", index);
+                    ++index;    // 跳过无效字节，继续检查下一个可能的帧
+                    continue;
+                }
+
+                // Parse header
+                fragment.header.delimiter[0] = recv_buf[index++];
+                fragment.header.delimiter[1] = recv_buf[index++];
+
+                // Parse slot, type, fragment_sequence, and
+                // more_fragments_flag
+                fragment.header.slot = recv_buf[index++];
+                fragment.header.type = recv_buf[index++];
+                fragment.header.fragment_sequence = recv_buf[index++];
+                fragment.header.more_fragments_flag = recv_buf[index++];
+
+                // Parse length (little-endian)
+                fragment.header.len = static_cast<uint16_t>(
+                    recv_buf[index] | (recv_buf[index + 1] << 8));
+                index += 2;
+
+                // Parse padding (data field)
+                fragment.payload.assign(
+                    recv_buf.begin() + index,
+                    recv_buf.begin() + index + fragment.header.len);
+
+                data.insert(data.end(), fragment.payload.begin(),
+                            fragment.payload.end());
+
+                // Check if this is the last fragment
+                if (fragment.header.more_fragments_flag == 0) {
+                    slot = fragment.header.slot;
+                    type = fragment.header.type;
+                    return true;
+                }
+                index += fragment.header.len;
+            }
+            return false;
+        }
+
+       private:
     };
 
     template <cmdType __cmdType>
     class CommandFrameType
         : private FrameBase<COMMAND>,
           public std::conditional<__cmdType == DEV_CONF, DeviceConfigType,
-                                  void>::type {
+                                  DeviceUnlockType>::type {
        public:
 #pragma pack(push, 1)    // 设置按 1 字节对齐
 
@@ -344,13 +418,11 @@ class ChronoLink {
         using DeviceConfig = DeviceConfigType::__DeviceConfig;
         CommandFrameType() {}
         ~CommandFrameType() {}
-
         void pack(uint8_t* target_id, std::vector<uint8_t>& output) {
             if constexpr (__cmdType == DEV_CONF) {
                 uint8_t payload[sizeof(InstructionHeader) +
                                 sizeof(DeviceConfigType::__NormalCfg) +
                                 this->cfg.resNum.size()];
-
                 // 组成指令帧头
                 InstructionHeader header;
                 header.type = DEV_CONF;
@@ -368,25 +440,12 @@ class ChronoLink {
             }
         }
 
-        // template <cmdType T = __cmdType>
-        // auto pack(uint8_t* target_id, std::vector<uint8_t>& output)
-        //     -> std::enable_if_t<std::is_same_v<T, DEV_CONF>, void> {
-        //     // if (std::holds_alternative<DeviceConfig>(cmd)) {
-        //     //     uint8_t payload[sizeof(InstructionHeader) +
-        //     //                     sizeof(__NormalCfg) +
-        //     // std::get<DeviceConfig>(cmd).resNum.size()];
-        //     //     // 组成帧头
-        //     //     InstructionHeader header;
-        //     //     header.type = DEV_CONF;
-        //     //     memcpy(header.targetID, target_id, 4);
-
-        //     //     // 复制指令帧头
-        //     //     memcpy(payload, &header, sizeof(InstructionHeader));
-
-        //     //     // DeviceConfigType::pack(payload +
-        //     //     sizeof(InstructionHeader));
-        //     // }
-        // }
+        void prase(std::vector<uint8_t>& rawData) {
+            if constexpr (__cmdType == DEV_CONF) {
+                this->DeviceConfigType::prase(rawData);
+                CompleteFrame complete_frame;
+            }
+        }
 
        private:
     };
