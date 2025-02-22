@@ -48,9 +48,11 @@ class Logger {
             output(level, finalMessage);
         } else {
             char finalMessage[bufferSize];
-            snprintf(finalMessage, sizeof(finalMessage), "%s\n", buffer);
-            // 输出日志
-            output(level, finalMessage);
+            // snprintf(finalMessage, sizeof(finalMessage), buffer);
+            // // 输出日志
+            // output(level, finalMessage);
+            snprintf(finalMessage, sizeof(finalMessage), "%s", buffer);
+            output(level, buffer);
         }
     }
 
