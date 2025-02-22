@@ -1,3 +1,5 @@
+#ifndef CHRONOLINK_H
+#define CHRONOLINK_H
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -479,4 +481,6 @@ namespace CLink {
     };
     
 }
+
+#endif
 
