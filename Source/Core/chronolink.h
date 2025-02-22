@@ -158,6 +158,25 @@ class ChronoLink {
                    const std::variant<DeviceConfig, DataReplyContext,
                                       DeviceUnlock>& context);
 
+   private:
+    std::vector<uint8_t> receive_buffer;
+    static constexpr size_t payload_size = 242;
+    std::vector<uint8_t> serializeSyncFrame(
+        const std::vector<DevConf>& sync_frame);
+    std::vector<uint8_t> serializeCommandFrame(
+        const CommandFrame& command_frame);
+    status parseDeviceConfigInfo(const std::vector<uint8_t>& data,
+                                 std::vector<DevConf>& device_configs);
+};
+
+namespace CLink {
+    enum type : uint8_t { SYNC, COMMAND, REPLY, UNKNOWN };
+
+    enum cmdType : uint8_t { DEV_CONF, DATA_REQ, DEV_UNLOCK };
+
+    enum status : uint8_t { OK, ERROR };
+    static constexpr size_t payload_size = 242;
+    
     class DeviceConfigType {
        public:
 #pragma pack(push, 1)    // 设置按 1 字节对齐
@@ -458,15 +477,6 @@ class ChronoLink {
 
        private:
     };
-
-   private:
-    std::vector<uint8_t> receive_buffer;
-    static constexpr size_t payload_size = 242;
-    std::vector<uint8_t> serializeSyncFrame(
-        const std::vector<DevConf>& sync_frame);
-    std::vector<uint8_t> serializeCommandFrame(
-        const CommandFrame& command_frame);
-    status parseDeviceConfigInfo(const std::vector<uint8_t>& data,
-                                 std::vector<DevConf>& device_configs);
-};
+    
+}
 
