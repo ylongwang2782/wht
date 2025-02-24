@@ -560,6 +560,22 @@ class DataReply {
         memcpy(output + offset, clipData.data(), clipData.size());
         offset += clipData.size();
     }
+    void prase(std::vector<uint8_t>& rawData) {
+        uint16_t offset = 0;
+        uint8_t* p = reinterpret_cast<uint8_t*>(&status);
+        memcpy(p, rawData.data() + offset, sizeof(DeviceStatus));
+        offset += sizeof(DeviceStatus);
+        harnessLength = rawData[offset];
+        offset++;
+        harnessData.assign(rawData.begin() + offset,
+                           rawData.begin() + offset + harnessLength);
+        offset += harnessLength;
+        clipLength = rawData[offset];
+        offset++;
+        clipData.assign(rawData.begin() + offset,
+                        rawData.begin() + offset + clipLength);
+        offset += clipLength;
+    }
 };
 
 class UnlockReply {
@@ -569,6 +585,15 @@ class UnlockReply {
         uint8_t lockStatus;
     };
 #pragma pack(pop)    // 恢复原来的对齐方式
+    DeviceUnlock unlock;
+    void pack(uint8_t* output) {
+        uint8_t* p = reinterpret_cast<uint8_t*>(&unlock);
+        memcpy(output, p, sizeof(DeviceUnlock));
+    }
+    void prase(std::vector<uint8_t>& rawData) {
+        uint8_t* p = reinterpret_cast<uint8_t*>(&unlock);
+        memcpy(p, rawData.data(), sizeof(DeviceUnlock));
+    }
 };
 
 template <cmdType __cmdType>
@@ -582,5 +607,46 @@ class ReplyFrameType
    public:
     ReplyFrameType() {}
     ~ReplyFrameType() {}
+
+    void pack(uint8_t* target_id, status sta, std::vector<uint8_t>& output) {
+        if constexpr (__cmdType == DEV_CONF) {
+        }
+        if constexpr (__cmdType == DATA_REQ) {
+            uint8_t payload[sizeof(Header) + sizeof(DataReply::status) + 1 +
+                            DataReply::harnessData.size() + 1 +
+                            DataReply::clipData.size()];
+            // 组成指令帧头
+            header.type = DATA_REQ;
+            header.ackStatus = sta;
+            memcpy(payload, &header, sizeof(Header));
+            // 复制指令内容
+            this->DataReply::pack(payload + sizeof(Header));
+            // 组包
+            this->FrameBase<REPLY>::pack(0xAA, payload, sizeof(payload),
+                                         output);
+        }
+        if constexpr (__cmdType == DEV_UNLOCK) {
+            uint8_t payload[sizeof(Header) + sizeof(UnlockReply::DeviceUnlock)];
+            // 组成指令帧头
+            header.type = DEV_UNLOCK;
+            header.ackStatus = sta;
+            memcpy(payload, &header, sizeof(Header));
+            // 复制指令内容
+            this->UnlockReply::pack(payload + sizeof(Header));
+            // 组包
+            this->FrameBase<REPLY>::pack(0xAA, payload, sizeof(payload),
+                                         output);
+        }
+    }
+
+    void prase(std::vector<uint8_t>& rawData) {
+        rawData.erase(rawData.begin(), rawData.begin() + sizeof(Header));
+        if constexpr (__cmdType == DATA_REQ) {
+            this->DataReply::prase(rawData);
+        }
+        if constexpr (__cmdType == DEV_UNLOCK) {
+            this->UnlockReply::prase(rawData);
+        }
+    }
 };
 }    // namespace CLink
