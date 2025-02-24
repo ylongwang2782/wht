@@ -60,6 +60,7 @@ class UsartDMATask : public TaskClassS<1024> {
 
    private:
     ChronoLink::Fragment frame_fragment;
+    static ChronoLink::DeviceConfig config;
     static void frameSorting(ChronoLink::CompleteFrame complete_frame) {
         std::vector<ChronoLink::DevConf> device_configs;
         ChronoLink::Instruction instruction;
@@ -72,7 +73,7 @@ class UsartDMATask : public TaskClassS<1024> {
 
                 instruction = chronoLink.parseInstruction(complete_frame.data);
                 if (instruction.type == 0x00) {
-                    const ChronoLink::DeviceConfig &config =
+                    config =
                         std::get<ChronoLink::DeviceConfig>(instruction.context);
                     Log.d("Instruction: Device Config");
                     Log.d("timeslot: %d", config.timeslot);
@@ -97,13 +98,22 @@ class UsartDMATask : public TaskClassS<1024> {
                     Log.d("Instruction: Data Request");
 
                     ChronoLink::DataReplyContext dataReply = {
-                        .deviceStatus = {0x0001, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+                        .deviceStatus = {.colorSensor = 1,
+                                         .sleeveLimit = 1,
+                                         .electromagnetUnlockButton = 1,
+                                         .batteryLowPowerAlarm = 1,
+                                         .pressureSensor = 1,
+                                         .electromagneticLock1 = 1,
+                                         .electromagneticLock2 = 1,
+                                         .accessory1 = 1,
+                                         .accessory2 = 1,
+                                         .reserved = 1},
                         .harnessLength = 2,
                         .harnessData = {0x10, 0x20},
                         .clipLength = 1,
                         .clipData = {0x30}};
 
-                    chronoLink.sendReply(2, ChronoLink::REPLY,
+                    chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
                                          ChronoLink::DATA_REQ, ChronoLink::OK,
                                          dataReply);
 
@@ -115,7 +125,7 @@ class UsartDMATask : public TaskClassS<1024> {
 
                     ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 0};
 
-                    chronoLink.sendReply(2, ChronoLink::REPLY,
+                    chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
                                          ChronoLink::DEV_UNLOCK, ChronoLink::OK,
                                          unlockStatus);
                 } else {
@@ -129,7 +139,7 @@ class UsartDMATask : public TaskClassS<1024> {
 
 class MyTimer {
    public:
-   MyTimer()
+    MyTimer()
         : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
                   pdMS_TO_TICKS(1000), pdTRUE) {
         // pdMS_TO_TICKS(1000) 表示定时器周期为 1000 毫秒
@@ -139,7 +149,7 @@ class MyTimer {
 
     void myTimerCallback() {
         // 这里是你希望在定时器触发时执行的代码
-        printf("Timer triggered!\n");
+        // printf("Timer triggered!\n");
     }
 
    private:
@@ -147,37 +157,37 @@ class MyTimer {
 };
 
 class LogTask : public TaskClassS<1024> {
-    public:
-     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
- 
-     void task() override {
-         char buffer[LOG_QUEUE_SIZE + 8];
-         Logger &log = Logger::getInstance();
-         for (;;) {
-             if (xQueueReceive(log.logQueue, buffer, portMAX_DELAY)) {
-                 for (const char *p = buffer; *p; ++p) {
-                     while (RESET == usart_flag_get(USART_LOG, USART_FLAG_TBE));
-                     usart_data_transmit(USART_LOG, (uint8_t)*p);
-                 }
-             }
-         }
-     }
- };
- 
- class LedBlinkTask : public TaskClassS<256> {
-    public:
-     LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
- 
-     void task() override {
-         Logger &log = Logger::getInstance();
-         LED led0(GPIOC, GPIO_PIN_6);
- 
-         for (;;) {
-             led0.toggle();
-             TaskBase::delay(500);
-         }
-     }
- };
+   public:
+    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
+
+    void task() override {
+        char buffer[LOG_QUEUE_SIZE + 8];
+        Logger &log = Logger::getInstance();
+        for (;;) {
+            if (xQueueReceive(log.logQueue, buffer, portMAX_DELAY)) {
+                for (const char *p = buffer; *p; ++p) {
+                    while (RESET == usart_flag_get(USART_LOG, USART_FLAG_TBE));
+                    usart_data_transmit(USART_LOG, (uint8_t)*p);
+                }
+            }
+        }
+    }
+};
+
+class LedBlinkTask : public TaskClassS<256> {
+   public:
+    LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
+
+    void task() override {
+        Logger &log = Logger::getInstance();
+        LED led0(GPIOC, GPIO_PIN_6);
+
+        for (;;) {
+            led0.toggle();
+            TaskBase::delay(500);
+        }
+    }
+};
 
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
