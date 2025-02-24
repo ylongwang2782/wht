@@ -193,7 +193,7 @@ class FrameBase {
         size_t offset = 0;
         uint8_t fragments_num = (payload_len + payload_size - 1) / payload_size;
         // 预留空间
-        if (output.capacity() <
+        if (output.size() <
             sizeof(__FragmentHeader) * fragments_num + payload_len) {
             output.resize(sizeof(__FragmentHeader) * fragments_num +
                           payload_len);
@@ -258,7 +258,6 @@ class CompleteFrameType : private FrameBase<UNKNOWN> {
     uint8_t __header_buffer[sizeof(__FragmentHeader)];
     uint16_t __header_index = 0;
     uint16_t __payload_index = 0;
-    bool __get_complete_frame = false;
 
    public:
     bool assemble(Queue<uint8_t>& rawData) {
@@ -268,7 +267,6 @@ class CompleteFrameType : private FrameBase<UNKNOWN> {
         while (rawData.pop(__rawdata, 0)) {
             switch (__status) {
                 case FIND_DELIMITER:
-                    __get_complete_frame = false;
                     if (__rawdata == delimiter[__header_index]) {
                         __header_buffer[__header_index] = __rawdata;
                         __header_index++;
@@ -311,7 +309,7 @@ class CompleteFrameType : private FrameBase<UNKNOWN> {
                             // 组包完成
                             slot = fragment.header.slot;
                             type = fragment.header.type;
-                            __get_complete_frame = true;
+                            return true;
                         }
                     }
                     break;
@@ -319,7 +317,7 @@ class CompleteFrameType : private FrameBase<UNKNOWN> {
                     break;
             }
         }
-        return __get_complete_frame;
+        return false;
     }
     bool assemble(std::vector<uint8_t>& recv_buf) {
         size_t min_packet_size = 8;
@@ -418,6 +416,7 @@ class DeviceConfigType {
         uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
         memcpy(p, input.data(), sizeof(__NormalCfg));
         cfg.resNum.assign(input.begin() + sizeof(__NormalCfg), input.end());
+        input.erase(input.begin(), input.begin() + sizeof(__NormalCfg));
     }
     void prase(uint8_t* input) {
         uint8_t* p = reinterpret_cast<uint8_t*>(&cfg.normalCfg);
