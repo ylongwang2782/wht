@@ -7,10 +7,10 @@
 #include "FreeRTOS.h"
 #include "TaskCPP.h"
 #include "TimerCPP.h"
+#include "bsp_gpio.hpp"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uid.hpp"
-#include "bsp_gpio.hpp"
 #include "chronolink.h"
 #include "harness.h"
 #include "mode_entry.h"
@@ -33,7 +33,37 @@ UartConfig uart1Conf(usart1_info);
 Uart uart1(uart1Conf);
 
 ChronoLink chronoLink;
-Harness harness(2,4);
+Harness harness(2, 4);
+class MyTimer {
+   public:
+    MyTimer()
+        : myTimer("MyTimer", this, &MyTimer::myTimerCallback, pdMS_TO_TICKS(100),
+                  pdTRUE) {}
+
+    void startWithCount(int count) {
+        if (count > 0) {
+            triggerCount = 0;
+            maxTriggerCount = count;
+            myTimer.start();
+        }
+    }
+
+    void myTimerCallback() {
+        // printf("Timer triggered!\n");
+        if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
+            myTimer.stop();
+            harness.reload();
+            return;
+        }
+        harness.run();
+        harness.rowIndex++;
+    }
+
+   private:
+    FreeRTOScpp::TimerMember<MyTimer> myTimer;
+    int triggerCount;       // 当前触发次数
+    int maxTriggerCount;    // 最大触发次数
+};
 
 class UsartDMATask : public TaskClassS<1024> {
    public:
@@ -63,12 +93,14 @@ class UsartDMATask : public TaskClassS<1024> {
     ChronoLink::Fragment frame_fragment;
     static ChronoLink::DeviceConfig config;
     static void frameSorting(ChronoLink::CompleteFrame complete_frame) {
+        extern MyTimer myTimer;
         std::vector<ChronoLink::DevConf> device_configs;
         ChronoLink::Instruction instruction;
         switch (complete_frame.type) {
             case ChronoLink::SYNC:
                 Log.d("Frame: Sync");
-                harness.run();
+                // harness.run();
+                myTimer.startWithCount(4);
                 break;
             case ChronoLink::COMMAND:
                 Log.d("Frame: Instuction");
@@ -139,25 +171,6 @@ class UsartDMATask : public TaskClassS<1024> {
     }
 };
 
-class MyTimer {
-   public:
-    MyTimer()
-        : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
-                  pdMS_TO_TICKS(1000), pdTRUE) {
-        // pdMS_TO_TICKS(1000) 表示定时器周期为 1000 毫秒
-        // pdTRUE 表示定时器是自动重载的
-        myTimer.start();    // 启动定时器
-    }
-
-    void myTimerCallback() {
-        // 这里是你希望在定时器触发时执行的代码
-        // printf("Timer triggered!\n");
-    }
-
-   private:
-    FreeRTOScpp::TimerMember<MyTimer> myTimer;
-};
-
 class LogTask : public TaskClassS<1024> {
    public:
     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
@@ -199,6 +212,6 @@ MyTimer myTimer;
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
     harness.init();
-    
+
     return 0;
 }

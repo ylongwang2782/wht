@@ -24,15 +24,6 @@ struct DeviceConfigInfo {
     uint8_t devNum;
 };
 
-class Matrix {
-   public:
-    int rowNum;
-    int colNum;
-    int row;
-    int col;
-    int startCol;
-};
-
 class BinaryMatrix {
    private:
     std::vector<std::vector<int>> matrix;
@@ -81,6 +72,7 @@ class Harness {
    public:
     BinaryMatrix data;
     std::vector<GPIO> pins;
+    int rowIndex = 0;
 
     Harness(uint8_t devHarnessNum, uint16_t sysHarnessNum)
         : data(sysHarnessNum, devHarnessNum),
@@ -89,7 +81,7 @@ class Harness {
 
     void run() {
         for (size_t i = 0; i < data.cols; i++) {
-            data.setValue(0, i, pins[i].input_bit_get());
+            data.setValue(rowIndex, i, pins[i].input_bit_get());
         }
     }
 
@@ -100,6 +92,8 @@ class Harness {
                               GPIO::Mode::OUTPUT);
         }
     }
+
+    void reload() { rowIndex = 0; }
 
     void deinit() { pins.clear(); }
 
