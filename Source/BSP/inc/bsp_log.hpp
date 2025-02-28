@@ -3,7 +3,11 @@
 
 #include <stdarg.h>
 
+#include <array>
+
+#include "QueueCPP.h"
 #include "bsp_uart.hpp"
+
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -13,18 +17,28 @@ extern "C" {
 
 #define USART_LOG      USART1
 #define LOG_QUEUE_SIZE 64
+
+// 定义日志消息的最大长度
+#define LOG_MESSAGE_MAX_LENGTH 64
+
+// 定义日志队列的长度
+#define LOG_QUEUE_LENGTH 10
+
+// 日志消息结构体
+struct LogMessage {
+    std::array<char, LOG_MESSAGE_MAX_LENGTH> message;
+};
+
+// 日志级别枚举
+enum class Level { VERBOSE, DEBUGL, INFO, WARN, ERROR, RAW };
+
 class Logger {
    public:
-    // 日志级别枚举
-    enum class Level { VERBOSE, DEBUGL, INFO, WARN, ERROR, RAW };
+    Logger(Uart &uart) : uart(uart), logQueue("LogQueue") {}
 
-    // 获取单例实例
-    static Logger &getInstance() {
-        static Logger instance;
-        return instance;
-    }
+    Uart &uart;    // 串口对象的引用
+    FreeRTOScpp::Queue<LogMessage, LOG_QUEUE_LENGTH> logQueue;
 
-    // 日志记录方法
     void log(Level level, const char *format, va_list args) {
         // 定义日志级别的字符串表示
         static const char *levelStr[] = {"VERBOSE", "DEBUG", "INFO", "WARN",
@@ -53,74 +67,59 @@ class Logger {
             output(level, finalMessage);
         }
     }
-
-    // 快捷方法：VERBOSE 级别日志
     void v(const char *format, ...) {
         va_list args;
         va_start(args, format);
+
         log(Level::VERBOSE, format, args);
+
         va_end(args);
     }
-
-    // 快捷方法：DEBUG 级别日志
     void d(const char *format, ...) {
         va_list args;
         va_start(args, format);
+
         log(Level::DEBUGL, format, args);
+
         va_end(args);
     }
-
-    // 快捷方法：INFO 级别日志
     void i(const char *format, ...) {
         va_list args;
         va_start(args, format);
+
         log(Level::INFO, format, args);
+
         va_end(args);
     }
-
-    // 快捷方法：WARN 级别日志
     void w(const char *format, ...) {
         va_list args;
         va_start(args, format);
+
         log(Level::WARN, format, args);
+
         va_end(args);
     }
-
-    // 快捷方法：ERROR 级别日志
     void e(const char *format, ...) {
         va_list args;
         va_start(args, format);
+
         log(Level::ERROR, format, args);
+
         va_end(args);
     }
-
-    void r(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        log(Level::RAW, format, args);
-        va_end(args);
-    }
-
-    // 获取日志队列
-    QueueHandle_t getLogQueue() const { return logQueue; }
-    // 日志队列
-    QueueHandle_t logQueue;
 
    private:
-    // 私有构造函数，确保单例模式
-    Logger() { logQueue = xQueueCreate(10, LOG_QUEUE_SIZE); }
-
-    // 禁止拷贝和赋值
-    Logger(const Logger &) = delete;
-    Logger &operator=(const Logger &) = delete;
-
-    // 日志输出方法
     void output(Level level, const char *message) {
-        // 将日志消息添加到队列中
-        xQueueSend(logQueue, message, portMAX_DELAY);
+        LogMessage logMsg;
+        std::strncpy(logMsg.message.data(), message,
+                     LOG_MESSAGE_MAX_LENGTH - 1);
+        logMsg.message[LOG_MESSAGE_MAX_LENGTH - 1] = '\0';
+
+        // 将日志消息放入队列
+        if (!logQueue.add(logMsg, portMAX_DELAY)) {
+            printf("Failed to add log message to queue!\n");
+        }
     }
 };
-
-extern Logger &Log;
 
 #endif

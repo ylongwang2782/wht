@@ -13,7 +13,7 @@
 extern Logger& Log;
 extern Harness harness;
 
-extern Uart uart1;
+extern Uart usart1;
 
 std::vector<ChronoLink::DevConf> ChronoLink::sync_frame;
 std::vector<std::array<uint8_t, 4>> ChronoLink::instruction_list;
@@ -232,7 +232,7 @@ void ChronoLink::sendReply(
 
     for (int i = 0; i < fragmentNum; i++) {
         std::vector<uint8_t>& fragment = fragments[i];
-        uart1.send(fragment.data(), fragment.size());
+        usart1.send(fragment.data(), fragment.size());
     }
 }
 

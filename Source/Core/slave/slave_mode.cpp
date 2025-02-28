@@ -28,9 +28,14 @@ extern "C" {
 }
 #endif
 
-extern UasrtInfo usart1_info;
-UartConfig uart1Conf(usart1_info);
-Uart uart1(uart1Conf);
+UartConfig usart1Conf(usart1_info);
+UartConfig usart2Conf(usart2_info);
+UartConfig uart3Conf(uart3_info);
+Uart usart1(usart1Conf);
+Uart usart2(usart2Conf);
+Uart uart3(uart3Conf);
+
+Logger Log(usart1);
 
 ChronoLink chronoLink;
 Harness harness(2, 4);
@@ -70,7 +75,6 @@ class UsartDMATask : public TaskClassS<1024> {
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
 
     void task() override {
-        Logger &log = Logger::getInstance();
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
@@ -78,7 +82,7 @@ class UsartDMATask : public TaskClassS<1024> {
                 Log.d("Usart recv.");
                 uint8_t buffer[DMA_RX_BUFFER_SIZE];
                 uint16_t len =
-                    uart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                    usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
                 chronoLink.push_back(buffer, len);
                 while (chronoLink.parseFrameFragment(frame_fragment)) {
                     Log.d("Get frame fragment.");
@@ -172,29 +176,28 @@ class UsartDMATask : public TaskClassS<1024> {
 };
 
 class LogTask : public TaskClassS<1024> {
-   public:
-    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
-
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        Logger &log = Logger::getInstance();
-        for (;;) {
-            if (xQueueReceive(log.logQueue, buffer, portMAX_DELAY)) {
-                for (const char *p = buffer; *p; ++p) {
-                    while (RESET == usart_flag_get(USART_LOG, USART_FLAG_TBE));
-                    usart_data_transmit(USART_LOG, (uint8_t)*p);
-                }
-            }
-        }
-    }
-};
+    public:
+     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
+ 
+     void task() override {
+         char buffer[LOG_QUEUE_SIZE + 8];
+         for (;;) {
+             LogMessage logMsg;
+             // 从队列中获取日志消息
+             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
+                 Log.uart.send(
+                     reinterpret_cast<const uint8_t *>(logMsg.message.data()),
+                     strlen(logMsg.message.data()));
+             }
+         }
+     }
+ };
 
 class LedBlinkTask : public TaskClassS<256> {
    public:
     LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
 
     void task() override {
-        Logger &log = Logger::getInstance();
         LED led(GPIO::Port::C, GPIO::Pin::PIN_6);
 
         for (;;) {
