@@ -281,3 +281,6 @@ uint8_t ChronoLink::pack(uint8_t slot, uint8_t type, uint8_t* data,
 
     return fragments_num;
 }
+namespace CLink{
+    uint8_t dev_slot = 0;;
+}

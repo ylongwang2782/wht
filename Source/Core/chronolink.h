@@ -176,6 +176,7 @@ enum cmdType : uint8_t { DEV_CONF, DATA_REQ, DEV_UNLOCK };
 
 enum status : uint8_t { OK, ERROR };
 static constexpr size_t payload_size = 242;
+extern  uint8_t dev_slot;
 
 template <type frameType = UNKNOWN>
 class FrameBase {
@@ -474,7 +475,7 @@ class CommandFrameType
             // 复制指令内容
             this->DeviceConfigType::pack(payload + sizeof(Header));
             // 组包
-            this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
+            this->FrameBase<COMMAND>::pack(dev_slot, payload, sizeof(payload),
                                            output);
         }
         if constexpr (__cmdType == DEV_UNLOCK) {
@@ -490,7 +491,7 @@ class CommandFrameType
             // 复制指令内容
             this->DeviceUnlockType::pack(payload + sizeof(Header));
             // 组包
-            this->FrameBase<COMMAND>::pack(0xAA, payload, sizeof(payload),
+            this->FrameBase<COMMAND>::pack(dev_slot, payload, sizeof(payload),
                                            output);
         }
     }
@@ -621,7 +622,7 @@ class ReplyFrameType
             // 复制指令内容
             this->DataReply::pack(payload + sizeof(Header));
             // 组包
-            this->FrameBase<REPLY>::pack(0xAA, payload, sizeof(payload),
+            this->FrameBase<REPLY>::pack(dev_slot, payload, sizeof(payload),
                                          output);
         }
         if constexpr (__cmdType == DEV_UNLOCK) {
@@ -633,7 +634,7 @@ class ReplyFrameType
             // 复制指令内容
             this->UnlockReply::pack(payload + sizeof(Header));
             // 组包
-            this->FrameBase<REPLY>::pack(0xAA, payload, sizeof(payload),
+            this->FrameBase<REPLY>::pack(dev_slot, payload, sizeof(payload),
                                          output);
         }
     }
