@@ -14,13 +14,15 @@ UasrtInfo usart1_info = {.baudrate = 115200,
                          .dma_periph = DMA0,
                          .dma_tx_channel = DMA_CH6,
                          .dma_rx_channel = DMA_CH5,
+                         .dma_tx_subperipheral = DMA_SUBPERI4,
+                         .dma_rx_subperipheral = DMA_SUBPERI4,
                          .nvic_irq = USART1_IRQn,
                          .nvic_irq_pre_priority = 6,
                          .nvic_irq_sub_priority = 0,
                          .rx_count = 0,
                          .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
-UasrtInfo usart2_config = {.baudrate = 115200,
+UasrtInfo usart2_info = {.baudrate = 115200,
                            .gpio_port = GPIOB,
                            .tx_pin = GPIO_PIN_10,
                            .rx_pin = GPIO_PIN_11,
@@ -32,11 +34,33 @@ UasrtInfo usart2_config = {.baudrate = 115200,
                            .dma_periph = DMA0,
                            .dma_tx_channel = DMA_CH3,
                            .dma_rx_channel = DMA_CH1,
+                           .dma_tx_subperipheral = DMA_SUBPERI4,
+                           .dma_rx_subperipheral = DMA_SUBPERI4,
                            .nvic_irq = USART2_IRQn,
                            .nvic_irq_pre_priority = 1,
                            .nvic_irq_sub_priority = 2,
                            .rx_count = 0,
                            .dmaRxDoneSema = xSemaphoreCreateBinary()};
+
+UasrtInfo uart6_info = {.baudrate = 115200,
+                        .gpio_port = GPIOF,
+                        .tx_pin = GPIO_PIN_7,
+                        .rx_pin = GPIO_PIN_6,
+                        .usart_periph = UART6,
+                        .usart_clk = RCU_UART6,
+                        .usart_port_clk = RCU_GPIOF,
+                        .gpio_af = GPIO_AF_8,
+                        .rcu_dma_periph = RCU_DMA0,
+                        .dma_periph = DMA0,
+                        .dma_tx_channel = DMA_CH1,
+                        .dma_rx_channel = DMA_CH3,
+                        .dma_tx_subperipheral = DMA_SUBPERI5,
+                        .dma_rx_subperipheral = DMA_SUBPERI5,
+                        .nvic_irq = UART6_IRQn,
+                        .nvic_irq_pre_priority = 2,
+                        .nvic_irq_sub_priority = 2,
+                        .rx_count = 0,
+                        .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
 // 全局信号量
 void handle_usart_interrupt(UasrtInfo *config) {
@@ -64,5 +88,5 @@ void handle_usart_interrupt(UasrtInfo *config) {
 
 extern "C" {
 void USART1_IRQHandler(void) { handle_usart_interrupt(&usart1_info); }
-// void USART2_IRQHandler(void) { handle_usart_interrupt(&usart2_config); }
+void UART6_IRQHandler(void) { handle_usart_interrupt(&uart6_info); }
 }

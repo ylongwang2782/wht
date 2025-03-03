@@ -57,9 +57,9 @@
 #endif
 
 #if defined (GD32F470)
-//#define __SYSTEM_CLOCK_240M_PLL_IRC16M          (uint32_t)(240000000)
+#define __SYSTEM_CLOCK_240M_PLL_IRC16M          (uint32_t)(240000000)
 //#define __SYSTEM_CLOCK_240M_PLL_8M_HXTAL        (uint32_t)(240000000)
-#define __SYSTEM_CLOCK_240M_PLL_25M_HXTAL        (uint32_t)(240000000)
+//#define __SYSTEM_CLOCK_240M_PLL_25M_HXTAL        (uint32_t)(240000000)
 #endif
 
 #define RCU_MODIFY(__delay)     do{                                     \

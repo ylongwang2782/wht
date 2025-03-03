@@ -18,6 +18,7 @@
 extern "C" {
 #endif
 #include "FreeRTOS.h"
+#include "clipInterface.hpp"
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
@@ -30,6 +31,11 @@ extern "C" {
 extern UasrtInfo usart1_info;
 UartConfig uart1Conf(usart1_info);
 Uart uart1(uart1Conf);
+
+extern UasrtInfo uart6_info;
+UartConfig uart6Conf(uart6_info);
+Uart uart6(uart6Conf);
+ClipInterface clipInterface;
 
 ChronoLink chronoLink;
 extern Harness harness;
@@ -48,11 +54,13 @@ class UsartDMATask : public TaskClassS<1024> {
                 uint8_t buffer[DMA_RX_BUFFER_SIZE];
                 uint16_t len =
                     uart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                /************************* */
                 chronoLink.push_back(buffer, len);
                 while (chronoLink.parseFrameFragment(frame_fragment)) {
                     Log.d("Get frame fragment.");
                     chronoLink.receiveAndAssembleFrame(frame_fragment,
                                                        frameSorting);
+                    /****************************** */
                 };
             }
         }
@@ -189,6 +197,38 @@ class LedBlinkTask : public TaskClassS<256> {
     }
 };
 
+class ClipTask : public TaskClassS<256> {
+   public:
+    ClipTask(Uart &uart)
+        : TaskClassS<256>("clipTask", TaskPrio_Low), uart(uart) {}
+
+    void task() override {
+        Logger &log = Logger::getInstance();
+
+        for (;;) {
+            clipInterface.clipStatRead(1);    // 读与获取分开
+            clipInterface.sendWithDMA(uart);
+            TaskBase::delay(1000);
+
+            uint16_t responseLen = 0;
+            uint8_t *response = clipInterface.clipGetResponse(
+                uart, responseLen);    // 返回u16 private
+
+            if (response != nullptr && responseLen > 0) {
+                Log.d("clipTask: Received response.");
+                Log.d("kunkun");
+            } else {
+                Log.w("clipTask: No response received.");
+            }
+            TaskBase::delay(1000);
+        }
+    }
+
+   private:
+    Uart &uart;
+};
+
+ClipTask clipTask(uart6);
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;

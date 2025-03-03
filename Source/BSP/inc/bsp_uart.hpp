@@ -36,6 +36,9 @@ typedef struct {
     uint8_t nvic_irq_sub_priority;      // NVIC中断子优先级
     uint16_t rx_count;
     SemaphoreHandle_t dmaRxDoneSema;
+
+    dma_subperipheral_enum dma_tx_subperipheral;    // DMA发送副通道
+    dma_subperipheral_enum dma_rx_subperipheral;    // DMA接收副通道
 } UasrtInfo;
 
 class UartConfig {
@@ -57,6 +60,9 @@ class UartConfig {
     uint8_t nvic_irq_sub_priority;      // NVIC中断子优先级
     uint16_t *rx_count;                 // 接收计数
 
+    dma_subperipheral_enum dma_tx_subperipheral;    // DMA发送副通道
+    dma_subperipheral_enum dma_rx_subperipheral;    // DMA接收副通道
+
     UartConfig(UasrtInfo &info)
         : baudrate(info.baudrate),
           gpio_port(info.gpio_port),
@@ -70,6 +76,8 @@ class UartConfig {
           dma_periph(info.dma_periph),
           dma_tx_channel(info.dma_tx_channel),
           dma_rx_channel(info.dma_rx_channel),
+          dma_tx_subperipheral(info.dma_tx_subperipheral),
+          dma_rx_subperipheral(info.dma_rx_subperipheral),
           nvic_irq(info.nvic_irq),
           nvic_irq_pre_priority(info.nvic_irq_pre_priority),
           nvic_irq_sub_priority(info.nvic_irq_sub_priority),
@@ -140,7 +148,7 @@ class Uart {
         rcu_periph_clock_enable(config.rcu_dma_periph);
         dma_deinit(config.dma_periph, config.dma_tx_channel);
         dmaInitStruct.direction = DMA_MEMORY_TO_PERIPH;
-        dmaInitStruct.memory0_addr = (uintptr_t) nullptr;
+        dmaInitStruct.memory0_addr = (uintptr_t)nullptr;
         dmaInitStruct.memory_inc = DMA_MEMORY_INCREASE_ENABLE;
         dmaInitStruct.periph_memory_width = DMA_PERIPH_WIDTH_8BIT;
         dmaInitStruct.number = 0;
@@ -151,7 +159,8 @@ class Uart {
                                   &dmaInitStruct);
         dma_circulation_disable(config.dma_periph, config.dma_tx_channel);
         dma_channel_subperipheral_select(config.dma_periph,
-                                         config.dma_tx_channel, DMA_SUBPERI4);
+                                         config.dma_tx_channel,
+                                         config.dma_tx_subperipheral);
         dma_channel_disable(config.dma_periph, config.dma_tx_channel);
     }
 
@@ -173,7 +182,8 @@ class Uart {
                                   &dmaInitStruct);
         dma_circulation_disable(config.dma_periph, config.dma_rx_channel);
         dma_channel_subperipheral_select(config.dma_periph,
-                                         config.dma_rx_channel, DMA_SUBPERI4);
+                                         config.dma_rx_channel,
+                                         config.dma_rx_subperipheral);
         dma_channel_enable(config.dma_periph, config.dma_rx_channel);
     }
 };
