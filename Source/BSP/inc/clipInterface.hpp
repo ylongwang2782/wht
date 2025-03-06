@@ -1,17 +1,68 @@
+#include <array>
 #include <cstdint>
 #include <cstdio>
 
+#include "TaskCPP.h"
+#include "TimerCPP.h"
 #include "bsp_log.hpp"
 #include "gd32f4xx.h"
 #include "gd32f4xx_usart.h"
 
 class ClipInterface {
    public:
-    void clipStatRead(uint8_t tarNum) {
+    uint16_t clipStatRead(uint8_t tarNum, Uart &uart) {
+        Logger &log = Logger::getInstance();
+
+        clipStatReadCmd(tarNum);
+        sendWithDMA(uart);
+
+        uint32_t startTime = xTaskGetTickCount();
+        uint16_t responseLen = 0;
+        uint8_t *response = nullptr;
+
+        constexpr uint16_t MIN_RESPONSE_LEN = 11;    // 最小响应长度
+        constexpr uint32_t MAX_WAIT_MS = 50;         // 超时时间50ms
+        constexpr uint8_t DATA_START_POS = 3;    // 数据开始位置，取两位拼成 u16
+
+        do {
+            response = clipGetResponse(uart, responseLen);
+            if (responseLen > MIN_RESPONSE_LEN) break;    // 收到足够长数据
+            TaskBase::delay(5);                           // 5ms轮询
+        } while (xTaskGetTickCount() - startTime <
+                 pdMS_TO_TICKS(MAX_WAIT_MS));    // 轮询至多50ms
+
+        if (!response || responseLen < MIN_RESPONSE_LEN) {
+            log.e("No response (len:%d)", responseLen);
+            return 0;
+        }
+
+        // CRC
+        uint16_t calculatedCRC = Modbus_CRC16(response, responseLen - 2);
+        uint16_t receivedCRC =
+            (response[responseLen - 2] << 8) | response[responseLen - 1];
+
+        if (calculatedCRC != receivedCRC) {
+            log.e("CRC error (calc:0x%04X vs recv:0x%04X)", calculatedCRC,
+                  receivedCRC);
+            return 0;
+        }
+
+        // 解析数据
+        uint16_t result =
+            (response[DATA_START_POS] << 8) | response[DATA_START_POS + 1];
+        log.d("lastClipData : 0x%04X", result);
+
+        // 若有数据，清空缓冲区
+        if (response != 0) {
+            std::fill_n(recvBuffer.begin(), recvBuffer.size(), 0);
+            responseLen = 0;
+        }
+        return result;    // **返回解析值**
+    }
+
+    void clipStatReadCmd(uint8_t tarNum) {
         uint8_t i = 0;
         uint16_t crc;
-        // uint8_t sendBuffer[20]; TODO 写到记录里，具体内容去看C师傅
-        // 局部变量会直接把成员变量顶掉
         sendBuffer[i++] = tarNum;
         sendBuffer[i++] = 0x03;
         sendBuffer[i++] = 0x00;
@@ -19,7 +70,7 @@ class ClipInterface {
         sendBuffer[i++] = 0x00;
         sendBuffer[i++] = 0x03;
 
-        crc = Modbus_CRC16(sendBuffer, i);
+        crc = Modbus_CRC16(sendBuffer.data(), i);
         sendBuffer[i++] = (uint8_t)(crc >> 8);      // 高字节
         sendBuffer[i++] = (uint8_t)(crc & 0xFF);    // 低字节
 
@@ -29,26 +80,26 @@ class ClipInterface {
     // 直接调用 DMA 发送
     void sendWithDMA(Uart &uart) {
         if (sendLength > 0) {
-            uart.send(sendBuffer, sendLength);
+            uart.send(sendBuffer.data(), sendLength);
         }
     }
 
     uint8_t *clipGetResponse(Uart &uart, uint16_t &responseLen) {
-        responseLen = uart.getReceivedData(recvBuffer, sizeof(recvBuffer));
-        if (responseLen == 0) {
-            return nullptr;
+        responseLen = 0;
+        uint16_t availableData =
+            uart.getReceivedData(recvBuffer.data(), recvBuffer.size());
+        if (availableData > 0) {
+            responseLen = availableData;
+            return recvBuffer.data();
         }
-        return recvBuffer;
+        return nullptr;
     }
 
-    uint8_t *getSendBuffer() { return sendBuffer; }    // 获取当前的发送缓冲区
-    uint16_t getSendLength() { return sendLength; }    // 获取当前的发送数据长度
-
    private:
-    uint8_t sendBuffer[20];          // 存储拼接好的数据
-    uint16_t sendLength = 0;         // 记录数据长度
-    uint8_t recvBuffer[20] = {0};    // 接收缓冲区
-    uint16_t recvLength = 0;         // 记录数据长度
+    uint16_t sendLength = 0;
+    std::array<uint8_t, 20> sendBuffer;
+    std::array<uint8_t, 20> recvBuffer{};
+
     uint16_t Modbus_CRC16(uint8_t *puchMsg, uint16_t usDataLen) {
         uint8_t uchCRCHi = 0xFF;    // 高CRC字节初始化
         uint8_t uchCRCLo = 0xFF;    // 低CRC 字节初始化

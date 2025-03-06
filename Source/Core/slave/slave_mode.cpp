@@ -48,20 +48,22 @@ class UsartDMATask : public TaskClassS<1024> {
         Logger &log = Logger::getInstance();
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+            // if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+            //     pdPASS) {
+            //     Log.d("Usart1 recv.");
+            //     uint8_t buffer[DMA_RX_BUFFER_SIZE];
+            //     uint16_t len =
+            //         uart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+            //     chronoLink.push_back(buffer, len);
+            //     while (chronoLink.parseFrameFragment(frame_fragment)) {
+            //         Log.d("Get frame fragment.");
+            //         chronoLink.receiveAndAssembleFrame(frame_fragment,
+            //                                            frameSorting);
+            //     };
+            // }
+            if (xSemaphoreTake(uart6_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                Log.d("Usart recv.");
-                uint8_t buffer[DMA_RX_BUFFER_SIZE];
-                uint16_t len =
-                    uart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                /************************* */
-                chronoLink.push_back(buffer, len);
-                while (chronoLink.parseFrameFragment(frame_fragment)) {
-                    Log.d("Get frame fragment.");
-                    chronoLink.receiveAndAssembleFrame(frame_fragment,
-                                                       frameSorting);
-                    /****************************** */
-                };
+                Log.d("Uart6 recv.");
             }
         }
     }
@@ -199,36 +201,33 @@ class LedBlinkTask : public TaskClassS<256> {
 
 class ClipTask : public TaskClassS<256> {
    public:
-    ClipTask(Uart &uart)
-        : TaskClassS<256>("clipTask", TaskPrio_Low), uart(uart) {}
+    ClipTask(Uart &uart, uint32_t interval_ms)
+        : TaskClassS<256>("clipTask", TaskPrio_Low),
+          uart(uart),
+          interval(pdMS_TO_TICKS(interval_ms)) {}    // ms->tick
 
     void task() override {
+        TickType_t last_wake_time = xTaskGetTickCount();    // 记录初始唤醒时间
         Logger &log = Logger::getInstance();
+        uint16_t clipStatData = 0;
 
         for (;;) {
-            clipInterface.clipStatRead(1);    // 读与获取分开
-            clipInterface.sendWithDMA(uart);
-            TaskBase::delay(1000);
+            vTaskDelayUntil(&last_wake_time, interval);            // 等待
+            clipStatData = clipInterface.clipStatRead(1, uart);    // 查1号板
 
-            uint16_t responseLen = 0;
-            uint8_t *response = clipInterface.clipGetResponse(
-                uart, responseLen);    // 返回u16 private
-
-            if (response != nullptr && responseLen > 0) {
-                Log.d("clipTask: Received response.");
-                Log.d("kunkun");
-            } else {
-                Log.w("clipTask: No response received.");
+            if (clipStatData != 0) {
+                /*clipStatRead成功返回数据，加其余处理*/
+                Log.d("%x", clipStatData);
             }
-            TaskBase::delay(1000);
         }
     }
 
    private:
     Uart &uart;
+    const TickType_t interval;    // 时间间隔存储为tick数
 };
 
-ClipTask clipTask(uart6);
+ClipTask clipTask(uart6, 100);    // 读取任务间隔（应大于超时时间MAX_WAIT_MS）
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;

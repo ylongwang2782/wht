@@ -19,49 +19,47 @@ extern "C" {
 #define DMA_RX_BUFFER_SIZE 1024
 
 typedef struct {
-    uint32_t baudrate;                  // 波特率
-    uint32_t gpio_port;                 // GPIO端口
-    uint32_t tx_pin;                    // 发送引脚
-    uint32_t rx_pin;                    // 接收引脚
-    uint32_t usart_periph;              // USART外设
-    rcu_periph_enum usart_clk;          // USART时钟
-    rcu_periph_enum usart_port_clk;     // USART时钟
-    uint8_t gpio_af;                    // GPIO复用功能
-    rcu_periph_enum rcu_dma_periph;     // DMA发送通道
-    uint32_t dma_periph;                // DMA发送通道
-    dma_channel_enum dma_tx_channel;    // DMA发送通道
-    dma_channel_enum dma_rx_channel;    // DMA接收通道
-    uint8_t nvic_irq;                   // NVIC中断号
-    uint8_t nvic_irq_pre_priority;      // NVIC中断优先级
-    uint8_t nvic_irq_sub_priority;      // NVIC中断子优先级
-    uint16_t rx_count;
-    SemaphoreHandle_t dmaRxDoneSema;
-
+    uint32_t baudrate;                              // 波特率
+    uint32_t gpio_port;                             // GPIO端口
+    uint32_t tx_pin;                                // 发送引脚
+    uint32_t rx_pin;                                // 接收引脚
+    uint32_t usart_periph;                          // USART外设
+    rcu_periph_enum usart_clk;                      // USART时钟
+    rcu_periph_enum usart_port_clk;                 // USART时钟
+    uint8_t gpio_af;                                // GPIO复用功能
+    rcu_periph_enum rcu_dma_periph;                 // DMA发送通道
+    uint32_t dma_periph;                            // DMA发送通道
+    dma_channel_enum dma_tx_channel;                // DMA发送通道
+    dma_channel_enum dma_rx_channel;                // DMA接收通道
     dma_subperipheral_enum dma_tx_subperipheral;    // DMA发送副通道
     dma_subperipheral_enum dma_rx_subperipheral;    // DMA接收副通道
+    uint8_t nvic_irq;                               // NVIC中断号
+    uint8_t nvic_irq_pre_priority;                  // NVIC中断优先级
+    uint8_t nvic_irq_sub_priority;                  // NVIC中断子优先级
+    uint16_t rx_count;
+    SemaphoreHandle_t dmaRxDoneSema; 
 } UasrtInfo;
 
 class UartConfig {
    public:
-    uint32_t baudrate;                  // 波特率
-    uint32_t gpio_port;                 // GPIO端口
-    uint32_t tx_pin;                    // 发送引脚
-    uint32_t rx_pin;                    // 接收引脚
-    uint32_t usart_periph;              // USART外设
-    rcu_periph_enum usart_clk;          // USART时钟
-    rcu_periph_enum usart_port_clk;     // USART端口时钟
-    uint8_t gpio_af;                    // GPIO复用功能
-    rcu_periph_enum rcu_dma_periph;     // DMA时钟
-    uint32_t dma_periph;                // DMA外设
-    dma_channel_enum dma_tx_channel;    // DMA发送通道
-    dma_channel_enum dma_rx_channel;    // DMA接收通道
-    uint8_t nvic_irq;                   // NVIC中断号
-    uint8_t nvic_irq_pre_priority;      // NVIC中断优先级
-    uint8_t nvic_irq_sub_priority;      // NVIC中断子优先级
-    uint16_t *rx_count;                 // 接收计数
-
+    uint32_t baudrate;                              // 波特率
+    uint32_t gpio_port;                             // GPIO端口
+    uint32_t tx_pin;                                // 发送引脚
+    uint32_t rx_pin;                                // 接收引脚
+    uint32_t usart_periph;                          // USART外设
+    rcu_periph_enum usart_clk;                      // USART时钟
+    rcu_periph_enum usart_port_clk;                 // USART端口时钟
+    uint8_t gpio_af;                                // GPIO复用功能
+    rcu_periph_enum rcu_dma_periph;                 // DMA时钟
+    uint32_t dma_periph;                            // DMA外设
+    dma_channel_enum dma_tx_channel;                // DMA发送通道
+    dma_channel_enum dma_rx_channel;                // DMA接收通道
     dma_subperipheral_enum dma_tx_subperipheral;    // DMA发送副通道
     dma_subperipheral_enum dma_rx_subperipheral;    // DMA接收副通道
+    uint8_t nvic_irq;                               // NVIC中断号
+    uint8_t nvic_irq_pre_priority;                  // NVIC中断优先级
+    uint8_t nvic_irq_sub_priority;                  // NVIC中断子优先级
+    uint16_t *rx_count;                             // 接收计数
 
     UartConfig(UasrtInfo &info)
         : baudrate(info.baudrate),
