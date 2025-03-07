@@ -82,6 +82,11 @@ class UartConfig {
           rx_count(&info.rx_count) {}    // 传递 rx_count 指针
 };
 
+extern UasrtInfo usart1_info;
+extern UasrtInfo usart2_info;
+extern UasrtInfo uart3_info;
+extern UasrtInfo uart6_info;
+
 class Uart {
    public:
     Uart(UartConfig &config) : config(config) {

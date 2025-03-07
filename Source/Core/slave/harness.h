@@ -1,7 +1,12 @@
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+
+#include "bsp_gpio.hpp"
+#include "bsp_log.hpp"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,41 +24,78 @@ struct DeviceConfigInfo {
     uint8_t devNum;
 };
 
-class Matrix {
+class BinaryMatrix {
+   private:
+    std::vector<std::vector<int>> matrix;
+
    public:
-    int row;
-    int col;
-    int row_index;
-    int col_index;
-    int startCol;
+    size_t rows, cols;
+    // 构造函数，初始化矩阵
+    BinaryMatrix(size_t r, size_t c)
+        : matrix(r, std::vector<int>(c, 0)), rows(r), cols(c) {}
+
+    // 获取矩阵的行数
+    uint16_t getRows() const { return rows; }
+
+    // 获取矩阵的列数
+    uint16_t getCols() const { return cols; }
+
+    uint16_t getSize() const { return rows * cols; }
+
+    // 设置矩阵中的某个元素（仅能为0或1）
+    void setValue(size_t r, size_t c, int value) {
+        if (r >= rows || c >= cols) {
+        }
+        if (value != 0 && value != 1) {
+        }
+        matrix[r][c] = value;
+    }
+
+    // 获取矩阵中的某个元素
+    int getValue(size_t r, size_t c) const {
+        if (r >= rows || c >= cols) {
+        }
+        return matrix[r][c];
+    }
+
+    std::vector<uint8_t> flatten() const {
+        std::vector<uint8_t> result;
+        result.reserve(rows * cols);    // 预分配空间提高效率
+        for (const auto& row : matrix) {
+            result.insert(result.end(), row.begin(), row.end());
+        }
+        return result;
+    }
 };
 
 class Harness {
    public:
-    struct GpioPin {
-        uint32_t port;
-        uint32_t pin;
-    };
+    BinaryMatrix data;
+    std::vector<GPIO> pins;
+    int rowIndex = 0;
 
-    static constexpr std::array<GpioPin, 10> pin_map = {{{GPIOE, GPIO_PIN_0},
-                                                         {GPIOE, GPIO_PIN_1},
-                                                         {GPIOE, GPIO_PIN_2},
-                                                         {GPIOE, 1 << 3},
-                                                         {GPIOE, 1 << 4},
-                                                         {GPIOE, 1 << 5},
-                                                         {GPIOE, 1 << 6},
-                                                         {GPIOE, 1 << 7},
-                                                         {GPIOE, 1 << 8},
-                                                         {GPIOE, 1 << 9}}};
-    std::vector<uint8_t> result;
-    uint8_t collect_pin_states();
-    void init();
-    void start();
-    bool data_get(uint8_t *data);
-    void master_pin_set(uint8_t pin_num);
-    void slave_pin_set(uint8_t pin_num);
+    Harness(uint8_t devHarnessNum, uint16_t sysHarnessNum)
+        : data(sysHarnessNum, devHarnessNum),
+          devHarnessNum(devHarnessNum),
+          sysHarnessNum(sysHarnessNum) {}
 
-    Matrix matrix;
+    void run() {
+        for (size_t i = 0; i < data.cols; i++) {
+            data.setValue(rowIndex, i, pins[i].input_bit_get());
+        }
+    }
+
+    void init() {
+        for (int i = 0; i < devHarnessNum; ++i) {
+            pins.emplace_back(GPIO::Port::E,
+                              static_cast<GPIO::Pin>(GPIO_PIN_0 << i),
+                              GPIO::Mode::OUTPUT);
+        }
+    }
+
+    void reload() { rowIndex = 0; }
+
+    void deinit() { pins.clear(); }
 
    private:
     uint8_t devNum;
