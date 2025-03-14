@@ -14,6 +14,7 @@
 #include "chronolink.h"
 #include "harness.h"
 #include "mode_entry.h"
+#include "protocol.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,7 +24,6 @@ extern "C" {
 #include "semphr.h"
 #include "task.h"
 #include "timers.h"
-
 #ifdef __cplusplus
 }
 #endif
@@ -42,8 +42,8 @@ Harness harness(2, 4);
 class MyTimer {
    public:
     MyTimer()
-        : myTimer("MyTimer", this, &MyTimer::myTimerCallback, pdMS_TO_TICKS(100),
-                  pdTRUE) {}
+        : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
+                  pdMS_TO_TICKS(100), pdTRUE) {}
 
     void startWithCount(int count) {
         if (count > 0) {
@@ -73,22 +73,27 @@ class MyTimer {
 class UsartDMATask : public TaskClassS<1024> {
    public:
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
-
+    FrameParser parser;
     void task() override {
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                Log.d("Usart recv.");
+                Log.d("Uart: recv.");
                 uint8_t buffer[DMA_RX_BUFFER_SIZE];
                 uint16_t len =
                     usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                chronoLink.push_back(buffer, len);
-                while (chronoLink.parseFrameFragment(frame_fragment)) {
-                    Log.d("Get frame fragment.");
-                    chronoLink.receiveAndAssembleFrame(frame_fragment,
-                                                       frameSorting);
-                };
+
+                // 将 buffer 转换为 vector
+                std::vector<uint8_t> raw_data(buffer, buffer + len);
+                auto msg = parser.parse(raw_data);
+
+                // chronoLink.push_back(buffer, len);
+                // while (chronoLink.parseFrameFragment(frame_fragment)) {
+                //     Log.d("Get frame fragment.");
+                //     chronoLink.receiveAndAssembleFrame(frame_fragment,
+                //                                        frameSorting);
+                // };
             }
         }
     }
@@ -176,22 +181,22 @@ class UsartDMATask : public TaskClassS<1024> {
 };
 
 class LogTask : public TaskClassS<1024> {
-    public:
-     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
- 
-     void task() override {
-         char buffer[LOG_QUEUE_SIZE + 8];
-         for (;;) {
-             LogMessage logMsg;
-             // 从队列中获取日志消息
-             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                 Log.uart.send(
-                     reinterpret_cast<const uint8_t *>(logMsg.message.data()),
-                     strlen(logMsg.message.data()));
-             }
-         }
-     }
- };
+   public:
+    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
+
+    void task() override {
+        char buffer[LOG_QUEUE_SIZE + 8];
+        for (;;) {
+            LogMessage logMsg;
+            // 从队列中获取日志消息
+            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
+                Log.uart.send(
+                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
+                    strlen(logMsg.message.data()));
+            }
+        }
+    }
+};
 
 class LedBlinkTask : public TaskClassS<256> {
    public:
