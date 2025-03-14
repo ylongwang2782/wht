@@ -16,10 +16,10 @@ extern "C" {
 }
 
 #define USART_LOG      USART1
-#define LOG_QUEUE_SIZE 64
+#define LOG_QUEUE_SIZE 128
 
 // 定义日志消息的最大长度
-#define LOG_MESSAGE_MAX_LENGTH 64
+#define LOG_MESSAGE_MAX_LENGTH 128
 
 // 定义日志队列的长度
 #define LOG_QUEUE_LENGTH 10
