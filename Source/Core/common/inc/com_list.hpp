@@ -1,12 +1,12 @@
-#ifndef _BSP_LIST_HPP_
-#define _BSP_LIST_HPP_
+#ifndef _COM_LIST_HPP_
+#define _COM_LIST_HPP_
 #include <cstring>
 #include <iterator>
 
 #include "FreeRTOS.h"
 #include "list.h"
 #include "portable.h"
-namespace BspList {
+namespace ComList {
 #define List_Index_Loop(item)                                     \
     for (ListItem_t *__end =                                      \
              (ListItem_t *)listGET_END_MARKER(item->pxContainer); \
