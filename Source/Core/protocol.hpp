@@ -20,7 +20,6 @@ enum class Master2SlaveMessageID : uint8_t {
     WRITE_CLIP_INFO_MSG = 0x03,    // 写入卡钉信息
     READ_DATA_MSG = 0x04,          // 读取数据
     LOCK_MSG = 0x05,               // 锁
-    READ_CLIP_NUM_MSG = 0x06,      // 读取卡钉数量
 };
 
 enum class Slave2MasterMessageID : uint8_t {
@@ -202,6 +201,90 @@ class WriteResInfoMsg : public Message {
     void process() override { Log.d("WriteResInfoMsg process"); };
 };
 
+class WriteClipInfoMsg : public Message {
+   public:
+    uint8_t clipNum;
+
+    std::vector<uint8_t> serialize() const override {
+        std::vector<uint8_t> data;
+        data.push_back(clipNum);
+        return data;
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("WriteClipInfoMsg: Invalid WriteClipInfoMsg data size");
+        }
+        clipNum = data[0];
+        Log.d("WriteClipInfoMsg: clipNum = 0x%02X", clipNum);
+    }
+    void process() override { Log.d("WriteClipInfoMsg process"); };
+};
+
+class ReadDataMsg : public Message {
+   public:
+    enum class ReadType : uint8_t {
+        CONDUCTION_DATA = 0,    // 读取导通数据
+        RESISTANCE_DATA = 1,    // 读取阻值数据
+        CLIP_DATA = 2,          // 读取卡钉数据
+        CLIP_INFO = 3           // 读取卡钉信息
+    };
+
+    ReadType type;
+
+    std::vector<uint8_t> serialize() const override {
+        std::vector<uint8_t> data;
+        data.push_back(static_cast<uint8_t>(type));
+        return data;
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("ReadDataMsg: Invalid ReadDataMsg data size");
+        }
+        type = static_cast<ReadType>(data[0]);
+        const char* msgTypeStr = "Unknown";
+        switch (type) {
+            case ReadType::CONDUCTION_DATA:
+                msgTypeStr = "CONDUCTION_DATA";
+                break;
+            case ReadType::RESISTANCE_DATA:
+                msgTypeStr = "RESISTANCE_DATA";
+                break;
+            case ReadType::CLIP_DATA:
+                msgTypeStr = "CLIP_DATA";
+                break;
+            case ReadType::CLIP_INFO:
+                msgTypeStr = "CLIP_INFO";
+                break;
+            default:
+                break;
+        }
+        Log.d("ReadDataMsg: type=%s (0x%02X)", msgTypeStr, type);
+    }
+    void process() override { Log.d("ReadDataMsg process"); };
+};
+
+class LockMsg : public Message {
+   public:
+    uint8_t lock;
+
+    std::vector<uint8_t> serialize() const override {
+        std::vector<uint8_t> data;
+        data.push_back(lock);
+        return data;
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("LockMsg: Invalid LockMsg data size");
+        }
+        lock = data[0];
+        Log.d("LockMsg: lock = 0x%02X", lock);
+    }
+    void process() override { Log.d("LockMsg process"); };
+};
+
 // 导通数据消息（Slave -> Master）
 class ConductionDataMessage : public Message {
     DeviceStatus status;
@@ -332,8 +415,31 @@ class FrameParser {
         }
 
         auto msgType = static_cast<Master2SlaveMessageID>(data[0]);
-        Log.d("FrameParser: parsing Master message, type=0x%02X",
-              static_cast<uint8_t>(msgType));
+        const char* msgTypeStr = "Unknown";
+        switch (msgType) {
+            case Master2SlaveMessageID::SYNC_MSG:
+                msgTypeStr = "SYNC_MSG";
+                break;
+            case Master2SlaveMessageID::WRITE_COND_INFO_MSG:
+                msgTypeStr = "WRITE_COND_INFO_MSG";
+                break;
+            case Master2SlaveMessageID::WRITE_RES_INFO_MSG:
+                msgTypeStr = "WRITE_RES_INFO_MSG";
+                break;
+            case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG:
+                msgTypeStr = "WRITE_CLIP_INFO_MSG";
+                break;
+            case Master2SlaveMessageID::READ_DATA_MSG:
+                msgTypeStr = "READ_DATA_MSG";
+                break;
+            case Master2SlaveMessageID::LOCK_MSG:
+                msgTypeStr = "LOCK_MSG";
+                break;
+            default:
+                break;
+        }
+        Log.d("FrameParser: parsing Master message, type=%s (0x%02X)",
+              msgTypeStr, static_cast<uint8_t>(msgType));
 
         uint32_t targetID =
             (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
@@ -369,7 +475,27 @@ class FrameParser {
                 msg->deserialize(payload);
                 Log.d("FrameParser: WRITE_RES_INFO_MSG message deserialized");
                 return msg;
-                return nullptr;
+            }
+            case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
+                Log.d("FrameParser: processing WRITE_CLIP_INFO_MSG message");
+                auto msg = std::make_unique<WriteClipInfoMsg>();
+                msg->deserialize(payload);
+                Log.d("FrameParser: WRITE_CLIP_INFO_MSG message deserialized");
+                return msg;
+            }
+            case Master2SlaveMessageID::READ_DATA_MSG: {
+                Log.d("FrameParser: processing READ_DATA_MSG message");
+                auto msg = std::make_unique<ReadDataMsg>();
+                msg->deserialize(payload);
+                Log.d("FrameParser: READ_DATA_MSG message deserialized");
+                return msg;
+            }
+            case Master2SlaveMessageID::LOCK_MSG: {
+                Log.d("FrameParser: processing LOCK_MSG message");
+                auto msg = std::make_unique<LockMsg>();
+                msg->deserialize(payload);
+                Log.d("FrameParser: LOCK_MSG message deserialized");
+                return msg;
             }
             default:
                 Log.e("FrameParser: unsupported Master message type=0x%02X",
