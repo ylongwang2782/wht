@@ -203,21 +203,23 @@ class WriteResInfoMsg : public Message {
 
 class WriteClipInfoMsg : public Message {
    public:
-    uint8_t clipNum;
+    uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     std::vector<uint8_t> serialize() const override {
         std::vector<uint8_t> data;
-        data.push_back(clipNum);
+        data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
+        data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
         return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 1) {
+        if (data.size() != 2) {
             Log.e("WriteClipInfoMsg: Invalid WriteClipInfoMsg data size");
         }
-        clipNum = data[0];
-        Log.d("WriteClipInfoMsg: clipNum = 0x%02X", clipNum);
+        clipPin = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
+        Log.d("WriteClipInfoMsg: clipPin = 0x%04X", clipPin);
     }
+
     void process() override { Log.d("WriteClipInfoMsg process"); };
 };
 
