@@ -28,6 +28,8 @@ extern "C" {
 }
 #endif
 
+using MessageVariant = std::variant<SyncMsg, WriteCondInfoMsg>;
+
 UartConfig usart1Conf(usart1_info);
 UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
@@ -87,6 +89,7 @@ class UsartDMATask : public TaskClassS<1024> {
                 // 将 buffer 转换为 vector
                 std::vector<uint8_t> raw_data(buffer, buffer + len);
                 auto msg = parser.parse(raw_data);
+                msg->process();
 
                 // chronoLink.push_back(buffer, len);
                 // while (chronoLink.parseFrameFragment(frame_fragment)) {

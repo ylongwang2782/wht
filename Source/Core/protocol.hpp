@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdio>
 #include <memory>
 #include <vector>
 
@@ -98,13 +99,14 @@ class Message {
     virtual ~Message() = default;
     virtual std::vector<uint8_t> serialize() const = 0;
     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+    virtual void process() = 0;  // 纯虚处理接口
 };
 
 // 同步消息（Master -> Slave）
-class SyncMessage : public Message {
+class SyncMsg : public Message {
    public:
     uint32_t timestamp;
-    explicit SyncMessage(uint32_t ts = 0) : timestamp(ts) {}
+    explicit SyncMsg(uint32_t ts = 0) : timestamp(ts) {}
 
     std::vector<uint8_t> serialize() const override {
         std::vector<uint8_t> data;
@@ -117,12 +119,56 @@ class SyncMessage : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {
-            Log.e("SyncMessage: Invalid SyncMessage data size");
+            Log.e("SyncMsg: Invalid SyncMsg data size");
         }
         timestamp =
             (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-        Log.d("SyncMessage: timestamp =  0x%08X", timestamp);
+        Log.d("SyncMsg: timestamp =  0x%08X", timestamp);
     }
+
+    void process() override{
+        Log.d("SyncMsg process");
+    };
+};
+
+class WriteCondInfoMsg : public Message {
+   public:
+    uint8_t mode;
+    uint8_t timeSlot;
+    uint16_t totalCondNum;
+    uint16_t startCondNum;
+    uint16_t condNum;
+
+    std::vector<uint8_t> serialize() const override {
+        std::vector<uint8_t> data;
+        data.push_back(mode);
+        data.push_back(timeSlot);
+        data.push_back(static_cast<uint8_t>(totalCondNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalCondNum));
+        data.push_back(static_cast<uint8_t>(startCondNum >> 8));
+        data.push_back(static_cast<uint8_t>(startCondNum));
+        data.push_back(static_cast<uint8_t>(condNum >> 8));
+        data.push_back(static_cast<uint8_t>(condNum));
+        return data;
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 8) {
+            Log.e("WriteCondInfoMsg: Invalid WriteCondInfoMsg data size");
+        }
+        mode = data[0];
+        timeSlot = data[1];
+        totalCondNum = (data[3] << 8) | data[2];
+        startCondNum = (data[5] << 8) | data[4];
+        condNum = (data[7] << 8) | data[6];
+        Log.d(
+            "WriteCondInfoMsg: mode = 0x%02X, timeSlot = 0x%02X, totalCondNum "
+            "= 0x%04X, startCondNum = 0x%04X, condNum = 0x%04X",
+            mode, timeSlot, totalCondNum, startCondNum, condNum);
+    }
+    void process() override{
+        Log.d("WriteCondInfoMsg process");
+    };
 };
 
 // 导通数据消息（Slave -> Master）
@@ -140,6 +186,7 @@ class ConductionDataMessage : public Message {
     void deserialize(const std::vector<uint8_t>& data) override {
         // 反序列化逻辑...
     }
+    void process() override;
 };
 
 // 其他消息类型的类似实现...
@@ -197,7 +244,7 @@ class ConductionDataMessage : public Message {
 //     static std::unique_ptr<Message> create(Master2SlaveMessageID type) {
 //         switch (type) {
 //             case Master2SlaveMessageID::SYNC_MSG:
-//                 return std::make_unique<SyncMessage>();
+//                 return std::make_unique<SyncMsg>();
 //             // case PacketType::ConductionData:
 //             //     return std::make_unique<ConductionDataMessage>();
 //             // 其他消息类型...
@@ -259,6 +306,12 @@ class FrameParser {
 
         uint32_t targetID =
             (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
+        if (targetID != 0xFFFFFFFF) {
+            if (targetID != 0x3732485B) {
+                Log.e("FrameParser: invalid targetID: 0x%08X", targetID);
+                return nullptr;
+            }
+        }
         Log.d("FrameParser: targetID extracted: 0x%08X", targetID);
 
         auto payload = std::vector<uint8_t>(data.begin() + 5, data.end());
@@ -267,9 +320,16 @@ class FrameParser {
         switch (msgType) {
             case Master2SlaveMessageID::SYNC_MSG: {
                 Log.d("FrameParser: processing SYNC_MSG message");
-                auto msg = std::make_unique<SyncMessage>();
+                auto msg = std::make_unique<SyncMsg>();
                 msg->deserialize(payload);
                 Log.d("FrameParser: SYNC_MSG message deserialized");
+                return msg;
+            }
+            case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
+                Log.d("FrameParser: processing WRITE_COND_INFO_MSG message");
+                auto msg = std::make_unique<WriteCondInfoMsg>();
+                msg->deserialize(payload);
+                Log.d("FrameParser: WRITE_COND_INFO_MSG message deserialized");
                 return msg;
             }
             default:
