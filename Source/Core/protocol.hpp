@@ -105,11 +105,13 @@ class Message {
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
    public:
+    uint8_t mode;
     uint32_t timestamp;
-    explicit SyncMsg(uint32_t ts = 0) : timestamp(ts) {}
+    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) : mode(m), timestamp(ts) {}
 
     std::vector<uint8_t> serialize() const override {
         std::vector<uint8_t> data;
+        data.push_back(mode);
         data.push_back(static_cast<uint8_t>(timestamp >> 24));
         data.push_back(static_cast<uint8_t>(timestamp >> 16));
         data.push_back(static_cast<uint8_t>(timestamp >> 8));
@@ -118,95 +120,87 @@ class SyncMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 4) {
+        if (data.size() != 5) {
             Log.e("SyncMsg: Invalid SyncMsg data size");
         }
+        mode = data[0];
         timestamp =
-            (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-        Log.d("SyncMsg: timestamp =  0x%08X", timestamp);
+            (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
+        Log.d("SyncMsg: mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
     }
 
-    void process() override;
+    void process() override { Log.d("SyncMsg process"); };
 };
 
 class WriteCondInfoMsg : public Message {
    public:
-    uint8_t mode;
     uint8_t timeSlot;
-    uint16_t totalCondNum;
-    uint16_t startCondNum;
-    uint16_t condNum;
+    uint16_t totalConductionNum;
+    uint16_t startConductionNum;
+    uint16_t conductionNum;
 
     std::vector<uint8_t> serialize() const override {
         std::vector<uint8_t> data;
-        data.push_back(mode);
         data.push_back(timeSlot);
-        data.push_back(static_cast<uint8_t>(totalCondNum >> 8));
-        data.push_back(static_cast<uint8_t>(totalCondNum));
-        data.push_back(static_cast<uint8_t>(startCondNum >> 8));
-        data.push_back(static_cast<uint8_t>(startCondNum));
-        data.push_back(static_cast<uint8_t>(condNum >> 8));
-        data.push_back(static_cast<uint8_t>(condNum));
+        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalConductionNum));
+        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(startConductionNum));
+        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(conductionNum));
         return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 8) {
+        if (data.size() != 7) {
             Log.e("WriteCondInfoMsg: Invalid WriteCondInfoMsg data size");
         }
-        mode = data[0];
-        timeSlot = data[1];
-        totalCondNum = (data[3] << 8) | data[2];
-        startCondNum = (data[5] << 8) | data[4];
-        condNum = (data[7] << 8) | data[6];
+        timeSlot = data[0];
+        totalConductionNum = (data[2] << 8) | data[1];
+        startConductionNum = (data[4] << 8) | data[3];
+        conductionNum = (data[6] << 8) | data[5];
         Log.d(
-            "WriteCondInfoMsg: mode = 0x%02X, timeSlot = 0x%02X, totalCondNum "
-            "= 0x%04X, startCondNum = 0x%04X, condNum = 0x%04X",
-            mode, timeSlot, totalCondNum, startCondNum, condNum);
+            "WriteCondInfoMsg: timeSlot = 0x%02X, totalConductionNum "
+            "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
+            timeSlot, totalConductionNum, startConductionNum, conductionNum);
     }
-    void process() override;
+    void process() override { Log.d("WriteCondInfoMsg process"); };
 };
 
 class WriteResInfoMsg : public Message {
-    public:
-     uint8_t mode;
-     uint8_t timeSlot;
-     uint16_t totalResNum;
-     uint16_t startResNum;
-     uint16_t resNum;
- 
-     std::vector<uint8_t> serialize() const override {
-         std::vector<uint8_t> data;
-         data.push_back(mode);
-         data.push_back(timeSlot);
-         data.push_back(static_cast<uint8_t>(totalResNum >> 8));
-         data.push_back(static_cast<uint8_t>(totalResNum));
-         data.push_back(static_cast<uint8_t>(startResNum >> 8));
-         data.push_back(static_cast<uint8_t>(startResNum));
-         data.push_back(static_cast<uint8_t>(resNum >> 8));
-         data.push_back(static_cast<uint8_t>(resNum));
-         return data;
-     }
- 
-     void deserialize(const std::vector<uint8_t>& data) override {
-         if (data.size() != 8) {
-             Log.e("WriteResInfoMsg: Invalid WriteResInfoMsg data size");
-         }
-         mode = data[0];
-         timeSlot = data[1];
-         totalResNum = (data[3] << 8) | data[2];
-         startResNum = (data[5] << 8) | data[4];
-         resNum = (data[7] << 8) | data[6];
-         Log.d(
-             "WriteResInfoMsg: mode = 0x%02X, timeSlot = 0x%02X, totalResNum "
-             "= 0x%04X, startResNum = 0x%04X, resNum = 0x%04X",
-             mode, timeSlot, totalResNum, startResNum, resNum);
-     }
-     void process() override{
-         Log.d("WriteResInfoMsg process");
-     };
- };
- 
+   public:
+    uint8_t timeSlot;
+    uint16_t totalResistanceNum;
+    uint16_t startResistanceNum;
+    uint16_t resistanceNum;
+
+    std::vector<uint8_t> serialize() const override {
+        std::vector<uint8_t> data;
+        data.push_back(timeSlot);
+        data.push_back(static_cast<uint8_t>(totalResistanceNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalResistanceNum));
+        data.push_back(static_cast<uint8_t>(startResistanceNum >> 8));
+        data.push_back(static_cast<uint8_t>(startResistanceNum));
+        data.push_back(static_cast<uint8_t>(resistanceNum >> 8));
+        data.push_back(static_cast<uint8_t>(resistanceNum));
+        return data;
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 7) {
+            Log.e("WriteResInfoMsg: Invalid WriteResInfoMsg data size");
+        }
+        timeSlot = data[0];
+        totalResistanceNum = (data[2] << 8) | data[1];
+        startResistanceNum = (data[4] << 8) | data[3];
+        resistanceNum = (data[6] << 8) | data[5];
+        Log.d(
+            "WriteResInfoMsg: timeSlot = 0x%02X, totalResistanceNum = 0x%04X, "
+            "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
+            timeSlot, totalResistanceNum, startResistanceNum, resistanceNum);
+    }
+    void process() override { Log.d("WriteResInfoMsg process"); };
+};
 
 // 导通数据消息（Slave -> Master）
 class ConductionDataMessage : public Message {
