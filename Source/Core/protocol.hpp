@@ -16,11 +16,11 @@ enum class PacketType : uint8_t {
 enum class Master2SlaveMessageID : uint8_t {
     SYNC_MSG = 0x00,               // 同步消息
     WRITE_COND_INFO_MSG = 0x01,    // 配置消息
-    WRITE_RES_INFO_MSG = 0x02,     // 控制命令
-    WRITE_CLIP_INFO_MSG = 0x03,    // 数据请求
-    READ_DATA_MSG = 0x04,          // 数据回复
-    LOCK_MSG = 0x05,               // 设备解锁
-    READ_CLIP_NUM_MSG = 0x06,      // 设备状态
+    WRITE_RES_INFO_MSG = 0x02,     // 写入阻值信息
+    WRITE_CLIP_INFO_MSG = 0x03,    // 写入卡钉信息
+    READ_DATA_MSG = 0x04,          // 读取数据
+    LOCK_MSG = 0x05,               // 锁
+    READ_CLIP_NUM_MSG = 0x06,      // 读取卡钉数量
 };
 
 enum class Slave2MasterMessageID : uint8_t {
@@ -99,7 +99,7 @@ class Message {
     virtual ~Message() = default;
     virtual std::vector<uint8_t> serialize() const = 0;
     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
-    virtual void process() = 0;  // 纯虚处理接口
+    virtual void process() = 0;    // 纯虚处理接口
 };
 
 // 同步消息（Master -> Slave）
@@ -126,9 +126,7 @@ class SyncMsg : public Message {
         Log.d("SyncMsg: timestamp =  0x%08X", timestamp);
     }
 
-    void process() override{
-        Log.d("SyncMsg process");
-    };
+    void process() override;
 };
 
 class WriteCondInfoMsg : public Message {
@@ -166,10 +164,49 @@ class WriteCondInfoMsg : public Message {
             "= 0x%04X, startCondNum = 0x%04X, condNum = 0x%04X",
             mode, timeSlot, totalCondNum, startCondNum, condNum);
     }
-    void process() override{
-        Log.d("WriteCondInfoMsg process");
-    };
+    void process() override;
 };
+
+class WriteResInfoMsg : public Message {
+    public:
+     uint8_t mode;
+     uint8_t timeSlot;
+     uint16_t totalResNum;
+     uint16_t startResNum;
+     uint16_t resNum;
+ 
+     std::vector<uint8_t> serialize() const override {
+         std::vector<uint8_t> data;
+         data.push_back(mode);
+         data.push_back(timeSlot);
+         data.push_back(static_cast<uint8_t>(totalResNum >> 8));
+         data.push_back(static_cast<uint8_t>(totalResNum));
+         data.push_back(static_cast<uint8_t>(startResNum >> 8));
+         data.push_back(static_cast<uint8_t>(startResNum));
+         data.push_back(static_cast<uint8_t>(resNum >> 8));
+         data.push_back(static_cast<uint8_t>(resNum));
+         return data;
+     }
+ 
+     void deserialize(const std::vector<uint8_t>& data) override {
+         if (data.size() != 8) {
+             Log.e("WriteResInfoMsg: Invalid WriteResInfoMsg data size");
+         }
+         mode = data[0];
+         timeSlot = data[1];
+         totalResNum = (data[3] << 8) | data[2];
+         startResNum = (data[5] << 8) | data[4];
+         resNum = (data[7] << 8) | data[6];
+         Log.d(
+             "WriteResInfoMsg: mode = 0x%02X, timeSlot = 0x%02X, totalResNum "
+             "= 0x%04X, startResNum = 0x%04X, resNum = 0x%04X",
+             mode, timeSlot, totalResNum, startResNum, resNum);
+     }
+     void process() override{
+         Log.d("WriteResInfoMsg process");
+     };
+ };
+ 
 
 // 导通数据消息（Slave -> Master）
 class ConductionDataMessage : public Message {
@@ -331,6 +368,14 @@ class FrameParser {
                 msg->deserialize(payload);
                 Log.d("FrameParser: WRITE_COND_INFO_MSG message deserialized");
                 return msg;
+            }
+            case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
+                Log.d("FrameParser: processing WRITE_RES_INFO_MSG message");
+                auto msg = std::make_unique<WriteResInfoMsg>();
+                msg->deserialize(payload);
+                Log.d("FrameParser: WRITE_RES_INFO_MSG message deserialized");
+                return msg;
+                return nullptr;
             }
             default:
                 Log.e("FrameParser: unsupported Master message type=0x%02X",
