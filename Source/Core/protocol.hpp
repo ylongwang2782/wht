@@ -43,38 +43,44 @@ class FrameBase {
 
 // 通用帧头定义
 struct FrameHeader {
-    uint8_t delimiter[2] = {0xAB, 0xCD};
+    static constexpr uint8_t FRAME_DELIMITER[2] = {
+        0xAB, 0xCD};    // 使用常量表示帧分隔符
     uint8_t slot;
     uint8_t packet_id;
     uint8_t fragment_sequence;
-    uint8_t more_fragments;
+    uint8_t more_fragments_flag;
     uint16_t data_length;
 
-    std::vector<uint8_t> serialize() const {
-        std::vector<uint8_t> data;
-        data.push_back(delimiter[0]);
-        data.push_back(delimiter[1]);
+    void serialize(std::vector<uint8_t>& data) const {
+        data.clear();  // 清空传入的vector
+        data.push_back(FRAME_DELIMITER[0]);
+        data.push_back(FRAME_DELIMITER[1]);
         data.push_back(slot);
         data.push_back(packet_id);
         data.push_back(fragment_sequence);
-        data.push_back(more_fragments);
-        data.push_back(static_cast<uint8_t>(data_length >> 8));
-        data.push_back(static_cast<uint8_t>(data_length));
-        return data;
+        data.push_back(more_fragments_flag);
+        data.push_back(static_cast<uint8_t>(data_length >> 8));  // 高字节在前
+        data.push_back(static_cast<uint8_t>(data_length));       // 低字节在后
     }
 
-    void deserialize(const std::vector<uint8_t>& data) {
+    bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 8) {
             Log.e("Invalid frame header data size");
-        };
+            return false;
+        }
 
-        delimiter[0] = data[0];
-        delimiter[1] = data[1];
+        // 验证帧分隔符
+        if (data[0] != FRAME_DELIMITER[0] || data[1] != FRAME_DELIMITER[1]) {
+            Log.e("Invalid frame delimiter");
+            return false;
+        }
+
         slot = data[2];
         packet_id = data[3];
         fragment_sequence = data[4];
-        more_fragments = data[5];
+        more_fragments_flag = data[5];
         data_length = (data[7] << 8) | data[6];
+        return true;
     }
 };
 
@@ -94,12 +100,12 @@ struct DeviceStatus {
 
 // 消息基类
 class Message {
-    public:
-     virtual ~Message() = default;
-     virtual void serialize(std::vector<uint8_t>& data) const = 0;  // 修改为引用参数
-     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
-     virtual void process() = 0;    // 纯虚处理接口
- };
+   public:
+    virtual ~Message() = default;
+    virtual void serialize(std::vector<uint8_t>& data) const = 0;
+    virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+    virtual void process() = 0;
+};
 
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
@@ -109,7 +115,7 @@ class SyncMsg : public Message {
     explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) : mode(m), timestamp(ts) {}
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.clear();  // 清空传入的vector
+        data.clear();    // 清空传入的vector
         data.push_back(mode);
         data.push_back(static_cast<uint8_t>(timestamp >> 24));
         data.push_back(static_cast<uint8_t>(timestamp >> 16));
