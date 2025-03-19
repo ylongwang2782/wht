@@ -327,7 +327,7 @@ class CompleteFrameType : private FrameBase<UNKNOWN> {
         while (index + min_packet_size <= recv_buf.size()) {
             // 检查起始标志 0xAB 0xCD
             if (recv_buf[index] != 0xAB || recv_buf[index + 1] != 0xCD) {
-                Log.w("Invalid header delimiter at index %d\n", index);
+                // Log.w("Invalid header delimiter at index %d\n", index);
                 ++index;    // 跳过无效字节，继续检查下一个可能的帧
                 continue;
             }
