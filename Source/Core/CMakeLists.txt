@@ -1,7 +1,6 @@
 target_sources(${EXECUTABLE_NAME} PRIVATE
     ./gd32f4xx_it.c
     ./main.cpp
-
     ./chronolink.cpp
     ./slave/slave_mode.cpp
     ./slave/harness.cpp

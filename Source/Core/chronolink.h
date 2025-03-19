@@ -98,7 +98,7 @@ class ChronoLink {
 
     struct DataReplyContext {
         DeviceStatus deviceStatus;           // 状态字
-        uint8_t harnessLength;               // 线束数据字段长度
+        uint16_t harnessLength;               // 线束数据字段长度
         std::vector<uint8_t> harnessData;    // 线束数据
         uint8_t clipLength;                  // 卡钉数据字段长度
         std::vector<uint8_t> clipData;       // 卡钉数据

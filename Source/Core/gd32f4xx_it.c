@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "gd32f4xx_it.h"
+#include "stdio.h"
 /*!
     \brief      this function handles NMI exception
     \param[in]  none
@@ -53,6 +54,7 @@ void NMI_Handler(void) {
 */
 void HardFault_Handler(void) {
     /* if Hard Fault exception occurs, go to infinite loop */
+    printf(" HardFault_Handler\r\n");
     while (1) {
     }
 }
