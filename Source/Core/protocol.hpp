@@ -94,12 +94,12 @@ struct DeviceStatus {
 
 // 消息基类
 class Message {
-   public:
-    virtual ~Message() = default;
-    virtual std::vector<uint8_t> serialize() const = 0;
-    virtual void deserialize(const std::vector<uint8_t>& data) = 0;
-    virtual void process() = 0;    // 纯虚处理接口
-};
+    public:
+     virtual ~Message() = default;
+     virtual void serialize(std::vector<uint8_t>& data) const = 0;  // 修改为引用参数
+     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+     virtual void process() = 0;    // 纯虚处理接口
+ };
 
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
@@ -108,14 +108,13 @@ class SyncMsg : public Message {
     uint32_t timestamp;
     explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) : mode(m), timestamp(ts) {}
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.clear();  // 清空传入的vector
         data.push_back(mode);
         data.push_back(static_cast<uint8_t>(timestamp >> 24));
         data.push_back(static_cast<uint8_t>(timestamp >> 16));
         data.push_back(static_cast<uint8_t>(timestamp >> 8));
         data.push_back(static_cast<uint8_t>(timestamp));
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -138,8 +137,7 @@ class WriteCondInfoMsg : public Message {
     uint16_t startConductionNum;
     uint16_t conductionNum;
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
         data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(totalConductionNum));
@@ -147,7 +145,6 @@ class WriteCondInfoMsg : public Message {
         data.push_back(static_cast<uint8_t>(startConductionNum));
         data.push_back(static_cast<uint8_t>(conductionNum >> 8));
         data.push_back(static_cast<uint8_t>(conductionNum));
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -173,8 +170,7 @@ class WriteResInfoMsg : public Message {
     uint16_t startResistanceNum;
     uint16_t resistanceNum;
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
         data.push_back(static_cast<uint8_t>(totalResistanceNum >> 8));
         data.push_back(static_cast<uint8_t>(totalResistanceNum));
@@ -182,7 +178,6 @@ class WriteResInfoMsg : public Message {
         data.push_back(static_cast<uint8_t>(startResistanceNum));
         data.push_back(static_cast<uint8_t>(resistanceNum >> 8));
         data.push_back(static_cast<uint8_t>(resistanceNum));
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -205,11 +200,9 @@ class WriteClipInfoMsg : public Message {
    public:
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -234,10 +227,8 @@ class ReadDataMsg : public Message {
 
     ReadType type;
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(static_cast<uint8_t>(type));
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -272,13 +263,11 @@ class InitMsg : public Message {
     uint8_t lock;
     uint16_t clipLed;    // 新增卡钉灯位初始化信息
 
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(lock);
         // 新增 clipLed 序列化
         data.push_back(static_cast<uint8_t>(clipLed));         // 低字节
         data.push_back(static_cast<uint8_t>(clipLed >> 8));    // 高字节
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -299,10 +288,8 @@ class ConductionDataMessage : public Message {
     std::vector<uint8_t> conduction_data;
 
    public:
-    std::vector<uint8_t> serialize() const override {
-        std::vector<uint8_t> data;
+    void serialize(std::vector<uint8_t>& data) const override {
         // 序列化status和data...
-        return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -322,7 +309,7 @@ class ConductionDataMessage : public Message {
 //         header.packet_id = static_cast<uint8_t>(type);
 //     }
 
-//     std::vector<uint8_t> serialize() const override {
+//     void serialize(std::vector<uint8_t>& data) const override {
 //         auto header_data = header.serialize();
 //         auto payload_data = payload->serialize();
 
