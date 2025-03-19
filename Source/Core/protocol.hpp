@@ -45,22 +45,26 @@ class FrameBase {
 struct FrameHeader {
     static constexpr uint8_t FRAME_DELIMITER[2] = {
         0xAB, 0xCD};    // 使用常量表示帧分隔符
+    static constexpr size_t HEADER_SIZE = 8;
     uint8_t slot;
     uint8_t packet_id;
     uint8_t fragment_sequence;
     uint8_t more_fragments_flag;
     uint16_t data_length;
 
-    void serialize(std::vector<uint8_t>& data) const {
-        data.clear();  // 清空传入的vector
+    // 序列化为字节流
+    std::vector<uint8_t> serialize() const {
+        std::vector<uint8_t> data;
+        data.reserve(HEADER_SIZE);
         data.push_back(FRAME_DELIMITER[0]);
         data.push_back(FRAME_DELIMITER[1]);
         data.push_back(slot);
         data.push_back(packet_id);
         data.push_back(fragment_sequence);
         data.push_back(more_fragments_flag);
-        data.push_back(static_cast<uint8_t>(data_length >> 8));  // 高字节在前
-        data.push_back(static_cast<uint8_t>(data_length));       // 低字节在后
+        data.push_back(static_cast<uint8_t>(data_length >> 8));    // 高位在前
+        data.push_back(static_cast<uint8_t>(data_length & 0xFF));
+        return data;
     }
 
     bool deserialize(const std::vector<uint8_t>& data) {
@@ -84,18 +88,63 @@ struct FrameHeader {
     }
 };
 
-// 设备状态结构体
-struct DeviceStatus {
-    uint16_t colorSensor : 1;
-    uint16_t sleeveLimit : 1;
-    uint16_t electromagnetUnlockButton : 1;
-    uint16_t batteryLowPowerAlarm : 1;
-    uint16_t pressureSensor : 1;
-    uint16_t electromagneticLock1 : 1;
-    uint16_t electromagneticLock2 : 1;
-    uint16_t accessory1 : 1;
-    uint16_t accessory2 : 1;
-    uint16_t res : 7;
+class FramePacker {
+   public:
+    // 打包消息为完整帧
+    template <typename MsgType>
+    static std::vector<uint8_t> pack(const MsgType& msg, PacketType packet_type,
+                                     uint8_t slot = 0, uint8_t fragment_seq = 0,
+                                     uint8_t more_fragments = 0) {
+        // 序列化消息负载
+        std::vector<uint8_t> payload = msg.serialize();
+
+        // 构建帧头
+        FrameHeader header;
+        header.slot = slot;
+        header.packet_id = static_cast<uint8_t>(packet_type);
+        header.fragment_sequence = fragment_seq;
+        header.more_fragments_flag = more_fragments;
+        header.data_length = static_cast<uint16_t>(payload.size());
+
+        // 合并帧头和负载
+        std::vector<uint8_t> frame = header.serialize();
+        frame.insert(frame.end(), payload.begin(), payload.end());
+        return frame;
+    }
+};
+
+struct Packet {
+    uint8_t message_id;              // 消息类型标识
+    uint32_t target_id;              // 目标设备 ID
+    std::vector<uint8_t> payload;    // 消息的序列化数据
+
+    // 序列化 Packet
+    std::vector<uint8_t> serialize() const {
+        std::vector<uint8_t> data;
+        data.reserve(5 + payload.size());    // 1 + 4 + payload size
+        data.push_back(message_id);
+        data.push_back(static_cast<uint8_t>(target_id >> 24));
+        data.push_back(static_cast<uint8_t>(target_id >> 16));
+        data.push_back(static_cast<uint8_t>(target_id >> 8));
+        data.push_back(static_cast<uint8_t>(target_id));
+        data.insert(data.end(), payload.begin(), payload.end());
+        return data;
+    }
+
+    // 反序列化 Packet
+    bool deserialize(const std::vector<uint8_t>& data) {
+        if (data.size() < 5) {
+            Log.e("Packet data too short");
+            return false;
+        }
+        message_id = data[0];
+        target_id = (static_cast<uint32_t>(data[1]) << 24) |
+                    (static_cast<uint32_t>(data[2]) << 16) |
+                    (static_cast<uint32_t>(data[3]) << 8) |
+                    static_cast<uint32_t>(data[4]);
+        payload.assign(data.begin() + 5, data.end());
+        return true;
+    }
 };
 
 // 消息基类
@@ -288,6 +337,19 @@ class InitMsg : public Message {
     void process() override { Log.d("InitMsg process"); };
 };
 
+// 设备状态结构体
+struct DeviceStatus {
+    uint16_t colorSensor : 1;
+    uint16_t sleeveLimit : 1;
+    uint16_t electromagnetUnlockButton : 1;
+    uint16_t batteryLowPowerAlarm : 1;
+    uint16_t pressureSensor : 1;
+    uint16_t electromagneticLock1 : 1;
+    uint16_t electromagneticLock2 : 1;
+    uint16_t accessory1 : 1;
+    uint16_t accessory2 : 1;
+    uint16_t res : 7;
+};
 // 导通数据消息（Slave -> Master）
 class ConductionDataMessage : public Message {
     DeviceStatus status;
@@ -372,52 +434,39 @@ class ConductionDataMessage : public Message {
 
 class FrameParser {
    public:
-    std::unique_ptr<Message> parse(const std::vector<uint8_t>& raw) {
-        // 第一阶段：帧头解析
+    std::unique_ptr<Message> parse(const std::vector<uint8_t>& raw_data) {
+        // 1. 解析帧头
         FrameHeader header;
-        header.deserialize(raw);
+        if (!header.deserialize(raw_data)) {
+            Log.e("FrameParser: Frame header parse failed");
+            return nullptr;
+        }
+
         Log.d("FrameParser: header parsed, type=0x%02X, len=%d",
               header.packet_id, header.data_length);
 
-        // 第二阶段：数据完整性验证
-        if (raw.size() < 8 + header.data_length) {
+        // 数据完整性验证
+        if (raw_data.size() < 8 + header.data_length) {
             Log.e("FrameParser: invalid frame, expected=%d, actual=%d",
-                  8 + header.data_length, raw.size());
+                  8 + header.data_length, raw_data.size());
             return nullptr;
         }
 
-        // 第三阶段：负载提取
-        auto payload_start = raw.begin() + 8;
-        auto payload_end = payload_start + header.data_length;
-        std::vector<uint8_t> payload(payload_start, payload_end);
-        Log.d("FrameParser: payload extracted, len=%d", payload.size());
+        // 2. 提取 Packet 数据
+        auto packet_start = raw_data.begin() + FrameHeader::HEADER_SIZE;
+        auto packet_end = packet_start + header.data_length;
+        std::vector<uint8_t> packet_data(packet_start, packet_end);
+        Log.d("FrameParser: payload extracted, len=%d", packet_data.size());
 
-        // 第四阶段：动态消息解析
-        switch (static_cast<PacketType>(header.packet_id)) {
-            case PacketType::MasterToSlave:
-                Log.d("FrameParser: parsing MasterToSlave message");
-                return parseMasterMessage(payload);
-            case PacketType::SlaveToMaster:
-                Log.d("FrameParser: parsing SlaveToMaster message");
-                // return parseSlaveMessage(payload);
-            default:
-                Log.e("FrameParser: unknown packet type=0x%02X",
-                      header.packet_id);
-                return nullptr;
-        }
-    }
-
-   private:
-    std::unique_ptr<Message> parseMasterMessage(
-        const std::vector<uint8_t>& data) {
-        if (data.empty()) {
-            Log.e("FrameParser: empty Master message");
+        // 3. 反序列化 Packet
+        Packet packet;
+        if (!packet.deserialize(packet_data)) {
+            Log.e("Failed to deserialize packet");
             return nullptr;
         }
 
-        auto msgType = static_cast<Master2SlaveMessageID>(data[0]);
         const char* msgTypeStr = "Unknown";
-        switch (msgType) {
+        switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
             case Master2SlaveMessageID::SYNC_MSG:
                 msgTypeStr = "SYNC_MSG";
                 break;
@@ -439,93 +488,56 @@ class FrameParser {
             default:
                 break;
         }
-        Log.d("FrameParser: parsing Master message, type=%s (0x%02X)",
-              msgTypeStr, static_cast<uint8_t>(msgType));
+        Log.d("FrameParser: packet parsed, type=%s (0x%02X), target_id=0x%08X",
+              msgTypeStr, packet.message_id, packet.target_id);
 
-        uint32_t targetID =
-            (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
-        if (targetID != 0xFFFFFFFF) {
-            if (targetID != 0x3732485B) {
-                Log.e("FrameParser: invalid targetID: 0x%08X", targetID);
-                return nullptr;
-            }
-        }
-        Log.d("FrameParser: targetID extracted: 0x%08X", targetID);
-
-        auto payload = std::vector<uint8_t>(data.begin() + 5, data.end());
-        Log.d("FrameParser: payload extracted, len=%d", payload.size());
-
-        switch (msgType) {
+        // 第四阶段：动态消息解析
+        switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
             case Master2SlaveMessageID::SYNC_MSG: {
                 Log.d("FrameParser: processing SYNC_MSG message");
                 auto msg = std::make_unique<SyncMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: SYNC_MSG message deserialized");
                 return msg;
             }
             case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
                 Log.d("FrameParser: processing WRITE_COND_INFO_MSG message");
                 auto msg = std::make_unique<WriteCondInfoMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: WRITE_COND_INFO_MSG message deserialized");
                 return msg;
             }
             case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
                 Log.d("FrameParser: processing WRITE_RES_INFO_MSG message");
                 auto msg = std::make_unique<WriteResInfoMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: WRITE_RES_INFO_MSG message deserialized");
                 return msg;
             }
             case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
                 Log.d("FrameParser: processing WRITE_CLIP_INFO_MSG message");
                 auto msg = std::make_unique<WriteClipInfoMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: WRITE_CLIP_INFO_MSG message deserialized");
                 return msg;
             }
             case Master2SlaveMessageID::READ_DATA_MSG: {
                 Log.d("FrameParser: processing READ_DATA_MSG message");
                 auto msg = std::make_unique<ReadDataMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: READ_DATA_MSG message deserialized");
                 return msg;
             }
             case Master2SlaveMessageID::LOCK_MSG: {
                 Log.d("FrameParser: processing LOCK_MSG message");
                 auto msg = std::make_unique<InitMsg>();
-                msg->deserialize(payload);
+                msg->deserialize(packet.payload);
                 Log.d("FrameParser: LOCK_MSG message deserialized");
                 return msg;
             }
             default:
-                Log.e("FrameParser: unsupported Master message type=0x%02X",
-                      static_cast<uint8_t>(msgType));
-                return nullptr;
-        }
-    }
-
-    std::unique_ptr<Message> parseSlaveMessage(
-        const std::vector<uint8_t>& data) {
-        if (data.empty()) {
-            Log.e("FrameParser: empty Slave message");
-            return nullptr;
-        }
-
-        auto msgType = static_cast<Slave2MasterMessageID>(data[0]);
-        Log.d("FrameParser: parsing Slave message, type=0x%02X",
-              static_cast<uint8_t>(msgType));
-
-        auto payload = std::vector<uint8_t>(data.begin() + 1, data.end());
-        Log.d("FrameParser: payload extracted, len=%d", payload.size());
-
-        switch (msgType) {
-            case Slave2MasterMessageID::COND_INFO_MSG: {
-                auto msg = std::make_unique<ConductionDataMessage>();
-                msg->deserialize(payload);
-                return msg;
-            }
-            default:
+                // Log.e("FrameParser: unsupported Master message type=0x%02X",
+                //       static_cast<uint8_t>(msgType));
                 return nullptr;
         }
     }
