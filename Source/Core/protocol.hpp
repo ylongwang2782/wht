@@ -492,52 +492,75 @@ class FrameParser {
               msgTypeStr, packet.message_id, packet.target_id);
 
         // 第四阶段：动态消息解析
-        switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
-            case Master2SlaveMessageID::SYNC_MSG: {
-                Log.d("FrameParser: processing SYNC_MSG message");
-                auto msg = std::make_unique<SyncMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: SYNC_MSG message deserialized");
-                return msg;
-            }
-            case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
-                Log.d("FrameParser: processing WRITE_COND_INFO_MSG message");
-                auto msg = std::make_unique<WriteCondInfoMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: WRITE_COND_INFO_MSG message deserialized");
-                return msg;
-            }
-            case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
-                Log.d("FrameParser: processing WRITE_RES_INFO_MSG message");
-                auto msg = std::make_unique<WriteResInfoMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: WRITE_RES_INFO_MSG message deserialized");
-                return msg;
-            }
-            case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
-                Log.d("FrameParser: processing WRITE_CLIP_INFO_MSG message");
-                auto msg = std::make_unique<WriteClipInfoMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: WRITE_CLIP_INFO_MSG message deserialized");
-                return msg;
-            }
-            case Master2SlaveMessageID::READ_DATA_MSG: {
-                Log.d("FrameParser: processing READ_DATA_MSG message");
-                auto msg = std::make_unique<ReadDataMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: READ_DATA_MSG message deserialized");
-                return msg;
-            }
-            case Master2SlaveMessageID::LOCK_MSG: {
-                Log.d("FrameParser: processing LOCK_MSG message");
-                auto msg = std::make_unique<InitMsg>();
-                msg->deserialize(packet.payload);
-                Log.d("FrameParser: LOCK_MSG message deserialized");
-                return msg;
-            }
+        switch (header.packet_id) {
+            case uint8_t(PacketType::MasterToSlave):
+                switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
+                    case Master2SlaveMessageID::SYNC_MSG: {
+                        Log.d("FrameParser: processing SYNC_MSG message");
+                        auto msg = std::make_unique<SyncMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d("FrameParser: SYNC_MSG message deserialized");
+                        return msg;
+                    }
+                    case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
+                        Log.d(
+                            "FrameParser: processing WRITE_COND_INFO_MSG "
+                            "message");
+                        auto msg = std::make_unique<WriteCondInfoMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d(
+                            "FrameParser: WRITE_COND_INFO_MSG message "
+                            "deserialized");
+                        return msg;
+                    }
+                    case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
+                        Log.d(
+                            "FrameParser: processing WRITE_RES_INFO_MSG "
+                            "message");
+                        auto msg = std::make_unique<WriteResInfoMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d(
+                            "FrameParser: WRITE_RES_INFO_MSG message "
+                            "deserialized");
+                        return msg;
+                    }
+                    case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
+                        Log.d(
+                            "FrameParser: processing WRITE_CLIP_INFO_MSG "
+                            "message");
+                        auto msg = std::make_unique<WriteClipInfoMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d(
+                            "FrameParser: WRITE_CLIP_INFO_MSG message "
+                            "deserialized");
+                        return msg;
+                    }
+                    case Master2SlaveMessageID::READ_DATA_MSG: {
+                        Log.d("FrameParser: processing READ_DATA_MSG message");
+                        auto msg = std::make_unique<ReadDataMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d(
+                            "FrameParser: READ_DATA_MSG message deserialized");
+                        return msg;
+                    }
+                    case Master2SlaveMessageID::LOCK_MSG: {
+                        Log.d("FrameParser: processing LOCK_MSG message");
+                        auto msg = std::make_unique<InitMsg>();
+                        msg->deserialize(packet.payload);
+                        Log.d("FrameParser: LOCK_MSG message deserialized");
+                        return msg;
+                    }
+                    default:
+                        Log.e(
+                            "FrameParser: unsupported Master message "
+                            "type=0x%02X",
+                            static_cast<uint8_t>(packet.message_id));
+                        return nullptr;
+                }
+            case uint8_t(PacketType::SlaveToMaster):
             default:
-                // Log.e("FrameParser: unsupported Master message type=0x%02X",
-                //       static_cast<uint8_t>(msgType));
+                Log.e("FrameParser: unsupported Packet type=0x%02X",
+                      header.packet_id);
                 return nullptr;
         }
     }
