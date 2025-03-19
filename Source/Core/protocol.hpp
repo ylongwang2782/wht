@@ -267,24 +267,30 @@ class ReadDataMsg : public Message {
     void process() override { Log.d("ReadDataMsg process"); };
 };
 
-class LockMsg : public Message {
+class InitMsg : public Message {
    public:
     uint8_t lock;
+    uint16_t clipLed;    // 新增卡钉灯位初始化信息
 
     std::vector<uint8_t> serialize() const override {
         std::vector<uint8_t> data;
         data.push_back(lock);
+        // 新增 clipLed 序列化
+        data.push_back(static_cast<uint8_t>(clipLed));         // 低字节
+        data.push_back(static_cast<uint8_t>(clipLed >> 8));    // 高字节
         return data;
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 1) {
-            Log.e("LockMsg: Invalid LockMsg data size");
+        if (data.size() != 3) {    // 修改为3字节
+            Log.e("InitMsg: Invalid InitMsg data size");
         }
         lock = data[0];
-        Log.d("LockMsg: lock = 0x%02X", lock);
+        // 新增 clipLed 反序列化
+        clipLed = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
+        Log.d("InitMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
-    void process() override { Log.d("LockMsg process"); };
+    void process() override { Log.d("InitMsg process"); };
 };
 
 // 导通数据消息（Slave -> Master）
@@ -494,7 +500,7 @@ class FrameParser {
             }
             case Master2SlaveMessageID::LOCK_MSG: {
                 Log.d("FrameParser: processing LOCK_MSG message");
-                auto msg = std::make_unique<LockMsg>();
+                auto msg = std::make_unique<InitMsg>();
                 msg->deserialize(payload);
                 Log.d("FrameParser: LOCK_MSG message deserialized");
                 return msg;
