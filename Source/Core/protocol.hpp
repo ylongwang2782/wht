@@ -62,8 +62,8 @@ struct FrameHeader {
         data.push_back(packet_id);
         data.push_back(fragment_sequence);
         data.push_back(more_fragments_flag);
-        data.push_back(static_cast<uint8_t>(data_length >> 8));    // 高位在前
-        data.push_back(static_cast<uint8_t>(data_length & 0xFF));
+        data.push_back(static_cast<uint8_t>(data_length & 0xFF));    // 低位在前
+        data.push_back(static_cast<uint8_t>(data_length >> 8));     // 高位在后
         return data;
     }
 
@@ -85,31 +85,6 @@ struct FrameHeader {
         more_fragments_flag = data[5];
         data_length = (data[7] << 8) | data[6];
         return true;
-    }
-};
-
-class FramePacker {
-   public:
-    // 打包消息为完整帧
-    template <typename MsgType>
-    static std::vector<uint8_t> pack(const MsgType& msg, PacketType packet_type,
-                                     uint8_t slot = 0, uint8_t fragment_seq = 0,
-                                     uint8_t more_fragments = 0) {
-        // 序列化消息负载
-        std::vector<uint8_t> payload = msg.serialize();
-
-        // 构建帧头
-        FrameHeader header;
-        header.slot = slot;
-        header.packet_id = static_cast<uint8_t>(packet_type);
-        header.fragment_sequence = fragment_seq;
-        header.more_fragments_flag = more_fragments;
-        header.data_length = static_cast<uint16_t>(payload.size());
-
-        // 合并帧头和负载
-        std::vector<uint8_t> frame = header.serialize();
-        frame.insert(frame.end(), payload.begin(), payload.end());
-        return frame;
     }
 };
 
@@ -149,11 +124,61 @@ struct Packet {
 
 // 消息基类
 class Message {
+    public:
+     virtual ~Message() = default;
+     virtual void serialize(std::vector<uint8_t>& data) const = 0;
+     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+     virtual void process() = 0;
+     // 消息类型标识
+     virtual uint8_t message_type() const = 0;
+ };
+
+class PacketPacker {
    public:
-    virtual ~Message() = default;
-    virtual void serialize(std::vector<uint8_t>& data) const = 0;
-    virtual void deserialize(const std::vector<uint8_t>& data) = 0;
-    virtual void process() = 0;
+    // 将消息打包为 Packet
+    static Packet pack(const Message& msg, uint32_t target_id) {
+        Packet packet;
+        packet.message_id = msg.message_type();    // 获取消息类型
+        packet.target_id = target_id;              // 设置目标 ID
+        msg.serialize(packet.payload);      
+        return packet;
+    }
+
+    // // 从 Packet 中解包消息
+    // template <typename Message>
+    // static std::unique_ptr<Message> unpack(const Packet& packet) {
+    //     auto msg = std::make_unique<Message>();
+    //     if (!msg->deserialize(packet.payload)) {
+    //         Log.e("Failed to unpack message from packet");
+    //         return nullptr;
+    //     }
+    //     return msg;
+    // }
+};
+
+class FramePacker {
+   public:
+    // 将 Packet 打包为帧
+    static std::vector<uint8_t> pack(const Packet& packet, uint8_t slot = 0,
+                                     uint8_t fragment_seq = 0,
+                                     uint8_t more_fragments = 0) {
+        // 序列化 Packet
+        std::vector<uint8_t> packet_data = packet.serialize();
+
+        // 构建帧头
+        FrameHeader header;
+        header.slot = slot;
+        header.packet_id = static_cast<uint8_t>(
+            PacketType::MasterToSlave);    // 假设默认是 MasterToSlave
+        header.fragment_sequence = fragment_seq;
+        header.more_fragments_flag = more_fragments;
+        header.data_length = static_cast<uint16_t>(packet_data.size());
+
+        // 合并帧头和 Packet 数据
+        std::vector<uint8_t> frame = header.serialize();
+        frame.insert(frame.end(), packet_data.begin(), packet_data.end());
+        return frame;
+    }
 };
 
 // 同步消息（Master -> Slave）
@@ -183,6 +208,10 @@ class SyncMsg : public Message {
     }
 
     void process() override { Log.d("SyncMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::SYNC_MSG);
+    }
 };
 
 class WriteCondInfoMsg : public Message {
@@ -216,6 +245,10 @@ class WriteCondInfoMsg : public Message {
             timeSlot, totalConductionNum, startConductionNum, conductionNum);
     }
     void process() override { Log.d("WriteCondInfoMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_COND_INFO_MSG);
+    }
 };
 
 class WriteResInfoMsg : public Message {
@@ -248,7 +281,12 @@ class WriteResInfoMsg : public Message {
             "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
             timeSlot, totalResistanceNum, startResistanceNum, resistanceNum);
     }
+
     void process() override { Log.d("WriteResInfoMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_RES_INFO_MSG);
+    }
 };
 
 class WriteClipInfoMsg : public Message {
@@ -269,6 +307,10 @@ class WriteClipInfoMsg : public Message {
     }
 
     void process() override { Log.d("WriteClipInfoMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_CLIP_INFO_MSG);
+    }
 };
 
 class ReadDataMsg : public Message {
@@ -310,7 +352,12 @@ class ReadDataMsg : public Message {
         }
         Log.d("ReadDataMsg: type=%s (0x%02X)", msgTypeStr, type);
     }
+
     void process() override { Log.d("ReadDataMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::READ_DATA_MSG);
+    }
 };
 
 class InitMsg : public Message {
@@ -334,7 +381,12 @@ class InitMsg : public Message {
         clipLed = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
         Log.d("InitMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
+
     void process() override { Log.d("InitMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::LOCK_MSG);
+    }
 };
 
 // 设备状态结构体
@@ -437,6 +489,7 @@ class FrameParser {
     std::unique_ptr<Message> parse(const std::vector<uint8_t>& raw_data) {
         // 1. 解析帧头
         FrameHeader header;
+        Log.d("FrameParser: raw_data size=%d", raw_data.size());
         if (!header.deserialize(raw_data)) {
             Log.e("FrameParser: Frame header parse failed");
             return nullptr;
@@ -446,7 +499,7 @@ class FrameParser {
               header.packet_id, header.data_length);
 
         // 数据完整性验证
-        if (raw_data.size() < 8 + header.data_length) {
+        if (raw_data.size() != FrameHeader::HEADER_SIZE + header.data_length) {
             Log.e("FrameParser: invalid frame, expected=%d, actual=%d",
                   8 + header.data_length, raw_data.size());
             return nullptr;
