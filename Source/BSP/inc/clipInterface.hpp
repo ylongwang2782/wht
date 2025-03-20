@@ -1,48 +1,109 @@
+/*
+example：
+class ClipTask : public TaskClassS<256> {
+   public:
+    ClipTask(Uart &uart)
+        : TaskClassS<256>("clipTask", TaskPrio_Low), uart(uart) {}
+
+    void task() override {
+        ClipInterface clipInterface;
+        for (;;) {
+            uint16_t clipData = clipInterface.clipStatRead(1,uart); //返回IO状态
+            clipInterface.clipStatWrite(0x01, 0x0001, 0xFFFF, uart); //返回bool
+            TaskBase::delay(100); //循环调用写指令时最好加延时
+        }
+    }
+
+   private:
+    Uart &uart;
+};
+
+ClipTask clipTask(uart6);
+
+***在DMAtask中还需添加
+if (xSemaphoreTake(uart6_info.dmaRxDoneSema, portMAX_DELAY) ==
+                pdPASS) {
+                vTaskDelay(10);
+            }
+*/
+
 #include <array>
 #include <cstdint>
 #include <cstdio>
 
 #include "TaskCPP.h"
 #include "TimerCPP.h"
+#include "bsp_gpio.hpp"
 #include "bsp_log.hpp"
 #include "gd32f4xx.h"
+#include "gd32f4xx_dma.h"
 #include "gd32f4xx_usart.h"
 
+extern Logger Log;
 class ClipInterface {
    public:
+    ClipInterface()
+        : clip485ctl(GPIO::Port::F, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT) {}
     uint16_t clipStatRead(uint8_t tarNum, Uart &uart) {
-        Logger &log = Logger::getInstance();
-
         clipStatReadCmd(tarNum);
+        clip485ctl.bit_set();
         sendWithDMA(uart);
+
+        constexpr uint32_t DMA_TIMEOUT = 100;
+        uint32_t dmaStart = xTaskGetTickCount();
+        while (!clipSendStatGet()) {
+            if (xTaskGetTickCount() - dmaStart > pdMS_TO_TICKS(DMA_TIMEOUT)) {
+                break;
+            }
+            vTaskDelay(1);
+        }
+        clip485ctl.bit_reset();
 
         uint32_t startTime = xTaskGetTickCount();
         uint16_t responseLen = 0;
         uint8_t *response = nullptr;
 
-        constexpr uint16_t MIN_RESPONSE_LEN = 11;    // 最小响应长度
+        constexpr uint16_t MIN_RESPONSE_LEN = 16;    // 最小响应长度
         constexpr uint32_t MAX_WAIT_MS = 50;         // 超时时间50ms
-        constexpr uint8_t DATA_START_POS = 3;    // 数据开始位置，取两位拼成 u16
+        constexpr uint8_t DATA_START_POS = 6;    // 数据开始位置，取两位拼成 u16
 
         do {
             response = clipGetResponse(uart, responseLen);
-            if (responseLen > MIN_RESPONSE_LEN) break;    // 收到足够长数据
-            TaskBase::delay(5);                           // 5ms轮询
-        } while (xTaskGetTickCount() - startTime <
-                 pdMS_TO_TICKS(MAX_WAIT_MS));    // 轮询至多50ms
+            if (responseLen > MIN_RESPONSE_LEN) break;
+            TaskBase::delay(5);    // 5ms轮询,至多50ms
+        } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
 
         if (!response || responseLen < MIN_RESPONSE_LEN) {
-            log.e("No response (len:%d)", responseLen);
+            Log.e("No response (len:%d)", responseLen);
+            return 0;
+        }
+
+        // 校验帧头与帧尾
+        if (response[0] != 0xDD || response[1] != 0x98 || response[2] != 0x89) {
+            Log.e("Invalid frame header");
+            return 0;
+        }
+        if (response[responseLen - 2] != 0xA8 ||
+            response[responseLen - 1] != 0x86) {
+            Log.e("Invalid frame footer");
+            return 0;
+        }
+
+        // ID
+        if (response[3] != tarNum) {
+            Log.e("Device ID mismatch (req:%d vs resp:%d)", tarNum,
+                  response[3]);
+            std::fill_n(recvBuffer.begin(), recvBuffer.size(), 0);
             return 0;
         }
 
         // CRC
-        uint16_t calculatedCRC = Modbus_CRC16(response, responseLen - 2);
+        uint16_t calculatedCRC = Modbus_CRC16(response + 3, responseLen - 7);
         uint16_t receivedCRC =
-            (response[responseLen - 2] << 8) | response[responseLen - 1];
+            (response[responseLen - 4] << 8) | response[responseLen - 3];
 
         if (calculatedCRC != receivedCRC) {
-            log.e("CRC error (calc:0x%04X vs recv:0x%04X)", calculatedCRC,
+            Log.e("CRC error (calc:0x%04X vs recv:0x%04X)", calculatedCRC,
                   receivedCRC);
             return 0;
         }
@@ -50,38 +111,109 @@ class ClipInterface {
         // 解析数据
         uint16_t result =
             (response[DATA_START_POS] << 8) | response[DATA_START_POS + 1];
-        log.d("lastClipData : 0x%04X", result);
+        Log.d("lastClipData : 0x%04X", result);
 
-        // 若有数据，清空缓冲区
-        if (response != 0) {
-            std::fill_n(recvBuffer.begin(), recvBuffer.size(), 0);
-            responseLen = 0;
-        }
-        return result;    // **返回解析值**
+        responseLen = 0;
+        return result;
     }
 
-    void clipStatReadCmd(uint8_t tarNum) {
-        uint8_t i = 0;
-        uint16_t crc;
-        sendBuffer[i++] = tarNum;
-        sendBuffer[i++] = 0x03;
-        sendBuffer[i++] = 0x00;
-        sendBuffer[i++] = 0x00;
-        sendBuffer[i++] = 0x00;
-        sendBuffer[i++] = 0x03;
+    bool clipStatWrite(uint8_t tarNum, uint16_t address, uint16_t data,
+                       Uart &uart) {
+        clipStatWriteCmd(tarNum, address, data);
+        clip485ctl.bit_set();
+        sendWithDMA(uart);
 
-        crc = Modbus_CRC16(sendBuffer.data(), i);
-        sendBuffer[i++] = (uint8_t)(crc >> 8);      // 高字节
-        sendBuffer[i++] = (uint8_t)(crc & 0xFF);    // 低字节
+        constexpr uint32_t DMA_TIMEOUT = 100;
+        uint32_t dmaStart = xTaskGetTickCount();
+        while (!clipSendStatGet()) {
+            if (xTaskGetTickCount() - dmaStart > pdMS_TO_TICKS(DMA_TIMEOUT)) {
+                break;
+            }
+            vTaskDelay(1);
+        }
+        clip485ctl.bit_reset();
 
-        sendLength = i;    // 数据长度
-    };
+        uint32_t startTime = xTaskGetTickCount();
+        uint16_t responseLen = 0;
+        uint8_t *response = nullptr;
+
+        constexpr uint16_t MIN_RESPONSE_LEN = 13;
+        constexpr uint32_t MAX_WAIT_MS = 50;
+
+        do {
+            response = clipGetResponse(uart, responseLen);
+            if (responseLen >= MIN_RESPONSE_LEN) break;
+            TaskBase::delay(5);
+        } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
+
+        // 校验响应
+        if (!response || responseLen < MIN_RESPONSE_LEN) {
+            Log.e("Write no response(len:%d<8)", responseLen);
+            return false;
+        }
+
+        // 校验帧头与帧尾
+        if (response[0] != 0xDD || response[1] != 0x98 || response[2] != 0x89) {
+            Log.e("Write invalid frame header");
+            return false;
+        }
+        if (response[responseLen - 2] != 0xA8 ||
+            response[responseLen - 1] != 0x86) {
+            Log.e("Invalid frame footer");
+            return 0;
+        }
+
+        // ID
+        if (response[3] != tarNum || response[4] != 0x06) {
+            Log.e("Write response error");
+            return false;
+        }
+
+        uint16_t respAddress = (response[5] << 8) | response[6];
+        uint16_t respData = (response[7] << 8) | response[8];
+
+        // 校验地址和数据
+        if ((respAddress != address) || (respData != data)) {
+            Log.e("Data mismatch (sent:%04X/%04X vs resp:%04X/%04X)", address,
+                  data, respAddress, respData);
+            return false;
+        }
+
+        // CRC
+        uint16_t calcCRC = Modbus_CRC16(response + 3, responseLen - 7);
+        uint16_t recvCRC = (response[9] << 8) | response[10];
+
+        if (calcCRC == recvCRC) {
+            Log.d("Write 0x%04X to address 0x%04X success", data, address);
+        } else {
+            Log.e("CRC mismatch (calc:%04X vs recv:%04X)", calcCRC, recvCRC);
+        }
+        return calcCRC == recvCRC;
+    }    // 写结束
+
+   private:
+    GPIO clip485ctl;
+    uint16_t sendLength = 0;
+    std::array<uint8_t, 20> sendBuffer;
+    std::array<uint8_t, 20> recvBuffer{};
 
     // 直接调用 DMA 发送
     void sendWithDMA(Uart &uart) {
         if (sendLength > 0) {
             uart.send(sendBuffer.data(), sendLength);
         }
+    }
+
+    bool clipSendStatGet() {
+        FlagStatus dmaFlag = dma_flag_get(DMA0, DMA_CH1, DMA_FLAG_FTF);
+        FlagStatus usartFlag = usart_flag_get(UART6, USART_FLAG_TC);
+
+        if (dmaFlag == SET && usartFlag == SET) {
+            dma_flag_clear(DMA0, DMA_CH1, DMA_FLAG_FTF);
+            usart_flag_clear(UART6, USART_FLAG_TC);
+            return true;
+        }
+        return false;
     }
 
     uint8_t *clipGetResponse(Uart &uart, uint16_t &responseLen) {
@@ -95,19 +227,58 @@ class ClipInterface {
         return nullptr;
     }
 
-   private:
-    uint16_t sendLength = 0;
-    std::array<uint8_t, 20> sendBuffer;
-    std::array<uint8_t, 20> recvBuffer{};
+    void clipStatReadCmd(uint8_t tarNum) {
+        std::fill(sendBuffer.begin(), sendBuffer.end(), 0);    // 清空缓冲区
+        uint8_t i = 0;
+        sendBuffer[i++] = 0xDD;
+        sendBuffer[i++] = 0x98;
+        sendBuffer[i++] = 0x89;
+
+        sendBuffer[i++] = tarNum;
+        sendBuffer[i++] = 0x03;
+        sendBuffer[i++] = 0x00;
+        sendBuffer[i++] = 0x00;
+        sendBuffer[i++] = 0x00;
+        sendBuffer[i++] = 0x03;
+
+        uint16_t crc = Modbus_CRC16(sendBuffer.data() + 3, 6);
+        sendBuffer[i++] = (uint8_t)(crc >> 8);
+        sendBuffer[i++] = (uint8_t)(crc & 0xFF);
+
+        sendBuffer[i++] = 0xA8;
+        sendBuffer[i++] = 0x86;
+        sendLength = i;
+    };
+
+    void clipStatWriteCmd(uint8_t tarNum, uint16_t address, uint16_t data) {
+        uint8_t i = 0;
+        sendBuffer[i++] = 0xDD;
+        sendBuffer[i++] = 0x98;
+        sendBuffer[i++] = 0x89;
+
+        sendBuffer[i++] = tarNum;
+        sendBuffer[i++] = 0x06;
+        sendBuffer[i++] = (address >> 8) & 0xFF;
+        sendBuffer[i++] = address & 0xFF;
+        sendBuffer[i++] = (data >> 8) & 0xFF;
+        sendBuffer[i++] = data & 0xFF;
+
+        uint16_t crc = Modbus_CRC16(sendBuffer.data() + 3, 6);
+        sendBuffer[i++] = (uint8_t)(crc >> 8);
+        sendBuffer[i++] = (uint8_t)(crc & 0xFF);
+
+        sendBuffer[i++] = 0xA8;
+        sendBuffer[i++] = 0x86;
+        sendLength = i;
+    }
 
     uint16_t Modbus_CRC16(uint8_t *puchMsg, uint16_t usDataLen) {
-        uint8_t uchCRCHi = 0xFF;    // 高CRC字节初始化
-        uint8_t uchCRCLo = 0xFF;    // 低CRC 字节初始化
-        unsigned long uIndex;       // CRC循环中的索引
+        uint8_t uchCRCHi = 0xFF;
+        uint8_t uchCRCLo = 0xFF;
+        unsigned long uIndex;
 
-        while (usDataLen--)    // 传输消息缓冲区
-        {
-            uIndex = uchCRCHi ^ *puchMsg++;    // 计算CRC
+        while (usDataLen--) {
+            uIndex = uchCRCHi ^ *puchMsg++;
             uchCRCHi = uchCRCLo ^ auchCRCHi[uIndex];
             uchCRCLo = auchCRCLo[uIndex];
         }
