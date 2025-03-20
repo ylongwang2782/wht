@@ -520,126 +520,133 @@ class FrameParser {
         std::vector<uint8_t> packet_data(packet_start, packet_end);
         Log.d("FrameParser: payload extracted, len=%d", packet_data.size());
 
-        // 3. 反序列化 Master2SlavePacket
-        Master2SlavePacket packet;
-        if (!packet.deserialize(packet_data)) {
-            Log.e("Failed to deserialize packet");
-            return nullptr;
-        }
-
-        const char* msgTypeStr = "Unknown";
-        switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
-            case Master2SlaveMessageID::SYNC_MSG:
-                msgTypeStr = "SYNC_MSG";
-                break;
-            case Master2SlaveMessageID::WRITE_COND_INFO_MSG:
-                msgTypeStr = "WRITE_COND_INFO_MSG";
-                break;
-            case Master2SlaveMessageID::WRITE_RES_INFO_MSG:
-                msgTypeStr = "WRITE_RES_INFO_MSG";
-                break;
-            case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG:
-                msgTypeStr = "WRITE_CLIP_INFO_MSG";
-                break;
-            case Master2SlaveMessageID::READ_DATA_MSG:
-                msgTypeStr = "READ_DATA_MSG";
-                break;
-            case Master2SlaveMessageID::LOCK_MSG:
-                msgTypeStr = "LOCK_MSG";
-                break;
-            default:
-                break;
-        }
-        Log.d(
-            "FrameParser: packet parsed, type=%s (0x%02X), "
-            "destination_id=0x%08X",
-            msgTypeStr, packet.message_id, packet.destination_id);
-
-        // 第四阶段：动态消息解析
-        switch (header.packet_id) {
-            case uint8_t(PacketType::MasterToSlave):
-                switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
-                    case Master2SlaveMessageID::SYNC_MSG: {
-                        Log.d("FrameParser: processing SYNC_MSG message");
-                        auto msg = std::make_unique<SyncMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d("FrameParser: SYNC_MSG message deserialized");
-                        return msg;
-                    }
-                    case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
-                        Log.d(
-                            "FrameParser: processing WRITE_COND_INFO_MSG "
-                            "message");
-                        auto msg = std::make_unique<WriteCondInfoMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d(
-                            "FrameParser: WRITE_COND_INFO_MSG message "
-                            "deserialized");
-                        return msg;
-                    }
-                    case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
-                        Log.d(
-                            "FrameParser: processing WRITE_RES_INFO_MSG "
-                            "message");
-                        auto msg = std::make_unique<WriteResInfoMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d(
-                            "FrameParser: WRITE_RES_INFO_MSG message "
-                            "deserialized");
-                        return msg;
-                    }
-                    case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
-                        Log.d(
-                            "FrameParser: processing WRITE_CLIP_INFO_MSG "
-                            "message");
-                        auto msg = std::make_unique<WriteClipInfoMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d(
-                            "FrameParser: WRITE_CLIP_INFO_MSG message "
-                            "deserialized");
-                        return msg;
-                    }
-                    case Master2SlaveMessageID::READ_DATA_MSG: {
-                        Log.d("FrameParser: processing READ_DATA_MSG message");
-                        auto msg = std::make_unique<ReadDataMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d(
-                            "FrameParser: READ_DATA_MSG message deserialized");
-                        return msg;
-                    }
-                    case Master2SlaveMessageID::LOCK_MSG: {
-                        Log.d("FrameParser: processing LOCK_MSG message");
-                        auto msg = std::make_unique<InitMsg>();
-                        msg->deserialize(packet.payload);
-                        Log.d("FrameParser: LOCK_MSG message deserialized");
-                        return msg;
-                    }
-                    default:
-                        Log.e(
-                            "FrameParser: unsupported Master message "
-                            "type=0x%02X",
-                            static_cast<uint8_t>(packet.message_id));
-                        return nullptr;
-                }
-            case uint8_t(PacketType::SlaveToMaster):
-                switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
-                    case Slave2MasterMessageID::COND_INFO_MSG: {
-                        Log.d("FrameParser: processing COND_INFO_MSG message");
-                        auto msg = std::make_unique<CondInfoMsg>();
-                        msg->deserialize(packet.payload);
-                        return msg;
-                    }
-                    default:
-                        Log.e(
-                            "FrameParser: unsupported Slave message "
-                            "type=0x%02X",
-                            static_cast<uint8_t>(packet.message_id));
-                        return nullptr;
-                }
-            default:
-                Log.e("FrameParser: unsupported Master2SlavePacket type=0x%02X",
-                      header.packet_id);
+        if (header.packet_id ==
+            static_cast<uint8_t>(PacketType::MasterToSlave)) {
+            // 3. 反序列化 Master2SlavePacket
+            Master2SlavePacket packet;
+            if (!packet.deserialize(packet_data)) {
+                Log.e("Failed to deserialize packet");
                 return nullptr;
+            }
+
+            const char* msgTypeStr = "Unknown";
+            switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
+                case Master2SlaveMessageID::SYNC_MSG:
+                    msgTypeStr = "SYNC_MSG";
+                    break;
+                case Master2SlaveMessageID::WRITE_COND_INFO_MSG:
+                    msgTypeStr = "WRITE_COND_INFO_MSG";
+                    break;
+                case Master2SlaveMessageID::WRITE_RES_INFO_MSG:
+                    msgTypeStr = "WRITE_RES_INFO_MSG";
+                    break;
+                case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG:
+                    msgTypeStr = "WRITE_CLIP_INFO_MSG";
+                    break;
+                case Master2SlaveMessageID::READ_DATA_MSG:
+                    msgTypeStr = "READ_DATA_MSG";
+                    break;
+                case Master2SlaveMessageID::LOCK_MSG:
+                    msgTypeStr = "LOCK_MSG";
+                    break;
+                default:
+                    break;
+            }
+
+            Log.d(
+                "FrameParser: packet parsed, type=%s (0x%02X), "
+                "destination_id=0x%08X",
+                msgTypeStr, packet.message_id, packet.destination_id);
+
+            switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
+                case Master2SlaveMessageID::SYNC_MSG: {
+                    Log.d("FrameParser: processing SYNC_MSG message");
+                    auto msg = std::make_unique<SyncMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d("FrameParser: SYNC_MSG message deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
+                    Log.d(
+                        "FrameParser: processing WRITE_COND_INFO_MSG "
+                        "message");
+                    auto msg = std::make_unique<WriteCondInfoMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: WRITE_COND_INFO_MSG message "
+                        "deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
+                    Log.d(
+                        "FrameParser: processing WRITE_RES_INFO_MSG "
+                        "message");
+                    auto msg = std::make_unique<WriteResInfoMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: WRITE_RES_INFO_MSG message "
+                        "deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
+                    Log.d(
+                        "FrameParser: processing WRITE_CLIP_INFO_MSG "
+                        "message");
+                    auto msg = std::make_unique<WriteClipInfoMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: WRITE_CLIP_INFO_MSG message "
+                        "deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::READ_DATA_MSG: {
+                    Log.d("FrameParser: processing READ_DATA_MSG message");
+                    auto msg = std::make_unique<ReadDataMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d("FrameParser: READ_DATA_MSG message deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::LOCK_MSG: {
+                    Log.d("FrameParser: processing LOCK_MSG message");
+                    auto msg = std::make_unique<InitMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d("FrameParser: LOCK_MSG message deserialized");
+                    return msg;
+                }
+                default:
+                    Log.e(
+                        "FrameParser: unsupported Master message "
+                        "type=0x%02X",
+                        static_cast<uint8_t>(packet.message_id));
+                    return nullptr;
+            }
+        } else if (header.packet_id ==
+                   static_cast<uint8_t>(PacketType::SlaveToMaster)) {
+            Slave2MasterPacket packet;
+
+            if (!packet.deserialize(packet_data)) {
+                Log.e("Failed to deserialize packet");
+                return nullptr;
+            }
+            switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
+                case Slave2MasterMessageID::COND_INFO_MSG: {
+                    Log.d("FrameParser: processing COND_INFO_MSG message");
+                    auto msg = std::make_unique<CondInfoMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                default:
+                    Log.e(
+                        "FrameParser: unsupported Slave message "
+                        "type=0x%02X",
+                        static_cast<uint8_t>(packet.message_id));
+                    return nullptr;
+            }
+
+        } else {
+            Log.e("FrameParser: unsupported Packet type=0x%02X",
+                  header.packet_id);
+            return nullptr;
         }
     }
 };
