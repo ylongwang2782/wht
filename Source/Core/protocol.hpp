@@ -63,7 +63,7 @@ struct FrameHeader {
         data.push_back(fragment_sequence);
         data.push_back(more_fragments_flag);
         data.push_back(static_cast<uint8_t>(data_length & 0xFF));    // 低位在前
-        data.push_back(static_cast<uint8_t>(data_length >> 8));     // 高位在后
+        data.push_back(static_cast<uint8_t>(data_length >> 8));    // 高位在后
         return data;
     }
 
@@ -88,32 +88,77 @@ struct FrameHeader {
     }
 };
 
-struct Packet {
+// 消息基类
+class Message {
+   public:
+    virtual ~Message() = default;
+    virtual void serialize(std::vector<uint8_t>& data) const = 0;
+    virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+    virtual void process() = 0;
+    // 消息类型标识
+    virtual uint8_t message_type() const = 0;
+};
+
+struct Master2SlavePacket {
     uint8_t message_id;              // 消息类型标识
-    uint32_t target_id;              // 目标设备 ID
+    uint32_t destination_id;         // 目标设备 ID
     std::vector<uint8_t> payload;    // 消息的序列化数据
 
-    // 序列化 Packet
+    // 序列化 Master2SlavePacket
     std::vector<uint8_t> serialize() const {
         std::vector<uint8_t> data;
         data.reserve(5 + payload.size());    // 1 + 4 + payload size
         data.push_back(message_id);
-        data.push_back(static_cast<uint8_t>(target_id >> 24));
-        data.push_back(static_cast<uint8_t>(target_id >> 16));
-        data.push_back(static_cast<uint8_t>(target_id >> 8));
-        data.push_back(static_cast<uint8_t>(target_id));
+        data.push_back(static_cast<uint8_t>(destination_id >> 24));
+        data.push_back(static_cast<uint8_t>(destination_id >> 16));
+        data.push_back(static_cast<uint8_t>(destination_id >> 8));
+        data.push_back(static_cast<uint8_t>(destination_id));
         data.insert(data.end(), payload.begin(), payload.end());
         return data;
     }
 
-    // 反序列化 Packet
+    // 反序列化 Master2SlavePacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 5) {
-            Log.e("Packet data too short");
+            Log.e("Master2SlavePacket data too short");
             return false;
         }
         message_id = data[0];
-        target_id = (static_cast<uint32_t>(data[1]) << 24) |
+        destination_id = (static_cast<uint32_t>(data[1]) << 24) |
+                         (static_cast<uint32_t>(data[2]) << 16) |
+                         (static_cast<uint32_t>(data[3]) << 8) |
+                         static_cast<uint32_t>(data[4]);
+        payload.assign(data.begin() + 5, data.end());
+        return true;
+    }
+};
+
+struct Slave2MasterPacket {
+    uint8_t message_id;              // 消息类型标识
+    uint32_t source_id;              // 目标设备 ID
+    std::vector<uint8_t> payload;    // 消息的序列化数据
+
+    // 序列化 Master2SlavePacket
+    std::vector<uint8_t> serialize() const {
+        std::vector<uint8_t> data;
+        data.reserve(5 + payload.size());    // 1 + 4 + payload size
+        data.push_back(message_id);
+        data.push_back(static_cast<uint8_t>(source_id >> 24));
+        data.push_back(static_cast<uint8_t>(source_id >> 16));
+        data.push_back(static_cast<uint8_t>(source_id >> 8));
+        data.push_back(static_cast<uint8_t>(source_id));
+        data.insert(data.end(), payload.begin(), payload.end());
+        return data;
+    }
+
+    // 反序列化 Master2SlavePacket
+    bool deserialize(const std::vector<uint8_t>& data) {
+        if (data.size() < 5) {
+            Log.e("Slave2MasterPacket data too short");
+            return false;
+        }
+        message_id = data[0];
+        source_id = (static_cast<uint32_t>(data[1]) << 24) |
                     (static_cast<uint32_t>(data[2]) << 16) |
                     (static_cast<uint32_t>(data[3]) << 8) |
                     static_cast<uint32_t>(data[4]);
@@ -122,59 +167,67 @@ struct Packet {
     }
 };
 
-// 消息基类
-class Message {
-    public:
-     virtual ~Message() = default;
-     virtual void serialize(std::vector<uint8_t>& data) const = 0;
-     virtual void deserialize(const std::vector<uint8_t>& data) = 0;
-     virtual void process() = 0;
-     // 消息类型标识
-     virtual uint8_t message_type() const = 0;
- };
-
 class PacketPacker {
    public:
-    // 将消息打包为 Packet
-    static Packet pack(const Message& msg, uint32_t target_id) {
-        Packet packet;
+    // 将消息打包为 Master2SlavePacket
+    static Master2SlavePacket masterPack(const Message& msg,
+                                         uint32_t destination_id) {
+        Master2SlavePacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
-        packet.target_id = target_id;              // 设置目标 ID
-        msg.serialize(packet.payload);      
+        packet.destination_id = destination_id;    // 设置目标 ID
+        msg.serialize(packet.payload);
         return packet;
     }
 
-    // // 从 Packet 中解包消息
-    // template <typename Message>
-    // static std::unique_ptr<Message> unpack(const Packet& packet) {
-    //     auto msg = std::make_unique<Message>();
-    //     if (!msg->deserialize(packet.payload)) {
-    //         Log.e("Failed to unpack message from packet");
-    //         return nullptr;
-    //     }
-    //     return msg;
-    // }
+    static Slave2MasterPacket slavePack(const Message& msg,
+                                        uint32_t source_id) {
+        Slave2MasterPacket packet;
+        packet.message_id = msg.message_type();    // 获取消息类型
+        packet.source_id = source_id;              // 设置目标 ID
+        msg.serialize(packet.payload);
+        return packet;
+    }
 };
 
 class FramePacker {
    public:
-    // 将 Packet 打包为帧
-    static std::vector<uint8_t> pack(const Packet& packet, uint8_t slot = 0,
-                                     uint8_t fragment_seq = 0,
+    // 将 Master2SlavePacket 打包为帧
+    static std::vector<uint8_t> pack(const Master2SlavePacket& packet,
+                                     uint8_t slot = 0, uint8_t fragment_seq = 0,
                                      uint8_t more_fragments = 0) {
-        // 序列化 Packet
+        // 序列化 Master2SlavePacket
         std::vector<uint8_t> packet_data = packet.serialize();
 
         // 构建帧头
         FrameHeader header;
         header.slot = slot;
-        header.packet_id = static_cast<uint8_t>(
-            PacketType::MasterToSlave);    // 假设默认是 MasterToSlave
+        header.packet_id = static_cast<uint8_t>(PacketType::MasterToSlave);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
         header.data_length = static_cast<uint16_t>(packet_data.size());
 
-        // 合并帧头和 Packet 数据
+        // 合并帧头和 Master2SlavePacket 数据
+        std::vector<uint8_t> frame = header.serialize();
+        frame.insert(frame.end(), packet_data.begin(), packet_data.end());
+        return frame;
+    }
+
+    // 将 Slave2MasterPacket 打包为帧
+    static std::vector<uint8_t> pack(const Slave2MasterPacket& packet,
+                                     uint8_t slot = 0, uint8_t fragment_seq = 0,
+                                     uint8_t more_fragments = 0) {
+        // 序列化 Slave2MasterPacket
+        std::vector<uint8_t> packet_data = packet.serialize();
+
+        // 构建帧头
+        FrameHeader header;
+        header.slot = slot;
+        header.packet_id = static_cast<uint8_t>(PacketType::SlaveToMaster);
+        header.fragment_sequence = fragment_seq;
+        header.more_fragments_flag = more_fragments;
+        header.data_length = static_cast<uint16_t>(packet_data.size());
+
+        // 合并帧头和 Master2SlavePacket 数据
         std::vector<uint8_t> frame = header.serialize();
         frame.insert(frame.end(), packet_data.begin(), packet_data.end());
         return frame;
@@ -403,86 +456,42 @@ struct DeviceStatus {
     uint16_t res : 7;
 };
 // 导通数据消息（Slave -> Master）
-class ConductionDataMessage : public Message {
-    DeviceStatus status;
-    std::vector<uint8_t> conduction_data;
-
+class CondInfoMsg : public Message {
    public:
+    uint8_t timeSlot;
+    uint16_t totalConductionNum;
+    uint16_t startConductionNum;
+    uint16_t conductionNum;
+
     void serialize(std::vector<uint8_t>& data) const override {
-        // 序列化status和data...
+        data.push_back(timeSlot);
+        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalConductionNum));
+        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(startConductionNum));
+        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(conductionNum));
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        // 反序列化逻辑...
+        if (data.size() != 7) {
+            Log.e("CondInfoMsg: Invalid CondInfoMsg data size");
+        }
+        timeSlot = data[0];
+        totalConductionNum = (data[2] << 8) | data[1];
+        startConductionNum = (data[4] << 8) | data[3];
+        conductionNum = (data[6] << 8) | data[5];
+        Log.d(
+            "CondInfoMsg: timeSlot = 0x%02X, totalConductionNum "
+            "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
+            timeSlot, totalConductionNum, startConductionNum, conductionNum);
     }
-    void process() override;
+    void process() override { Log.d("CondInfoMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2MasterMessageID::COND_INFO_MSG);
+    }
 };
-
-// 其他消息类型的类似实现...
-
-// class WirelessFrame : public FrameBase {
-//     FrameHeader header;
-//     std::unique_ptr<Message> payload;
-
-//    public:
-//     explicit WirelessFrame(PacketType type) {
-//         header.packet_id = static_cast<uint8_t>(type);
-//     }
-
-//     void serialize(std::vector<uint8_t>& data) const override {
-//         auto header_data = header.serialize();
-//         auto payload_data = payload->serialize();
-
-//         header.data_length = static_cast<uint16_t>(payload_data.size());
-//         header_data = header.serialize();    // 更新长度
-
-//         header_data.insert(header_data.end(), payload_data.begin(),
-//                            payload_data.end());
-//         return header_data;
-//     }
-
-//     void deserialize(const std::vector<uint8_t>& data) override {
-//         header.deserialize(data);
-
-//         auto payload_start = data.begin() + 8;
-//         auto payload_end = payload_start + header.data_length;
-
-//         switch (static_cast<PacketType>(header.packet_id)) {
-//             case PacketType::MasterToSlave:
-//                 // payload = std::make_unique<MasterMessage>();
-//                 break;
-//             case PacketType::SlaveToMaster:
-//                 // payload = std::make_unique<SlaveMessage>();
-//                 break;
-//             default:
-//                 // printf("Unknown packet type!\n");
-//         }
-
-//         payload->deserialize(std::vector<uint8_t>(payload_start,
-//         payload_end));
-//     }
-
-//     template <typename T>
-//     T& getPayload() {
-//         return dynamic_cast<T&>(*payload);
-//     }
-// };
-
-// class MessageFactory {
-//    public:
-//     static std::unique_ptr<Message> create(Master2SlaveMessageID type) {
-//         switch (type) {
-//             case Master2SlaveMessageID::SYNC_MSG:
-//                 return std::make_unique<SyncMsg>();
-//             // case PacketType::ConductionData:
-//             //     return std::make_unique<ConductionDataMessage>();
-//             // 其他消息类型...
-//             default:
-//                 // throw std::invalid_argument("Unsupported message type");
-//                 Log.e("Unsupported message type");
-//         }
-//     }
-// };
 
 class FrameParser {
    public:
@@ -505,14 +514,14 @@ class FrameParser {
             return nullptr;
         }
 
-        // 2. 提取 Packet 数据
+        // 2. 提取 Master2SlavePacket 数据
         auto packet_start = raw_data.begin() + FrameHeader::HEADER_SIZE;
         auto packet_end = packet_start + header.data_length;
         std::vector<uint8_t> packet_data(packet_start, packet_end);
         Log.d("FrameParser: payload extracted, len=%d", packet_data.size());
 
-        // 3. 反序列化 Packet
-        Packet packet;
+        // 3. 反序列化 Master2SlavePacket
+        Master2SlavePacket packet;
         if (!packet.deserialize(packet_data)) {
             Log.e("Failed to deserialize packet");
             return nullptr;
@@ -541,8 +550,10 @@ class FrameParser {
             default:
                 break;
         }
-        Log.d("FrameParser: packet parsed, type=%s (0x%02X), target_id=0x%08X",
-              msgTypeStr, packet.message_id, packet.target_id);
+        Log.d(
+            "FrameParser: packet parsed, type=%s (0x%02X), "
+            "destination_id=0x%08X",
+            msgTypeStr, packet.message_id, packet.destination_id);
 
         // 第四阶段：动态消息解析
         switch (header.packet_id) {
@@ -611,8 +622,22 @@ class FrameParser {
                         return nullptr;
                 }
             case uint8_t(PacketType::SlaveToMaster):
+                switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
+                    case Slave2MasterMessageID::COND_INFO_MSG: {
+                        Log.d("FrameParser: processing COND_INFO_MSG message");
+                        auto msg = std::make_unique<CondInfoMsg>();
+                        msg->deserialize(packet.payload);
+                        return msg;
+                    }
+                    default:
+                        Log.e(
+                            "FrameParser: unsupported Slave message "
+                            "type=0x%02X",
+                            static_cast<uint8_t>(packet.message_id));
+                        return nullptr;
+                }
             default:
-                Log.e("FrameParser: unsupported Packet type=0x%02X",
+                Log.e("FrameParser: unsupported Master2SlavePacket type=0x%02X",
                       header.packet_id);
                 return nullptr;
         }
