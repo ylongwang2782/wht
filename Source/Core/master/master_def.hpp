@@ -3,11 +3,11 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "EventCPP.h"
 #include "Lock.h"
 #include "MutexCPP.h"
 #include "QueueCPP.h"
 #include "SemaphoreCPP.h"
-#include "EventCPP.h"
 #include "master_cfg.hpp"
 #include "portable.h"
 
@@ -59,15 +59,19 @@ struct CtrlCmd {
     CtrlType ctrl;
 };
 
-struct DataForward {
-    CmdType type;
-    ModeCmd mode_cmd;
-    CfgCmd cfg_cmd;
-    ResetCmd rst_cmd;
-    CtrlCmd ctrl_cmd;
+struct QueryCmd {
+    uint8_t id[4];
+    uint8_t clip;
 };
 
-
+struct DataForward {
+    CmdType type;
+    CfgCmd cfg_cmd;
+    ModeCmd mode_cmd;
+    ResetCmd rst_cmd;
+    CtrlCmd ctrl_cmd;
+    QueryCmd query_cmd;
+};
 
 class ShareMem {
    public:
@@ -109,10 +113,11 @@ class PCdataTransferMsg {
 };
 
 #define FORWARD_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 0)
-#define CONFIG_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 1)
-#define MODE_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 2)
-#define RESET_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 3)
-#define CTRL_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 4)
+#define CONFIG_SUCCESS_EVENT  (EventBits_t)((EventBits_t)1 << 1)
+#define MODE_SUCCESS_EVENT    (EventBits_t)((EventBits_t)1 << 2)
+#define RESET_SUCCESS_EVENT   (EventBits_t)((EventBits_t)1 << 3)
+#define CTRL_SUCCESS_EVENT    (EventBits_t)((EventBits_t)1 << 4)
+#define QUERY_SUCCESS_EVENT   (EventBits_t)((EventBits_t)1 << 5)
 class PCmanagerMsg {
    public:
     Queue<DataForward, PCmanagerMsg_FORWARD_QUEUE_SIZE> data_forward_queue;

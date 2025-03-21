@@ -311,10 +311,47 @@ class DeviceQueryInst : private __IfBase {
 
    private:
     bool query_success = false;
+
    public:
     void forward(json& j) {
         data_forward.type = CmdType::DEV_QUERY;
+        memset(&data_forward.query_cmd, 0, sizeof(data_forward.query_cmd));
+        if (j.contains("id")) {
+            if (j.contains("params")) {
 
+                auto params = j["params"];
+                if (params.contains("clip")) {
+                    data_forward.query_cmd.clip = params["clip"];
+                }
+            }
+            for (auto item : j["id"]) {
+                std::string id = item;
+  
+                if (id == "*") {
+                    memset(data_forward.query_cmd.id, 0xFF, 4);
+                } else {
+                    parseIdString(id, data_forward.query_cmd.id);
+                }
+
+                Log.i(
+                    "query_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                    data_forward.query_cmd.id[0], data_forward.query_cmd.id[1],
+                    data_forward.query_cmd.id[2], data_forward.query_cmd.id[3]);
+                Log.i("query_cmd.clip: %u", data_forward.query_cmd.clip);
+
+                query_success = false;
+
+                if (__IfBase::forward()) {
+                    if ((pc_manager_msg.event.get() & QUERY_SUCCESS_EVENT))
+                        query_success = true;
+                }
+                if (query_success) {
+                    Log.i("query success\n");
+                } else {
+                    Log.e("query failed\n");
+                }
+            }
+        }
     }
 };
 
@@ -356,6 +393,7 @@ class PCinterface : public TaskClassS<1024> {
           mode_inst(pc_manager_msg),
           reset_inst(pc_manager_msg),
           ctrl_inst(pc_manager_msg),
+          query_inst(pc_manager_msg),
           __transfer_msg(pc_data_transfer_msg) {}
 
     void task() override {
@@ -379,6 +417,7 @@ class PCinterface : public TaskClassS<1024> {
     DevaceModeInst mode_inst;
     DeviceResetInst reset_inst;
     DeviceCtrlInst ctrl_inst;
+    DeviceQueryInst query_inst;
     PCdataTransferMsg& __transfer_msg;
 
    private:
@@ -406,6 +445,10 @@ class PCinterface : public TaskClassS<1024> {
                 case DEV_CTRL:
                     // 设备控制解析
                     ctrl_inst.forward(j);
+                    break;
+                case DEV_QUERY:
+                    // 设备查询解析
+                    query_inst.forward(j);
                     break;
                 default:
                     break;

@@ -36,6 +36,9 @@ static void Master_Task(void *pvParameters) {
                 case CmdType::DEV_CTRL:
                 pc_manger_msg.event.set(CTRL_SUCCESS_EVENT);
                     break;
+                case CmdType::DEV_QUERY:
+                pc_manger_msg.event.set(QUERY_SUCCESS_EVENT);
+                    break;
                 default:
                     break;
             }
