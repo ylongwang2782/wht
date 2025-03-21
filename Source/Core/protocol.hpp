@@ -343,19 +343,24 @@ class WriteResInfoMsg : public Message {
 
 class WriteClipInfoMsg : public Message {
    public:
+    uint8_t mode;    // 0：非自锁，1：自锁
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(mode);                             // 序列化 mode
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 2) {
+        if (data.size() != 3) {    // 修改为3字节
             Log.e("WriteClipInfoMsg: Invalid WriteClipInfoMsg data size");
+            return;
         }
-        clipPin = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
-        Log.d("WriteClipInfoMsg: clipPin = 0x%04X", clipPin);
+        mode = data[0];                        // 反序列化 mode
+        clipPin = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
+        Log.d("WriteClipInfoMsg: mode = 0x%02X, clipPin = 0x%04X", mode,
+              clipPin);
     }
 
     void process() override { Log.d("WriteClipInfoMsg process"); };
@@ -532,25 +537,29 @@ class ResInfoMsg : public Message {
 
 class ClipInfoMsg : public Message {
    public:
+    uint8_t mode;    // 0：非自锁，1：自锁
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(mode);                             // 序列化 mode
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 2) {
+        if (data.size() != 3) {    // 修改为3字节
             Log.e("ClipInfoMsg: Invalid ClipInfoMsg data size");
+            return;
         }
-        clipPin = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
-        Log.d("ClipInfoMsg: clipPin = 0x%04X", clipPin);
+        mode = data[0];                        // 反序列化 mode
+        clipPin = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
+        Log.d("ClipInfoMsg: mode = 0x%02X, clipPin = 0x%04X", mode, clipPin);
     }
 
     void process() override { Log.d("ClipInfoMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_CLIP_INFO_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_INFO_MSG);
     }
 };
 

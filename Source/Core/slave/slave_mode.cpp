@@ -89,7 +89,11 @@ class UsartDMATask : public TaskClassS<1024> {
                 // 将 buffer 转换为 vector
                 std::vector<uint8_t> raw_data(buffer, buffer + len);
                 auto msg = parser.parse(raw_data);
-                msg->process();
+                if (msg != nullptr) {
+                    msg->process();
+                } else {
+                    Log.d("Uart: parse fail.");
+                }
 
                 // chronoLink.push_back(buffer, len);
                 // while (chronoLink.parseFrameFragment(frame_fragment)) {
@@ -208,7 +212,24 @@ class LedBlinkTask : public TaskClassS<256> {
     void task() override {
         LED led(GPIO::Port::C, GPIO::Pin::PIN_6);
 
+        SyncMsg syncMsg;
+        syncMsg.mode = 0;
+        syncMsg.timestamp = 0x12345678;
+
+        uint32_t target_id = 0x3732485B;
+
+        // 2. 打包为 Packet
+        auto master_packet = PacketPacker::masterPack(syncMsg, target_id);
+        auto slave_packet = PacketPacker::slavePack(syncMsg, target_id);
+
+        // 3. 打包为帧
+        auto master_data = FramePacker::pack(master_packet);
+        auto slave_data = FramePacker::pack(slave_packet);
+
         for (;;) {
+            // usart1.send(master_data.data(), master_data.size());
+            // usart1.send(slave_data.data(), slave_data.size());
+
             led.toggle();
             TaskBase::delay(500);
         }
