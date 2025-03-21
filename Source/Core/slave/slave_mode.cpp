@@ -215,10 +215,13 @@ class LedBlinkTask : public TaskClassS<256> {
     }
 };
 
+#ifdef SLAVE
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
-LogTask logTask;
 MyTimer myTimer;
+#endif
+LogTask logTask;
+
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
