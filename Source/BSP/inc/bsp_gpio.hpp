@@ -84,7 +84,7 @@ class GPIO {
         }
     }
 
-    GPIO(Port port, Pin pin, Mode mode, PullUpDown pull = PullUpDown::PULLUP,
+    GPIO(Port port, Pin pin, Mode mode, PullUpDown pull = PullUpDown::PULLDOWN,
          OType otype = OType::PP, Speed speed = Speed::SPEED_50MHZ)
         : port(port), pin(pin) {
         rcu_periph_clock_enable(get_rcu_port(port));
@@ -94,19 +94,19 @@ class GPIO {
             bit_reset();
         }
     }
-    void mode_set(Mode mode, PullUpDown pull) {
+    void mode_set(Mode mode, PullUpDown pull = PullUpDown::PULLDOWN) {
         gpio_mode_set(port_base(), static_cast<uint32_t>(mode),
                       static_cast<uint32_t>(pull), pin_mask());
     }
 
     void switch_to_input() {
         gpio_mode_set(port_base(), static_cast<uint32_t>(Mode::INPUT),
-                      static_cast<uint32_t>(PullUpDown::PULLUP), pin_mask());
+                      static_cast<uint32_t>(PullUpDown::PULLDOWN), pin_mask());
     }
 
     void switch_to_output() {
         gpio_mode_set(port_base(), static_cast<uint32_t>(Mode::OUTPUT),
-                      static_cast<uint32_t>(PullUpDown::PULLUP), pin_mask());
+                      static_cast<uint32_t>(PullUpDown::PULLDOWN), pin_mask());
     }
 
     void output_options_set(OType otype, Speed speed) {

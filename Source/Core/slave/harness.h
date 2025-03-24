@@ -17,22 +17,12 @@ extern "C" {
 }
 #endif
 
-struct DeviceConfigInfo {
-    std::array<uint8_t, 4> ID;
-    uint16_t sysHarnessNum;
-    uint8_t devHarnessNum;
-    uint8_t devNum;
-};
-
 class BinaryMatrix {
    private:
     std::vector<std::vector<int>> matrix;
 
    public:
     size_t rows, cols;
-    // 构造函数，初始化矩阵
-    BinaryMatrix(size_t r, size_t c)
-        : matrix(r, std::vector<int>(c, 0)), rows(r), cols(c) {}
 
     // 获取矩阵的行数
     uint16_t getRows() const { return rows; }
@@ -58,6 +48,16 @@ class BinaryMatrix {
         return matrix[r][c];
     }
 
+    // 调整矩阵大小
+    void resize(size_t new_rows, size_t new_cols) {
+        matrix.resize(new_rows);
+        for (auto& row : matrix) {
+            row.resize(new_cols, 0);
+        }
+        rows = new_rows;
+        cols = new_cols;
+    }
+
     std::vector<uint8_t> flatten() const {
         std::vector<uint8_t> result;
         result.reserve(rows * cols);    // 预分配空间提高效率
@@ -74,23 +74,45 @@ class Harness {
     std::vector<GPIO> pins;
     int rowIndex = 0;
 
-    Harness(uint8_t devHarnessNum, uint16_t sysHarnessNum)
-        : data(sysHarnessNum, devHarnessNum),
-          devHarnessNum(devHarnessNum),
-          sysHarnessNum(sysHarnessNum) {}
+    bool isDeviceOutput() {
+        return rowIndex >= startConductionNum &&
+               rowIndex <= startConductionNum + conductionNum;
+    }
 
     void run() {
+        if (isDeviceOutput()) {
+            int index = rowIndex - startConductionNum;
+
+            // reset last pin
+            if (int lastIndex = index - 1; lastIndex >= 0) {
+                pins[lastIndex].bit_reset();
+                pins[lastIndex].mode_set(GPIO::Mode::INPUT);
+            }
+
+            // set current pin
+            if (index < conductionNum) {
+                pins[index].mode_set(GPIO::Mode::OUTPUT);
+                pins[index].bit_set();
+            }
+        }
+
         for (size_t i = 0; i < data.cols; i++) {
             data.setValue(rowIndex, i, pins[i].input_bit_get());
         }
     }
 
-    void init() {
-        for (int i = 0; i < devHarnessNum; ++i) {
+    void init(uint8_t conductionNum, uint16_t totalConductionNum,
+              int startConductionNum) {
+        this->conductionNum = conductionNum;
+        this->totalConductionNum = totalConductionNum;
+        this->startConductionNum = startConductionNum;
+        data.resize(totalConductionNum, conductionNum);
+        for (int i = 0; i < conductionNum; ++i) {
             pins.emplace_back(GPIO::Port::E,
                               static_cast<GPIO::Pin>(GPIO_PIN_0 << i),
-                              GPIO::Mode::INPUT);
+                              GPIO::Mode::OUTPUT);
             pins[i].bit_reset();
+            pins[i].mode_set(GPIO::Mode::INPUT);
         }
     }
 
@@ -99,10 +121,7 @@ class Harness {
     void deinit() { pins.clear(); }
 
    private:
-    uint8_t devNum;
-    uint8_t devHarnessNum;
-    uint16_t sysHarnessNum;
-    uint8_t master_pin_index = 0;
-    uint8_t packed_data = 0;
-    int bit_position = 0;
+    uint8_t conductionNum;
+    uint16_t totalConductionNum;
+    uint16_t startConductionNum;    // 起始导通数量
 };
