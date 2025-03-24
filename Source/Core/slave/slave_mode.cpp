@@ -149,6 +149,59 @@ LedBlinkTask ledBlinkTask;
 LogTask logTask;
 MyTimer myTimer;
 
+void SyncMsg::process() {
+    Log.d("SyncMsg process");
+    myTimer.startWithCount(4);
+}
+
+void WriteCondInfoMsg::process() {
+    Log.d("WriteCondInfoMsg process");
+
+    // 1. REPLY
+    // 1.1 构造 CondInfoMsg
+    CondInfoMsg condInfoMsg;
+    condInfoMsg.timeSlot = timeSlot;
+    condInfoMsg.interval = interval;
+    condInfoMsg.totalConductionNum = totalConductionNum;
+    condInfoMsg.startConductionNum = startConductionNum;
+    condInfoMsg.conductionNum = conductionNum;
+    // 1.2 打包为 Packet
+    auto condInfoPacket = PacketPacker::slavePack(condInfoMsg, 0x3732485B);
+    // 1.3 打包为帧
+    auto condInfoFrame = FramePacker::pack(condInfoPacket);
+    // 1.4 发送
+    usart1.send(condInfoFrame.data(), condInfoFrame.size());
+}
+
+void WriteResInfoMsg::process() { Log.d("WriteResInfoMsg process"); }
+
+void ReadCondDataMsg::process() {
+    Log.d("ReadCondDataMsg process");
+    CondDataMsg condDataMsg;
+    condDataMsg.conductionLength = harness.data.getSize();
+    condDataMsg.conductionData = harness.data.flatten();
+    condDataMsg.deviceStatus = DeviceStatus{
+        1,    // colorSensor
+        1,    // sleeveLimit
+        1,    // electromagnetUnlockButton
+        1,    // batteryLowPowerAlarm
+        1,    // pressureSensor
+        1,    // electromagneticLock1
+        1,    // electromagneticLock2
+        1,    // accessory1
+        1,    // accessory2
+        1     // reserved
+    };
+
+    // 2. 打包为 Packet
+    auto condDataPacket = PacketPacker::slavePack(condDataMsg, 0x3732485B);
+
+    // 3. 打包为帧
+    auto master_data = FramePacker::pack(condDataPacket);
+
+    usart1.send(master_data.data(), master_data.size());
+}
+
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
     harness.init();

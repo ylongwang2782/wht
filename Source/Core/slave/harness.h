@@ -89,7 +89,8 @@ class Harness {
         for (int i = 0; i < devHarnessNum; ++i) {
             pins.emplace_back(GPIO::Port::E,
                               static_cast<GPIO::Pin>(GPIO_PIN_0 << i),
-                              GPIO::Mode::OUTPUT);
+                              GPIO::Mode::INPUT);
+            pins[i].bit_reset();
         }
     }
 

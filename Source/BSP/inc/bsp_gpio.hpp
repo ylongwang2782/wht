@@ -91,7 +91,7 @@ class GPIO {
         mode_set(mode, pull);
         output_options_set(otype, speed);
         if (mode == Mode::OUTPUT) {
-            bit_set();
+            bit_reset();
         }
     }
     void mode_set(Mode mode, PullUpDown pull) {
