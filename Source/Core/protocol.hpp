@@ -271,11 +271,11 @@ class SyncMsg : public Message {
 
 class WriteCondInfoMsg : public Message {
    public:
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalConductionNum;    // 系统中总导通检测的数量
-    uint16_t startConductionNum;    // 起始导通数量
-    uint16_t conductionNum;         // 导通检测数量
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalConductionNum;    // 系统中总导通检测的数量
+    static uint16_t startConductionNum;    // 起始导通数量
+    static uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
@@ -545,12 +545,12 @@ class CondInfoMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
         data.push_back(interval);    // 序列化采集间隔
-        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(totalConductionNum));
-        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(startConductionNum));
-        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(conductionNum));
+        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
