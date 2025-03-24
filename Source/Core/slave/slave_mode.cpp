@@ -214,23 +214,22 @@ class LedBlinkTask : public TaskClassS<256> {
 
 class ClipTask : public TaskClassS<256> {
    public:
-    ClipTask(Uart &uart)
-        : TaskClassS<256>("clipTask", TaskPrio_Low), uart(uart) {}
+    ClipTask() : TaskClassS<256>("clipTask", TaskPrio_Low) {}
 
     void task() override {
-        ClipInterface clipInterface;
+        ClipInterface clipInterface(uart6);
         for (;;) {
-            uint16_t clipStatData = clipInterface.clipStatRead(1, uart);
-            clipInterface.clipStatWrite(0x01, 0x0001, 0xFFFF, uart);
+            clipInterface.clipModeLock(); // 自锁
+            //clipInterface.clipModeUnlock(); // 非自锁
+            //clipInterface.clipModeClear(); // 清除锁定（清除LED，恢复为自锁）
+            clipInterface.clipLedWrite(0x1234); // 写LED
+            uint16_t clipStatData = clipInterface.clipIORead(); // 读IO
             TaskBase::delay(100);
         }
     }
-
-   private:
-    Uart &uart;
 };
 
-ClipTask clipTask(uart6);
+ClipTask clipTask;
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;

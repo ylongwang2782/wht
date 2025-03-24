@@ -2,23 +2,23 @@
 example：
 class ClipTask : public TaskClassS<256> {
    public:
-    ClipTask(Uart &uart)
-        : TaskClassS<256>("clipTask", TaskPrio_Low), uart(uart) {}
+    ClipTask()
+        : TaskClassS<256>("clipTask", TaskPrio_Low){}
 
     void task() override {
-        ClipInterface clipInterface;
+        ClipInterface clipInterface(uart6); //初始化需要带目标串口
         for (;;) {
-            uint16_t clipData = clipInterface.clipStatRead(1,uart); //返回IO状态
-            clipInterface.clipStatWrite(0x01, 0x0001, 0xFFFF, uart); //返回bool
-            TaskBase::delay(100); //循环调用写指令时最好加延时
+            uint16_t clipStatData = clipInterface.clipIORead(); // 读IO
+            clipInterface.clipModeLock(); // 自锁
+            clipInterface.clipModeUnlock(); // 非自锁
+            clipInterface.clipModeClear(); // 清除锁定（清除LED，恢复为自锁）
+            clipInterface.clipLedWrite(0x1234); // 写LED
+            TaskBase::delay(100);
         }
     }
-
-   private:
-    Uart &uart;
 };
 
-ClipTask clipTask(uart6);
+ClipTask clipTask;
 
 ***在DMAtask中还需添加
 if (xSemaphoreTake(uart6_info.dmaRxDoneSema, portMAX_DELAY) ==
@@ -32,7 +32,6 @@ if (xSemaphoreTake(uart6_info.dmaRxDoneSema, portMAX_DELAY) ==
 #include <cstdio>
 
 #include "TaskCPP.h"
-#include "TimerCPP.h"
 #include "bsp_gpio.hpp"
 #include "bsp_log.hpp"
 #include "gd32f4xx.h"
@@ -42,12 +41,13 @@ if (xSemaphoreTake(uart6_info.dmaRxDoneSema, portMAX_DELAY) ==
 extern Logger Log;
 class ClipInterface {
    public:
-    ClipInterface()
-        : clip485ctl(GPIO::Port::F, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT) {}
-    uint16_t clipStatRead(uint8_t tarNum, Uart &uart) {
+    ClipInterface(Uart &targetUart)
+        : clip485ctl(GPIO::Port::F, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT),
+          uart(targetUart) {}
+    uint16_t clipStatRead(uint8_t tarNum) {
         clipStatReadCmd(tarNum);
         clip485ctl.bit_set();
-        sendWithDMA(uart);
+        sendWithDMA();
 
         constexpr uint32_t DMA_TIMEOUT = 100;
         uint32_t dmaStart = xTaskGetTickCount();
@@ -68,7 +68,7 @@ class ClipInterface {
         constexpr uint8_t DATA_START_POS = 6;    // 数据开始位置，取两位拼成 u16
 
         do {
-            response = clipGetResponse(uart, responseLen);
+            response = clipGetResponse(responseLen);
             if (responseLen > MIN_RESPONSE_LEN) break;
             TaskBase::delay(5);    // 5ms轮询,至多50ms
         } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
@@ -117,11 +117,10 @@ class ClipInterface {
         return result;
     }
 
-    bool clipStatWrite(uint8_t tarNum, uint16_t address, uint16_t data,
-                       Uart &uart) {
+    bool clipStatWrite(uint8_t tarNum, uint16_t address, uint16_t data) {
         clipStatWriteCmd(tarNum, address, data);
         clip485ctl.bit_set();
-        sendWithDMA(uart);
+        sendWithDMA();
 
         constexpr uint32_t DMA_TIMEOUT = 100;
         uint32_t dmaStart = xTaskGetTickCount();
@@ -141,7 +140,7 @@ class ClipInterface {
         constexpr uint32_t MAX_WAIT_MS = 50;
 
         do {
-            response = clipGetResponse(uart, responseLen);
+            response = clipGetResponse(responseLen);
             if (responseLen >= MIN_RESPONSE_LEN) break;
             TaskBase::delay(5);
         } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
@@ -191,14 +190,239 @@ class ClipInterface {
         return calcCRC == recvCRC;
     }    // 写结束
 
+    uint16_t clipIORead() {
+        clipStatReadCmd(0x01);
+        clip485ctl.bit_set();
+        sendWithDMA();
+
+        constexpr uint32_t DMA_TIMEOUT = 100;
+        uint32_t dmaStart = xTaskGetTickCount();
+        while (!clipSendStatGet()) {
+            if (xTaskGetTickCount() - dmaStart > pdMS_TO_TICKS(DMA_TIMEOUT)) {
+                break;
+            }
+            vTaskDelay(1);
+        }
+        clip485ctl.bit_reset();
+
+        uint32_t startTime = xTaskGetTickCount();
+        uint16_t responseLen = 0;
+        uint8_t *response = nullptr;
+
+        constexpr uint16_t MIN_RESPONSE_LEN = 16;    // 最小响应长度
+        constexpr uint32_t MAX_WAIT_MS = 50;         // 超时时间50ms
+        constexpr uint8_t DATA_START_POS = 6;    // 数据开始位置，取两位拼成 u16
+
+        do {
+            response = clipGetResponse(responseLen);
+            if (responseLen > MIN_RESPONSE_LEN) break;
+            TaskBase::delay(5);    // 5ms轮询,至多50ms
+        } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
+
+        if (!response || responseLen < MIN_RESPONSE_LEN) {
+            Log.e("No response (len:%d)", responseLen);
+            return 0;
+        }
+
+        // 校验帧头与帧尾
+        if (response[0] != 0xDD || response[1] != 0x98 || response[2] != 0x89) {
+            Log.e("Invalid frame header");
+            return 0;
+        }
+        if (response[responseLen - 2] != 0xA8 ||
+            response[responseLen - 1] != 0x86) {
+            Log.e("Invalid frame footer");
+            return 0;
+        }
+
+        // ID
+        if (response[3] != 0x01) {
+            Log.e("Device ID mismatch (req:%d vs resp:%d)", 0x01, response[3]);
+            std::fill_n(recvBuffer.begin(), recvBuffer.size(), 0);
+            return 0;
+        }
+
+        // CRC
+        uint16_t calculatedCRC = Modbus_CRC16(response + 3, responseLen - 7);
+        uint16_t receivedCRC =
+            (response[responseLen - 4] << 8) | response[responseLen - 3];
+
+        if (calculatedCRC != receivedCRC) {
+            Log.e("CRC error (calc:0x%04X vs recv:0x%04X)", calculatedCRC,
+                  receivedCRC);
+            return 0;
+        }
+
+        // 解析数据
+        uint16_t result =
+            (response[DATA_START_POS] << 8) | response[DATA_START_POS + 1];
+        Log.d("lastClipData : 0x%04X", result);
+
+        responseLen = 0;
+        return result;
+    }
+
+    bool clipLedWrite(uint16_t data) {
+        clipStatWriteCmd(0x01, 0x01, data);
+        clip485ctl.bit_set();
+        sendWithDMA();
+
+        constexpr uint32_t DMA_TIMEOUT = 100;
+        uint32_t dmaStart = xTaskGetTickCount();
+        while (!clipSendStatGet()) {
+            if (xTaskGetTickCount() - dmaStart > pdMS_TO_TICKS(DMA_TIMEOUT)) {
+                break;
+            }
+            vTaskDelay(1);
+        }
+        clip485ctl.bit_reset();
+
+        uint32_t startTime = xTaskGetTickCount();
+        uint16_t responseLen = 0;
+        uint8_t *response = nullptr;
+
+        constexpr uint16_t MIN_RESPONSE_LEN = 13;
+        constexpr uint32_t MAX_WAIT_MS = 50;
+
+        do {
+            response = clipGetResponse(responseLen);
+            if (responseLen >= MIN_RESPONSE_LEN) break;
+            TaskBase::delay(5);
+        } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
+
+        // 校验响应
+        if (!response || responseLen < MIN_RESPONSE_LEN) {
+            Log.e("Write no response(len:%d<8)", responseLen);
+            return false;
+        }
+
+        // 校验帧头与帧尾
+        if (response[0] != 0xDD || response[1] != 0x98 || response[2] != 0x89) {
+            Log.e("Write invalid frame header");
+            return false;
+        }
+        if (response[responseLen - 2] != 0xA8 ||
+            response[responseLen - 1] != 0x86) {
+            Log.e("Invalid frame footer");
+            return false;
+        }
+
+        // ID
+        if (response[3] != 0x01 || response[4] != 0x06) {
+            Log.e("Write response error");
+            return false;
+        }
+
+        uint16_t respAddress = (response[5] << 8) | response[6];
+        uint16_t respData = (response[7] << 8) | response[8];
+
+        // 校验地址和数据
+        if ((respAddress != 0x01) || (respData != data)) {
+            Log.e("Data mismatch (sent:%04X/%04X vs resp:%04X/%04X)", 0x01,
+                  data, respAddress, respData);
+            return false;
+        }
+
+        // CRC
+        uint16_t calcCRC = Modbus_CRC16(response + 3, responseLen - 7);
+        uint16_t recvCRC = (response[9] << 8) | response[10];
+
+        if (calcCRC == recvCRC) {
+            Log.d("Write 0x%04X to address 0x%04X success", data, 0x01);
+        } else {
+            Log.e("CRC mismatch (calc:%04X vs recv:%04X)", calcCRC, recvCRC);
+        }
+        return calcCRC == recvCRC;
+    }    // 写结束
+
+    bool clipModeWrite(uint16_t mode) {
+        clipStatWriteCmd(0x01, 0x02, mode);
+        clip485ctl.bit_set();
+        sendWithDMA();
+
+        constexpr uint32_t DMA_TIMEOUT = 100;
+        uint32_t dmaStart = xTaskGetTickCount();
+        while (!clipSendStatGet()) {
+            if (xTaskGetTickCount() - dmaStart > pdMS_TO_TICKS(DMA_TIMEOUT)) {
+                break;
+            }
+            vTaskDelay(1);
+        }
+        clip485ctl.bit_reset();
+
+        uint32_t startTime = xTaskGetTickCount();
+        uint16_t responseLen = 0;
+        uint8_t *response = nullptr;
+
+        constexpr uint16_t MIN_RESPONSE_LEN = 13;
+        constexpr uint32_t MAX_WAIT_MS = 50;
+
+        do {
+            response = clipGetResponse(responseLen);
+            if (responseLen >= MIN_RESPONSE_LEN) break;
+            TaskBase::delay(5);
+        } while (xTaskGetTickCount() - startTime < pdMS_TO_TICKS(MAX_WAIT_MS));
+
+        // 校验响应
+        if (!response || responseLen < MIN_RESPONSE_LEN) {
+            Log.e("Write no response(len:%d<8)", responseLen);
+            return false;
+        }
+
+        // 校验帧头与帧尾
+        if (response[0] != 0xDD || response[1] != 0x98 || response[2] != 0x89) {
+            Log.e("Write invalid frame header");
+            return false;
+        }
+        if (response[responseLen - 2] != 0xA8 ||
+            response[responseLen - 1] != 0x86) {
+            Log.e("Invalid frame footer");
+            return false;
+        }
+
+        // ID
+        if (response[3] != 0x01 || response[4] != 0x06) {
+            Log.e("Write response error");
+            return false;
+        }
+
+        uint16_t respAddress = (response[5] << 8) | response[6];
+        uint16_t respData = (response[7] << 8) | response[8];
+
+        // 校验地址和数据
+        if ((respAddress != 0x02) || (respData != mode)) {
+            Log.e("Data mismatch (sent:%04X/%04X vs resp:%04X/%04X)", 0x02,
+                  mode, respAddress, respData);
+            return false;
+        }
+
+        // CRC
+        uint16_t calcCRC = Modbus_CRC16(response + 3, responseLen - 7);
+        uint16_t recvCRC = (response[9] << 8) | response[10];
+
+        if (calcCRC == recvCRC) {
+            Log.d("Write 0x%04X to address 0x%04X success", mode, 0x02);
+        } else {
+            Log.e("CRC mismatch (calc:%04X vs recv:%04X)", calcCRC, recvCRC);
+        }
+        return calcCRC == recvCRC;
+    }
+
+    bool clipModeLock() { return clipModeWrite(0); }
+
+    bool clipModeUnlock() { return clipModeWrite(1); }
+
+    bool clipModeClear() { return clipModeWrite(2); }
+
    private:
     GPIO clip485ctl;
+    Uart &uart;
     uint16_t sendLength = 0;
     std::array<uint8_t, 20> sendBuffer;
     std::array<uint8_t, 20> recvBuffer{};
 
     // 直接调用 DMA 发送
-    void sendWithDMA(Uart &uart) {
+    void sendWithDMA() {
         if (sendLength > 0) {
             uart.send(sendBuffer.data(), sendLength);
         }
@@ -216,7 +440,7 @@ class ClipInterface {
         return false;
     }
 
-    uint8_t *clipGetResponse(Uart &uart, uint16_t &responseLen) {
+    uint8_t *clipGetResponse(uint16_t &responseLen) {
         responseLen = 0;
         uint16_t availableData =
             uart.getReceivedData(recvBuffer.data(), recvBuffer.size());
