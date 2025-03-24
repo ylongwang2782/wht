@@ -2,6 +2,7 @@
 #define MASTER_DEF_HPP
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 
 #include "EventCPP.h"
 #include "Lock.h"
@@ -10,7 +11,6 @@
 #include "SemaphoreCPP.h"
 #include "master_cfg.hpp"
 #include "portable.h"
-
 enum CmdType : uint8_t {
     DEV_CONF = 0,
     DEV_MODE,
@@ -73,6 +73,37 @@ struct DataForward {
     QueryCmd query_cmd;
 };
 
+class Uint8ArrayIterator {
+   public:
+    using iterator_category = std::output_iterator_tag;
+    using value_type = void;
+    using difference_type = void;
+    using pointer = void;
+    using reference = void;
+
+    Uint8ArrayIterator(uint8_t* ptr) : ptr_(ptr) {}
+
+    Uint8ArrayIterator& operator*() { return *this; }
+    Uint8ArrayIterator& operator++() {
+        ++ptr_;
+        return *this;
+    }
+    Uint8ArrayIterator operator++(int) {
+        Uint8ArrayIterator tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    template <typename T>
+    Uint8ArrayIterator& operator=(const T& value) {
+        *ptr_ = static_cast<uint8_t>(value);
+        return *this;
+    }
+
+   private:
+    uint8_t* ptr_;
+};
+
 class ShareMem {
    public:
     ShareMem() : __mutex("mem"), __lock(__mutex) {}
@@ -107,9 +138,17 @@ class ShareMem {
 
 class PCdataTransferMsg {
    public:
-    PCdataTransferMsg() : rx_done_sem("rx_done_sem") {}
+    PCdataTransferMsg()
+        : rx_done_sem("rx_done_sem"),
+          tx_request_sem("tx_request_sem"),
+          tx_done_sem("tx_done_sem"),
+          tx_share_mem(PCdataTransfer_TX_BUFFER_SIZE) {}
     Queue<uint8_t, PCdataTransferMsg_DATA_QUEUE_SIZE> data_queue;
     BinarySemaphore rx_done_sem;
+
+    BinarySemaphore tx_request_sem;
+    BinarySemaphore tx_done_sem;
+    ShareMem tx_share_mem;
 };
 
 #define FORWARD_SUCCESS_EVENT (EventBits_t)((EventBits_t)1 << 0)
