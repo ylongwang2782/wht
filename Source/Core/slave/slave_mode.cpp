@@ -34,9 +34,9 @@ Uart usart1(usart1Conf);
 Uart usart2(usart2Conf);
 Uart uart3(uart3Conf);
 
-Logger Log(usart1);
+Logger Log(uart3);
 
-Harness harness(2, 4);
+Harness harness;
 class MyTimer {
    public:
     MyTimer()
@@ -75,12 +75,12 @@ class UsartDMATask : public TaskClassS<1024> {
     void task() override {
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+            if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
                 Log.d("Uart: recv.");
                 uint8_t buffer[DMA_RX_BUFFER_SIZE];
                 uint16_t len =
-                    usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                    uart3.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
 
                 // 将 buffer 转换为 vector
                 std::vector<uint8_t> raw_data(buffer, buffer + len);
@@ -118,7 +118,7 @@ class LedBlinkTask : public TaskClassS<256> {
     LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
 
     void task() override {
-        LED led(GPIO::Port::C, GPIO::Pin::PIN_6);
+        LED led(GPIO::Port::C, GPIO::Pin::PIN_13);
 
         SyncMsg syncMsg;
         syncMsg.mode = 0;
@@ -165,12 +165,16 @@ void WriteCondInfoMsg::process() {
     condInfoMsg.totalConductionNum = totalConductionNum;
     condInfoMsg.startConductionNum = startConductionNum;
     condInfoMsg.conductionNum = conductionNum;
+
+    // 初始化 Harness
+    harness.init(conductionNum, totalConductionNum, startConductionNum);
+
     // 1.2 打包为 Packet
     auto condInfoPacket = PacketPacker::slavePack(condInfoMsg, 0x3732485B);
     // 1.3 打包为帧
     auto condInfoFrame = FramePacker::pack(condInfoPacket);
     // 1.4 发送
-    usart1.send(condInfoFrame.data(), condInfoFrame.size());
+    uart3.send(condInfoFrame.data(), condInfoFrame.size());
 }
 
 void WriteResInfoMsg::process() { Log.d("WriteResInfoMsg process"); }
@@ -199,12 +203,13 @@ void ReadCondDataMsg::process() {
     // 3. 打包为帧
     auto master_data = FramePacker::pack(condDataPacket);
 
-    usart1.send(master_data.data(), master_data.size());
+    uart3.send(master_data.data(), master_data.size());
 }
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
-    harness.init();
+    // print uid in hex format
+    Log.d("Slave_Init: %02X", uid.value);
 
     return 0;
 }
