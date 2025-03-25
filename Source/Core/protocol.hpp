@@ -14,12 +14,15 @@ enum class PacketType : uint8_t {
 
 // 添加 Master 到 Slave 的消息类型枚举
 enum class Master2SlaveMessageID : uint8_t {
-    SYNC_MSG = 0x00,               // 同步消息
-    WRITE_COND_INFO_MSG = 0x01,    // 配置消息
-    WRITE_RES_INFO_MSG = 0x02,     // 写入阻值信息
-    WRITE_CLIP_INFO_MSG = 0x03,    // 写入卡钉信息
-    READ_DATA_MSG = 0x04,          // 读取数据
-    LOCK_MSG = 0x05,               // 锁
+    SYNC_MSG,               // 同步消息
+    WRITE_COND_INFO_MSG,    // 写入导通信息
+    WRITE_RES_INFO_MSG,     // 写入阻值信息
+    WRITE_CLIP_INFO_MSG,    // 写入卡钉信息
+    READ_COND_DATA_MSG,     // 读取
+    READ_RES_DATA_MSG,      // 读取
+    READ_CLIP_DATA_MSG,     // 读取
+    READ_CLIP_INFO_MSG,     // 读取
+    INIT_MSG
 };
 
 enum class Slave2MasterMessageID : uint8_t {
@@ -259,7 +262,7 @@ class SyncMsg : public Message {
         Log.d("SyncMsg: mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
     }
 
-    void process() override { Log.d("SyncMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::SYNC_MSG);
@@ -268,13 +271,15 @@ class SyncMsg : public Message {
 
 class WriteCondInfoMsg : public Message {
    public:
-    uint8_t timeSlot;
-    uint16_t totalConductionNum;
-    uint16_t startConductionNum;
-    uint16_t conductionNum;
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalConductionNum;    // 系统中总导通检测的数量
+    static uint16_t startConductionNum;    // 起始导通数量
+    static uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
+        data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(totalConductionNum));
         data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
@@ -284,19 +289,23 @@ class WriteCondInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 7) {
+        if (data.size() != 8) {    // 修改为8字节
             Log.e("WriteCondInfoMsg: Invalid WriteCondInfoMsg data size");
+            return;
         }
         timeSlot = data[0];
-        totalConductionNum = (data[2] << 8) | data[1];
-        startConductionNum = (data[4] << 8) | data[3];
-        conductionNum = (data[6] << 8) | data[5];
+        interval = data[1];    // 反序列化采集间隔
+        totalConductionNum = (data[3] << 8) | data[2];
+        startConductionNum = (data[5] << 8) | data[4];
+        conductionNum = (data[7] << 8) | data[6];
         Log.d(
-            "WriteCondInfoMsg: timeSlot = 0x%02X, totalConductionNum "
+            "WriteCondInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "totalConductionNum "
             "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
-            timeSlot, totalConductionNum, startConductionNum, conductionNum);
+            timeSlot, interval, totalConductionNum, startConductionNum,
+            conductionNum);
     }
-    void process() override { Log.d("WriteCondInfoMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_COND_INFO_MSG);
@@ -305,13 +314,15 @@ class WriteCondInfoMsg : public Message {
 
 class WriteResInfoMsg : public Message {
    public:
-    uint8_t timeSlot;
-    uint16_t totalResistanceNum;
-    uint16_t startResistanceNum;
-    uint16_t resistanceNum;
+    uint8_t timeSlot;               // 为从节点分配的时隙
+    uint8_t interval;               // 采集间隔，单位 ms
+    uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
+    uint16_t startResistanceNum;    // 起始阻值数量
+    uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
+        data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalResistanceNum >> 8));
         data.push_back(static_cast<uint8_t>(totalResistanceNum));
         data.push_back(static_cast<uint8_t>(startResistanceNum >> 8));
@@ -321,20 +332,24 @@ class WriteResInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 7) {
+        if (data.size() != 8) {    // 修改为8字节
             Log.e("WriteResInfoMsg: Invalid WriteResInfoMsg data size");
+            return;
         }
         timeSlot = data[0];
-        totalResistanceNum = (data[2] << 8) | data[1];
-        startResistanceNum = (data[4] << 8) | data[3];
-        resistanceNum = (data[6] << 8) | data[5];
+        interval = data[1];    // 反序列化采集间隔
+        totalResistanceNum = (data[3] << 8) | data[2];
+        startResistanceNum = (data[5] << 8) | data[4];
+        resistanceNum = (data[7] << 8) | data[6];
         Log.d(
-            "WriteResInfoMsg: timeSlot = 0x%02X, totalResistanceNum = 0x%04X, "
+            "WriteResInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "totalResistanceNum = 0x%04X, "
             "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
-            timeSlot, totalResistanceNum, startResistanceNum, resistanceNum);
+            timeSlot, interval, totalResistanceNum, startResistanceNum,
+            resistanceNum);
     }
 
-    void process() override { Log.d("WriteResInfoMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_RES_INFO_MSG);
@@ -343,24 +358,29 @@ class WriteResInfoMsg : public Message {
 
 class WriteClipInfoMsg : public Message {
    public:
-    uint8_t mode;    // 0：非自锁，1：自锁
+    uint8_t interval;    // 采集间隔，单位 ms
+    uint8_t mode;        // 0：非自锁，1：自锁
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(mode);                             // 序列化 mode
+        data.push_back(interval);    // 序列化采集间隔
+        data.push_back(mode);        // 序列化 mode
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 3) {    // 修改为3字节
+        if (data.size() != 4) {    // 修改为4字节
             Log.e("WriteClipInfoMsg: Invalid WriteClipInfoMsg data size");
             return;
         }
-        mode = data[0];                        // 反序列化 mode
-        clipPin = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
-        Log.d("WriteClipInfoMsg: mode = 0x%02X, clipPin = 0x%04X", mode,
-              clipPin);
+        interval = data[0];                    // 反序列化采集间隔
+        mode = data[1];                        // 反序列化 mode
+        clipPin = data[2] | (data[3] << 8);    // 低字节在前，高字节在后
+        Log.d(
+            "WriteClipInfoMsg: interval = 0x%02X, mode = 0x%02X, clipPin = "
+            "0x%04X",
+            interval, mode, clipPin);
     }
 
     void process() override { Log.d("WriteClipInfoMsg process"); };
@@ -370,50 +390,104 @@ class WriteClipInfoMsg : public Message {
     }
 };
 
-class ReadDataMsg : public Message {
+class ReadCondDataMsg : public Message {
    public:
-    enum class ReadType : uint8_t {
-        CONDUCTION_DATA = 0,    // 读取导通数据
-        RESISTANCE_DATA = 1,    // 读取阻值数据
-        CLIP_DATA = 2,          // 读取卡钉数据
-        CLIP_INFO = 3           // 读取卡钉信息
-    };
+    uint8_t reserve;    // 保留字段，固定为0
 
-    ReadType type;
+    ReadCondDataMsg() : reserve(0) {}
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(static_cast<uint8_t>(type));
+        data.push_back(reserve);    // 序列化保留字段
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ReadDataMsg: Invalid ReadDataMsg data size");
+            Log.e("ReadCondDataMsg: Invalid ReadCondDataMsg data size");
+            return;
         }
-        type = static_cast<ReadType>(data[0]);
-        const char* msgTypeStr = "Unknown";
-        switch (type) {
-            case ReadType::CONDUCTION_DATA:
-                msgTypeStr = "CONDUCTION_DATA";
-                break;
-            case ReadType::RESISTANCE_DATA:
-                msgTypeStr = "RESISTANCE_DATA";
-                break;
-            case ReadType::CLIP_DATA:
-                msgTypeStr = "CLIP_DATA";
-                break;
-            case ReadType::CLIP_INFO:
-                msgTypeStr = "CLIP_INFO";
-                break;
-            default:
-                break;
-        }
-        Log.d("ReadDataMsg: type=%s (0x%02X)", msgTypeStr, type);
+        reserve = data[0];    // 反序列化保留字段
+        Log.d("ReadCondDataMsg: reserve = 0x%02X", reserve);
     }
 
-    void process() override { Log.d("ReadDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::READ_DATA_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::READ_COND_DATA_MSG);
+    }
+};
+
+class ReadResDataMsg : public Message {
+   public:
+    uint8_t reserve;    // 保留字段，固定为0
+
+    ReadResDataMsg() : reserve(0) {}
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(reserve);    // 序列化保留字段
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("ReadResDataMsg: Invalid ReadResDataMsg data size");
+            return;
+        }
+        reserve = data[0];    // 反序列化保留字段
+        Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
+    }
+
+    void process() override { Log.d("ReadResDataMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::READ_RES_DATA_MSG);
+    }
+};
+
+class ReadClipDataMsg : public Message {
+   public:
+    uint8_t reserve;    // 保留字段，固定为0
+
+    ReadClipDataMsg() : reserve(0) {}
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(reserve);    // 序列化保留字段
+    }
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("ReadClipDataMsg: Invalid ReadClipDataMsg data size");
+            return;
+        }
+        reserve = data[0];    // 反序列化保留字段
+        Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
+    }
+    void process() override { "ReadClipDataMsg process"; };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_DATA_MSG);
+    }
+};
+
+class ReadClipInfoMsg : public Message {
+   public:
+    uint8_t reserve;    // 保留字段，固定为0
+
+    ReadClipInfoMsg() : reserve(0) {}
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(reserve);    // 序列化保留字段
+    }
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e("ReadClipInfoMsg: Invalid ReadClipInfoMsg data size");
+            return;
+        }
+        reserve = data[0];    // 反序列化保留字段
+        Log.d("ReadClipInfoMsg: reserve = 0x%02X", reserve);
+    }
+
+    void process() override { "ReadClipInfoMsg process"; };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_INFO_MSG);
     }
 };
 
@@ -442,7 +516,7 @@ class InitMsg : public Message {
     void process() override { Log.d("InitMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::LOCK_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::INIT_MSG);
     }
 };
 
@@ -462,33 +536,39 @@ struct DeviceStatus {
 // 导通数据消息（Slave -> Master）
 class CondInfoMsg : public Message {
    public:
-    uint8_t timeSlot;
-    uint16_t totalConductionNum;
-    uint16_t startConductionNum;
-    uint16_t conductionNum;
+    uint8_t timeSlot;               // 为从节点分配的时隙
+    uint8_t interval;               // 采集间隔，单位 ms
+    uint16_t totalConductionNum;    // 系统中总导通检测的数量
+    uint16_t startConductionNum;    // 起始导通数量
+    uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
-        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
+        data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalConductionNum));
-        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(startConductionNum));
-        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(conductionNum));
+        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 7) {
+        if (data.size() != 8) {    // 修改为8字节
             Log.e("CondInfoMsg: Invalid CondInfoMsg data size");
+            return;
         }
         timeSlot = data[0];
-        totalConductionNum = (data[2] << 8) | data[1];
-        startConductionNum = (data[4] << 8) | data[3];
-        conductionNum = (data[6] << 8) | data[5];
+        interval = data[1];    // 反序列化采集间隔
+        totalConductionNum = (data[3] << 8) | data[2];
+        startConductionNum = (data[5] << 8) | data[4];
+        conductionNum = (data[7] << 8) | data[6];
         Log.d(
-            "CondInfoMsg: timeSlot = 0x%02X, totalConductionNum "
-            "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
-            timeSlot, totalConductionNum, startConductionNum, conductionNum);
+            "CondInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "totalConductionNum = 0x%04X, "
+            "startConductionNum = 0x%04X, conductionNum = 0x%04X",
+            timeSlot, interval, totalConductionNum, startConductionNum,
+            conductionNum);
     }
     void process() override { Log.d("CondInfoMsg process"); };
 
@@ -499,13 +579,15 @@ class CondInfoMsg : public Message {
 
 class ResInfoMsg : public Message {
    public:
-    uint8_t timeSlot;
-    uint16_t totalResistanceNum;
-    uint16_t startResistanceNum;
-    uint16_t resistanceNum;
+    uint8_t timeSlot;               // 为从节点分配的时隙
+    uint8_t interval;               // 采集间隔，单位 ms
+    uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
+    uint16_t startResistanceNum;    // 起始阻值数量
+    uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
+        data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalResistanceNum >> 8));
         data.push_back(static_cast<uint8_t>(totalResistanceNum));
         data.push_back(static_cast<uint8_t>(startResistanceNum >> 8));
@@ -515,45 +597,53 @@ class ResInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 7) {
+        if (data.size() != 8) {    // 修改为8字节
             Log.e("ResInfoMsg: Invalid ResInfoMsg data size");
+            return;
         }
         timeSlot = data[0];
-        totalResistanceNum = (data[2] << 8) | data[1];
-        startResistanceNum = (data[4] << 8) | data[3];
-        resistanceNum = (data[6] << 8) | data[5];
+        interval = data[1];    // 反序列化采集间隔
+        totalResistanceNum = (data[3] << 8) | data[2];
+        startResistanceNum = (data[5] << 8) | data[4];
+        resistanceNum = (data[7] << 8) | data[6];
         Log.d(
-            "ResInfoMsg: timeSlot = 0x%02X, totalResistanceNum = 0x%04X, "
+            "ResInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "totalResistanceNum = 0x%04X, "
             "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
-            timeSlot, totalResistanceNum, startResistanceNum, resistanceNum);
+            timeSlot, interval, totalResistanceNum, startResistanceNum,
+            resistanceNum);
     }
 
-    void process() override { Log.d("WriteResInfoMsg process"); };
+    void process() override { Log.d("ResInfoMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_RES_INFO_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::RES_INFO_MSG);
     }
 };
 
 class ClipInfoMsg : public Message {
    public:
-    uint8_t mode;    // 0：非自锁，1：自锁
+    uint8_t interval;    // 采集间隔，单位 ms
+    uint8_t mode;        // 0：非自锁，1：自锁
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(mode);                             // 序列化 mode
+        data.push_back(interval);    // 序列化采集间隔
+        data.push_back(mode);        // 序列化 mode
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 3) {    // 修改为3字节
+        if (data.size() != 4) {    // 修改为4字节
             Log.e("ClipInfoMsg: Invalid ClipInfoMsg data size");
             return;
         }
-        mode = data[0];                        // 反序列化 mode
-        clipPin = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
-        Log.d("ClipInfoMsg: mode = 0x%02X, clipPin = 0x%04X", mode, clipPin);
+        interval = data[0];                    // 反序列化采集间隔
+        mode = data[1];                        // 反序列化 mode
+        clipPin = data[2] | (data[3] << 8);    // 低字节在前，高字节在后
+        Log.d("ClipInfoMsg: interval = 0x%02X, mode = 0x%02X, clipPin = 0x%04X",
+              interval, mode, clipPin);
     }
 
     void process() override { Log.d("ClipInfoMsg process"); };
@@ -784,11 +874,11 @@ class FrameParser {
                 case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG:
                     msgTypeStr = "WRITE_CLIP_INFO_MSG";
                     break;
-                case Master2SlaveMessageID::READ_DATA_MSG:
-                    msgTypeStr = "READ_DATA_MSG";
+                case Master2SlaveMessageID::READ_COND_DATA_MSG:
+                    msgTypeStr = "READ_COND_DATA_MSG";
                     break;
-                case Master2SlaveMessageID::LOCK_MSG:
-                    msgTypeStr = "LOCK_MSG";
+                case Master2SlaveMessageID::INIT_MSG:
+                    msgTypeStr = "INIT_MSG";
                     break;
                 default:
                     break;
@@ -840,18 +930,43 @@ class FrameParser {
                         "deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::READ_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_DATA_MSG message");
-                    auto msg = std::make_unique<ReadDataMsg>();
+                case Master2SlaveMessageID::READ_COND_DATA_MSG: {
+                    Log.d("FrameParser: processing READ_COND_DATA_MSG message");
+                    auto msg = std::make_unique<ReadCondDataMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d("FrameParser: READ_DATA_MSG message deserialized");
+                    Log.d(
+                        "FrameParser: READ_COND_DATA_MSG message deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::LOCK_MSG: {
-                    Log.d("FrameParser: processing LOCK_MSG message");
+                case Master2SlaveMessageID::READ_RES_DATA_MSG: {
+                    Log.d("FrameParser: processing READ_RES_DATA_MSG message");
+                    auto msg = std::make_unique<ReadResDataMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: READ_RES_DATA_MSG message deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::READ_CLIP_DATA_MSG: {
+                    Log.d("FrameParser: processing READ_CLIP_DATA_MSG message");
+                    auto msg = std::make_unique<ReadClipDataMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: READ_CLIP_DATA_MSG message deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::READ_CLIP_INFO_MSG: {
+                    Log.d("FrameParser: processing READ_CLIP_INFO_MSG message");
+                    auto msg = std::make_unique<ReadClipInfoMsg>();
+                    msg->deserialize(packet.payload);
+                    Log.d(
+                        "FrameParser: READ_CLIP_INFO_MSG message deserialized");
+                    return msg;
+                }
+                case Master2SlaveMessageID::INIT_MSG: {
+                    Log.d("FrameParser: processing INIT_MSG message");
                     auto msg = std::make_unique<InitMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d("FrameParser: LOCK_MSG message deserialized");
+                    Log.d("FrameParser: INIT_MSG message deserialized");
                     return msg;
                 }
                 default:
