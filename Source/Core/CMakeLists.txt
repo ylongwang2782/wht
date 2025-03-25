@@ -4,6 +4,7 @@ target_sources(${EXECUTABLE_NAME} PRIVATE
     ./slave/slave_mode.cpp
     ./slave/harness.cpp
     ./master/master_mode.cpp
+    ./protocal.cpp
 )
 
 target_include_directories(${EXECUTABLE_NAME} PUBLIC

@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "TaskCPP.h"
 #include "bsp_gpio.hpp"
 #include "bsp_log.hpp"
 
@@ -17,22 +18,12 @@ extern "C" {
 }
 #endif
 
-struct DeviceConfigInfo {
-    std::array<uint8_t, 4> ID;
-    uint16_t sysHarnessNum;
-    uint8_t devHarnessNum;
-    uint8_t devNum;
-};
-
 class BinaryMatrix {
    private:
     std::vector<std::vector<int>> matrix;
 
    public:
     size_t rows, cols;
-    // 构造函数，初始化矩阵
-    BinaryMatrix(size_t r, size_t c)
-        : matrix(r, std::vector<int>(c, 0)), rows(r), cols(c) {}
 
     // 获取矩阵的行数
     uint16_t getRows() const { return rows; }
@@ -58,6 +49,16 @@ class BinaryMatrix {
         return matrix[r][c];
     }
 
+    // 调整矩阵大小
+    void resize(size_t new_rows, size_t new_cols) {
+        matrix.resize(new_rows);
+        for (auto& row : matrix) {
+            row.resize(new_cols, 0);
+        }
+        rows = new_rows;
+        cols = new_cols;
+    }
+
     std::vector<uint8_t> flatten() const {
         std::vector<uint8_t> result;
         result.reserve(rows * cols);    // 预分配空间提高效率
@@ -68,28 +69,127 @@ class BinaryMatrix {
     }
 };
 
+// 导通引脚信息
+const std::pair<GPIO::Port, GPIO::Pin> condPinInfo[] = {
+    // PA0 - PA7
+    {GPIO::Port::A, GPIO::Pin::PIN_3},    // PA3
+    {GPIO::Port::A, GPIO::Pin::PIN_4},    // PA4
+    {GPIO::Port::A, GPIO::Pin::PIN_5},    // PA5
+    {GPIO::Port::A, GPIO::Pin::PIN_6},    // PA6
+    {GPIO::Port::A, GPIO::Pin::PIN_7},    // PA7
+    // PC4 - PC5
+    {GPIO::Port::C, GPIO::Pin::PIN_4},    // PC4
+    {GPIO::Port::C, GPIO::Pin::PIN_5},    // PC5
+    // PB0 1
+    {GPIO::Port::B, GPIO::Pin::PIN_0},    // PB0
+    {GPIO::Port::B, GPIO::Pin::PIN_1},    // PB1
+    // PF11 - PF15
+    {GPIO::Port::F, GPIO::Pin::PIN_11},    // PF11
+    {GPIO::Port::F, GPIO::Pin::PIN_12},    // PF12
+    {GPIO::Port::F, GPIO::Pin::PIN_13},    // PF13
+    {GPIO::Port::F, GPIO::Pin::PIN_14},    // PF14
+    {GPIO::Port::F, GPIO::Pin::PIN_15},    // PF15
+    // PG0 - PG1
+    {GPIO::Port::G, GPIO::Pin::PIN_0},    // PG0
+    {GPIO::Port::G, GPIO::Pin::PIN_1},    // PG1
+    // PE7 - PE15
+    {GPIO::Port::E, GPIO::Pin::PIN_7},     // PE7
+    {GPIO::Port::E, GPIO::Pin::PIN_8},     // PE8
+    {GPIO::Port::E, GPIO::Pin::PIN_9},     // PE9
+    {GPIO::Port::E, GPIO::Pin::PIN_10},    // PE10
+    {GPIO::Port::E, GPIO::Pin::PIN_11},    // PE11
+    {GPIO::Port::E, GPIO::Pin::PIN_12},    // PE12
+    {GPIO::Port::E, GPIO::Pin::PIN_13},    // PE13
+    {GPIO::Port::E, GPIO::Pin::PIN_14},    // PE14
+    {GPIO::Port::E, GPIO::Pin::PIN_15},    // PE15
+    // PB10 - PB15
+    {GPIO::Port::B, GPIO::Pin::PIN_10},    // PB10
+    {GPIO::Port::B, GPIO::Pin::PIN_11},    // PB11
+    {GPIO::Port::B, GPIO::Pin::PIN_12},    // PB12
+    {GPIO::Port::B, GPIO::Pin::PIN_13},    // PB13
+    {GPIO::Port::B, GPIO::Pin::PIN_14},    // PB14
+    {GPIO::Port::B, GPIO::Pin::PIN_15},    // PB15
+    // PD8 - PD15
+    {GPIO::Port::D, GPIO::Pin::PIN_8},     // PD8
+    {GPIO::Port::D, GPIO::Pin::PIN_9},     // PD9
+    {GPIO::Port::D, GPIO::Pin::PIN_10},    // PD10
+    {GPIO::Port::D, GPIO::Pin::PIN_11},    // PD11
+    {GPIO::Port::D, GPIO::Pin::PIN_12},    // PD12
+    {GPIO::Port::D, GPIO::Pin::PIN_13},    // PD13
+    {GPIO::Port::D, GPIO::Pin::PIN_14},    // PD14
+    {GPIO::Port::D, GPIO::Pin::PIN_15},    // PD15
+    // PG2 - PG8
+    {GPIO::Port::G, GPIO::Pin::PIN_2},    // PG2
+    {GPIO::Port::G, GPIO::Pin::PIN_3},    // PG3
+    {GPIO::Port::G, GPIO::Pin::PIN_4},    // PG4
+    {GPIO::Port::G, GPIO::Pin::PIN_5},    // PG5
+    {GPIO::Port::G, GPIO::Pin::PIN_6},    // PG6
+    {GPIO::Port::G, GPIO::Pin::PIN_7},    // PG7
+    {GPIO::Port::G, GPIO::Pin::PIN_8},    // PG8
+    // PC6 - PC9
+    {GPIO::Port::C, GPIO::Pin::PIN_6},    // PC6
+    {GPIO::Port::C, GPIO::Pin::PIN_7},    // PC7
+    {GPIO::Port::C, GPIO::Pin::PIN_8},    // PC8
+    {GPIO::Port::C, GPIO::Pin::PIN_9},    // PC9
+    // PA8 - PA12 PA15
+    {GPIO::Port::A, GPIO::Pin::PIN_8},     // PA8
+    {GPIO::Port::A, GPIO::Pin::PIN_9},     // PA9
+    {GPIO::Port::A, GPIO::Pin::PIN_10},    // PA10
+    {GPIO::Port::A, GPIO::Pin::PIN_11},    // PA11
+    {GPIO::Port::A, GPIO::Pin::PIN_12},    // PA12
+    {GPIO::Port::A, GPIO::Pin::PIN_15},    // PA15
+    // PC10 - PC11
+    {GPIO::Port::C, GPIO::Pin::PIN_10},    // PC10
+    {GPIO::Port::C, GPIO::Pin::PIN_11},    // PC11
+    //  PD0 - PD1, PD3 -PD4
+    {GPIO::Port::D, GPIO::Pin::PIN_0},    // PD0
+    {GPIO::Port::D, GPIO::Pin::PIN_1},    // PD1
+    {GPIO::Port::D, GPIO::Pin::PIN_3},    // PD3
+    {GPIO::Port::D, GPIO::Pin::PIN_4},    // PD4
+};
+
 class Harness {
    public:
     BinaryMatrix data;
     std::vector<GPIO> pins;
     int rowIndex = 0;
 
-    Harness(uint8_t devHarnessNum, uint16_t sysHarnessNum)
-        : data(sysHarnessNum, devHarnessNum),
-          devHarnessNum(devHarnessNum),
-          sysHarnessNum(sysHarnessNum) {}
+    bool isDeviceOutput() {
+        return rowIndex >= startConductionNum &&
+               rowIndex <= startConductionNum + conductionNum;
+    }
 
     void run() {
+        if (isDeviceOutput()) {
+            int index = rowIndex - startConductionNum;
+
+            // reset last pin
+            if (int lastIndex = index - 1; lastIndex >= 0) {
+                pins[lastIndex].bit_reset();
+                pins[lastIndex].mode_set(GPIO::Mode::INPUT);
+            }
+
+            // set current pin
+            if (index < conductionNum) {
+                pins[index].mode_set(GPIO::Mode::OUTPUT);
+                pins[index].bit_set();
+            }
+        }
+
         for (size_t i = 0; i < data.cols; i++) {
             data.setValue(rowIndex, i, pins[i].input_bit_get());
         }
     }
 
-    void init() {
-        for (int i = 0; i < devHarnessNum; ++i) {
-            pins.emplace_back(GPIO::Port::E,
-                              static_cast<GPIO::Pin>(GPIO_PIN_0 << i),
-                              GPIO::Mode::OUTPUT);
+    void init(uint8_t conductionNum, uint16_t totalConductionNum,
+              int startConductionNum) {
+        this->conductionNum = conductionNum;
+        this->totalConductionNum = totalConductionNum;
+        this->startConductionNum = startConductionNum;
+        data.resize(totalConductionNum, conductionNum);
+        for (int i = 0; i < conductionNum; ++i) {
+            pins.emplace_back(condPinInfo[i].first, condPinInfo[i].second,
+                              GPIO::Mode::INPUT);
         }
     }
 
@@ -98,10 +198,7 @@ class Harness {
     void deinit() { pins.clear(); }
 
    private:
-    uint8_t devNum;
-    uint8_t devHarnessNum;
-    uint16_t sysHarnessNum;
-    uint8_t master_pin_index = 0;
-    uint8_t packed_data = 0;
-    int bit_position = 0;
+    uint8_t conductionNum;
+    uint16_t totalConductionNum;
+    uint16_t startConductionNum;    // 起始导通数量
 };
