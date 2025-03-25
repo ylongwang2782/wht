@@ -9,7 +9,7 @@
 
 //PCdataTransfer
 #define PCdataTransfer_STACK_SIZE 4*1024
-
+#define PCdataTransfer_TX_BUFFER_SIZE 1024
 //PCinterface
 #define PCinterface_FORWARD_QUEUE_TIMEOUT 5000
 #define PCinterface_FORWARD_TIMEOUT 5000
