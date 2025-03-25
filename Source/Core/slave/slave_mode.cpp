@@ -11,9 +11,9 @@
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uid.hpp"
-#include "chronolink.h"
 #include "harness.h"
 #include "mode_entry.h"
+#include "protocol.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,7 +23,6 @@ extern "C" {
 #include "semphr.h"
 #include "task.h"
 #include "timers.h"
-
 #ifdef __cplusplus
 }
 #endif
@@ -37,13 +36,12 @@ Uart uart3(uart3Conf);
 
 Logger Log(usart1);
 
-ChronoLink chronoLink;
 Harness harness(2, 4);
 class MyTimer {
    public:
     MyTimer()
-        : myTimer("MyTimer", this, &MyTimer::myTimerCallback, pdMS_TO_TICKS(100),
-                  pdTRUE) {}
+        : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
+                  pdMS_TO_TICKS(100), pdTRUE) {}
 
     void startWithCount(int count) {
         if (count > 0) {
@@ -73,125 +71,47 @@ class MyTimer {
 class UsartDMATask : public TaskClassS<1024> {
    public:
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
-
+    FrameParser parser;
     void task() override {
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                Log.d("Usart recv.");
+                Log.d("Uart: recv.");
                 uint8_t buffer[DMA_RX_BUFFER_SIZE];
                 uint16_t len =
                     usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                chronoLink.push_back(buffer, len);
-                while (chronoLink.parseFrameFragment(frame_fragment)) {
-                    Log.d("Get frame fragment.");
-                    chronoLink.receiveAndAssembleFrame(frame_fragment,
-                                                       frameSorting);
-                };
-            }
-        }
-    }
 
-   private:
-    ChronoLink::Fragment frame_fragment;
-    static ChronoLink::DeviceConfig config;
-    static void frameSorting(ChronoLink::CompleteFrame complete_frame) {
-        extern MyTimer myTimer;
-        std::vector<ChronoLink::DevConf> device_configs;
-        ChronoLink::Instruction instruction;
-        switch (complete_frame.type) {
-            case ChronoLink::SYNC:
-                Log.d("Frame: Sync");
-                // harness.run();
-                myTimer.startWithCount(4);
-                break;
-            case ChronoLink::COMMAND:
-                Log.d("Frame: Instuction");
-
-                instruction = chronoLink.parseInstruction(complete_frame.data);
-                if (instruction.type == 0x00) {
-                    config =
-                        std::get<ChronoLink::DeviceConfig>(instruction.context);
-                    Log.d("Instruction: Device Config");
-                    Log.d("timeslot: %d", config.timeslot);
-                    Log.d("totalHarnessNum: %d", config.totalHarnessNum);
-                    Log.d("startHarnessNum: %d", config.startHarnessNum);
-                    Log.d("harnessNum: %d", config.harnessNum);
-                    Log.d("clipNum: %d", config.clipNum);
-
-                    ChronoLink::DeviceConfig deviceConfig = {
-                        .timeslot = 0,
-                        .totalHarnessNum = 0,
-                        .startHarnessNum = 0,
-                        .harnessNum = 0,
-                        .clipNum = 0,
-                        .resNum = {0}};
-
-                    chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
-                                         ChronoLink::DEV_CONF, ChronoLink::OK,
-                                         deviceConfig);
-
-                } else if (instruction.type == 0x01) {
-                    Log.d("Instruction: Data Request");
-
-                    ChronoLink::DataReplyContext dataReply = {
-                        .deviceStatus = {.colorSensor = 1,
-                                         .sleeveLimit = 1,
-                                         .electromagnetUnlockButton = 1,
-                                         .batteryLowPowerAlarm = 1,
-                                         .pressureSensor = 1,
-                                         .electromagneticLock1 = 1,
-                                         .electromagneticLock2 = 1,
-                                         .accessory1 = 1,
-                                         .accessory2 = 1,
-                                         .reserved = 1},
-                        .harnessLength = harness.data.getSize(),
-                        .harnessData = harness.data.flatten(),
-                        .clipLength = 1,
-                        .clipData = {0x30}};
-
-                    chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
-                                         ChronoLink::DATA_REQ, ChronoLink::OK,
-                                         dataReply);
-
-                } else if (instruction.type == 0x02) {
-                    Log.d("Instruction: Device Unlock");
-                    const ChronoLink::DeviceUnlock &unlock =
-                        std::get<ChronoLink::DeviceUnlock>(instruction.context);
-                    Log.d("unlock: %d", unlock.lockStatus);
-
-                    ChronoLink::DeviceUnlock unlockStatus = {.lockStatus = 0};
-
-                    chronoLink.sendReply(config.timeslot, ChronoLink::REPLY,
-                                         ChronoLink::DEV_UNLOCK, ChronoLink::OK,
-                                         unlockStatus);
+                // 将 buffer 转换为 vector
+                std::vector<uint8_t> raw_data(buffer, buffer + len);
+                auto msg = parser.parse(raw_data);
+                if (msg != nullptr) {
+                    msg->process();
                 } else {
+                    Log.d("Uart: parse fail.");
                 }
-                break;
-            default:
-                break;
+            }
         }
     }
 };
 
 class LogTask : public TaskClassS<1024> {
-    public:
-     LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
- 
-     void task() override {
-         char buffer[LOG_QUEUE_SIZE + 8];
-         for (;;) {
-             LogMessage logMsg;
-             // 从队列中获取日志消息
-             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                 Log.uart.send(
-                     reinterpret_cast<const uint8_t *>(logMsg.message.data()),
-                     strlen(logMsg.message.data()));
-             }
-         }
-     }
- };
+   public:
+    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
+
+    void task() override {
+        char buffer[LOG_QUEUE_SIZE + 8];
+        for (;;) {
+            LogMessage logMsg;
+            // 从队列中获取日志消息
+            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
+                Log.uart.send(
+                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
+                    strlen(logMsg.message.data()));
+            }
+        }
+    }
+};
 
 class LedBlinkTask : public TaskClassS<256> {
    public:
@@ -200,19 +120,37 @@ class LedBlinkTask : public TaskClassS<256> {
     void task() override {
         LED led(GPIO::Port::C, GPIO::Pin::PIN_6);
 
+        SyncMsg syncMsg;
+        syncMsg.mode = 0;
+        syncMsg.timestamp = 0x12345678;
+
+        uint32_t target_id = 0x3732485B;
+
+        // 2. 打包为 Packet
+        auto master_packet = PacketPacker::masterPack(syncMsg, target_id);
+        auto slave_packet = PacketPacker::slavePack(syncMsg, target_id);
+
+        // 3. 打包为帧
+        auto master_data = FramePacker::pack(master_packet);
+        auto slave_data = FramePacker::pack(slave_packet);
+
         for (;;) {
+            // usart1.send(master_data.data(), master_data.size());
+            // usart1.send(slave_data.data(), slave_data.size());
+
             led.toggle();
             TaskBase::delay(500);
         }
     }
 };
-#ifndef MASTER
+
+#ifdef SLAVE
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
 #endif
-
 LogTask logTask;
+
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
