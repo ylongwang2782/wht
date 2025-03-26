@@ -61,10 +61,29 @@ class BinaryMatrix {
 
     std::vector<uint8_t> flatten() const {
         std::vector<uint8_t> result;
-        result.reserve(rows * cols);    // 预分配空间提高效率
+        size_t byteCount = (rows * cols + 7) / 8;    // 计算需要的字节数
+        result.reserve(byteCount);                   // 预分配空间
+
+        uint8_t currentByte = 0;
+        int bitCount = 7;    // 从最高位开始
+
         for (const auto& row : matrix) {
-            result.insert(result.end(), row.begin(), row.end());
+            for (const auto& bit : row) {
+                currentByte |= (bit & 0x01) << bitCount;
+                bitCount--;
+                if (bitCount < 0) {
+                    result.push_back(currentByte);
+                    currentByte = 0;
+                    bitCount = 7;
+                }
+            }
         }
+
+        // 处理最后不足8位的部分
+        if (bitCount != 7) {
+            result.push_back(currentByte);
+        }
+
         return result;
     }
 };

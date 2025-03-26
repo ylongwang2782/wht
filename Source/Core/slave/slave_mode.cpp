@@ -124,25 +124,7 @@ class LedBlinkTask : public TaskClassS<256> {
 
     void task() override {
         LED led(GPIO::Port::C, GPIO::Pin::PIN_13);
-
-        SyncMsg syncMsg;
-        syncMsg.mode = 0;
-        syncMsg.timestamp = 0x12345678;
-
-        uint32_t target_id = 0x3732485B;
-
-        // 2. 打包为 Packet
-        auto master_packet = PacketPacker::masterPack(syncMsg, target_id);
-        auto slave_packet = PacketPacker::slavePack(syncMsg, target_id);
-
-        // 3. 打包为帧
-        auto master_data = FramePacker::pack(master_packet);
-        auto slave_data = FramePacker::pack(slave_packet);
-
         for (;;) {
-            // usart1.send(master_data.data(), master_data.size());
-            // usart1.send(slave_data.data(), slave_data.size());
-
             led.toggle();
             TaskBase::delay(500);
         }
@@ -189,8 +171,8 @@ void WriteResInfoMsg::process() { Log.d("WriteResInfoMsg process"); }
 void ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
     CondDataMsg condDataMsg;
-    condDataMsg.conductionLength = harness.data.getSize();
     condDataMsg.conductionData = harness.data.flatten();
+    condDataMsg.conductionLength = condDataMsg.conductionData.size();
     condDataMsg.deviceStatus = DeviceStatus{
         1,    // colorSensor
         1,    // sleeveLimit
