@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -27,12 +28,16 @@ extern "C" {
 }
 #endif
 
+UartConfig usart0Conf(usart0_info);
 UartConfig usart1Conf(usart1_info);
 UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
+UartConfig uart6Conf(uart6_info);
+Uart usart0(usart0Conf);
 Uart usart1(usart1Conf);
 Uart usart2(usart2Conf);
 Uart uart3(uart3Conf);
+Uart uart6(uart6Conf);
 
 Logger Log(uart3);
 
@@ -151,7 +156,6 @@ MyTimer myTimer;
 #endif
 LogTask logTask;
 
-
 void SyncMsg::process() {
     Log.d("SyncMsg process");
     myTimer.startWithCount(4);
@@ -213,6 +217,10 @@ int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
     // print uid in hex format
     Log.d("Slave_Init: %02X", uid.value);
+
+    // // enable cx310 recv mode with 23 01 00 00 using usart0
+    // std::array<uint8_t, 4> cx310_recv_mode = {0x23, 0x01, 0x00, 0x00};
+    // usart0.send(cx310_recv_mode.data(), cx310_recv_mode.size());
 
     return 0;
 }
