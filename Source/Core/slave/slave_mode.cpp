@@ -27,6 +27,7 @@ extern "C" {
 }
 #endif
 
+#ifdef SLAVE
 UartConfig usart1Conf(usart1_info);
 UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
@@ -144,13 +145,11 @@ class LedBlinkTask : public TaskClassS<256> {
     }
 };
 
-#ifdef SLAVE
+
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
-#endif
 LogTask logTask;
-
 
 void SyncMsg::process() {
     Log.d("SyncMsg process");
@@ -216,3 +215,5 @@ int Slave_Init(void) {
 
     return 0;
 }
+
+#endif
