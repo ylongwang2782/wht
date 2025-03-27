@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -7,6 +8,7 @@
 #include "FreeRTOS.h"
 #include "TaskCPP.h"
 #include "TimerCPP.h"
+#include "battery.hpp"
 #include "bsp_gpio.hpp"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
@@ -27,12 +29,16 @@ extern "C" {
 }
 #endif
 
-UartConfig usart1Conf(usart1_info);
-UartConfig usart2Conf(usart2_info);
+// UartConfig usart0Conf(usart0_info);
+// UartConfig usart1Conf(usart1_info);
+// UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
-Uart usart1(usart1Conf);
-Uart usart2(usart2Conf);
+// UartConfig uart6Conf(uart6_info);
+// Uart usart0(usart0Conf);
+// Uart usart1(usart1Conf);
+// Uart usart2(usart2Conf);
 Uart uart3(uart3Conf);
+// Uart uart6(uart6Conf);
 
 Logger Log(uart3);
 
@@ -119,25 +125,13 @@ class LedBlinkTask : public TaskClassS<256> {
 
     void task() override {
         LED led(GPIO::Port::C, GPIO::Pin::PIN_13);
+        // battery test
 
-        SyncMsg syncMsg;
-        syncMsg.mode = 0;
-        syncMsg.timestamp = 0x12345678;
-
-        uint32_t target_id = 0x3732485B;
-
-        // 2. 打包为 Packet
-        auto master_packet = PacketPacker::masterPack(syncMsg, target_id);
-        auto slave_packet = PacketPacker::slavePack(syncMsg, target_id);
-
-        // 3. 打包为帧
-        auto master_data = FramePacker::pack(master_packet);
-        auto slave_data = FramePacker::pack(slave_packet);
-
+        Battery battery;
+        battery.init();
         for (;;) {
-            // usart1.send(master_data.data(), master_data.size());
-            // usart1.send(slave_data.data(), slave_data.size());
-
+            battery.read();
+            Log.d("Battery: %d", battery.value);
             led.toggle();
             TaskBase::delay(500);
         }
@@ -150,7 +144,6 @@ LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
 #endif
 LogTask logTask;
-
 
 void SyncMsg::process() {
     Log.d("SyncMsg process");
@@ -185,8 +178,8 @@ void WriteResInfoMsg::process() { Log.d("WriteResInfoMsg process"); }
 void ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
     CondDataMsg condDataMsg;
-    condDataMsg.conductionLength = harness.data.getSize();
     condDataMsg.conductionData = harness.data.flatten();
+    condDataMsg.conductionLength = condDataMsg.conductionData.size();
     condDataMsg.deviceStatus = DeviceStatus{
         1,    // colorSensor
         1,    // sleeveLimit
@@ -213,6 +206,10 @@ int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
     // print uid in hex format
     Log.d("Slave_Init: %02X", uid.value);
+
+    // // enable cx310 recv mode with 23 01 00 00 using usart0
+    // std::array<uint8_t, 4> cx310_recv_mode = {0x23, 0x01, 0x00, 0x00};
+    // usart0.send(cx310_recv_mode.data(), cx310_recv_mode.size());
 
     return 0;
 }

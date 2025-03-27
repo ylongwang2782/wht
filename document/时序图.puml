@@ -1,30 +1,39 @@
-@startuml
+@startuml systemDiagram
 participant 上位机
 participant MasterNode
 participant SlaveNode
 participant ConductionPins
 participant ResistancePins
 participant ClipDevice
-== Devices Query ==
-上位机 -> MasterNode : 发送设备查询指令
-MasterNode -> SlaveNode : Read Clip Info Message
-SlaveNode -> ClipDevice : Clip.ReadNum()
-ClipDevice -> SlaveNode : ClipNum
+== Clip Pin Query ==
+上位机 -> MasterNode : 发送设备配置指令
+MasterNode -> SlaveNode : Write Clip Info Message
 SlaveNode --> MasterNode : Clip Info Message
 alt 指令超时（下同）
     上位机 -> 上位机 : 记录超时错误
-    上位机 -> MasterNode : 重新发送设备查询指令（最多3次）
+    上位机 -> MasterNode : 重新发送设备配置指令（最多3次）
     alt 超时重试3次仍失败
         上位机 -> 上位机 : 触发异常处理
     else 成功收到回复
-        MasterNode --> 上位机 : 设备设备查询回复
+        MasterNode --> 上位机 : 设备配置指令回复
     end
 else 正常响应
-    MasterNode --> 上位机 : 设备查询指令回复
+    MasterNode --> 上位机 : 设备配置指令回复
 end
+上位机 -> MasterNode : 发送模式选择指令（ClipDevice检测）
+MasterNode --> 上位机 : 模式选择指令回复
+上位机 -> MasterNode : 发送设备控制指令（开）
+MasterNode --> 上位机 : 设备控制指令回复
+MasterNode --> 上位机 : 获得Clip Pin信息
 
 == Devices Config ==
 上位机 -> MasterNode : 发送设备配置指令
+MasterNode -> SlaveNode : Write Conduction Info Message
+SlaveNode --> MasterNode : Conduction Info Message
+MasterNode -> SlaveNode : Write Resistance Info Message
+SlaveNode --> MasterNode : Resistance Info Message
+MasterNode -> SlaveNode : Write Clip Info Message
+SlaveNode --> MasterNode : Clip Info Message
 alt 指令超时（下同）
     上位机 -> 上位机 : 记录超时错误
     上位机 -> MasterNode : 重新发送设备配置指令（最多3次）
@@ -40,8 +49,6 @@ end
 == Conduction Test ==
 上位机 -> MasterNode : 发送模式选择指令（导通检测）
 MasterNode --> 上位机 : 模式选择指令回复
-MasterNode -> SlaveNode : Write Conduction Info Message
-SlaveNode --> MasterNode : Conduction Info Message
 
 上位机 -> MasterNode : 发送设备控制指令（开）
 MasterNode --> 上位机 : 设备控制指令回复
@@ -70,8 +77,6 @@ MasterNode --> 上位机 : 设备控制指令回复
 == Resistance Test ==
 上位机 -> MasterNode : 发送模式选择指令（阻值检测）
 MasterNode --> 上位机 : 模式选择指令回复
-MasterNode -> SlaveNode : Write Resistance Info Message
-SlaveNode --> MasterNode : Resistance Info Message
 上位机 -> MasterNode : 发送设备控制指令（开）
 MasterNode --> 上位机 : 设备控制指令回复
 
@@ -99,8 +104,6 @@ MasterNode --> 上位机 : 设备控制指令回复
 == Clip Test ==
 上位机 -> MasterNode : 发送模式选择指令（ClipDevice检测）
 MasterNode --> 上位机 : 模式选择指令回复
-MasterNode -> SlaveNode : Write Clip Info Message
-SlaveNode --> MasterNode : Clip Info Message
 上位机 -> MasterNode : 发送设备控制指令（开）
 MasterNode --> 上位机 : 设备控制指令回复
 
