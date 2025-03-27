@@ -22,7 +22,7 @@ extern "C" {
 #define LOG_MESSAGE_MAX_LENGTH 128
 
 // 定义日志队列的长度
-#define LOG_QUEUE_LENGTH 10
+#define LOG_QUEUE_LENGTH 20
 
 // 日志消息结构体
 struct LogMessage {
