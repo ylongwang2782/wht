@@ -8,6 +8,7 @@
 #include "FreeRTOS.h"
 #include "TaskCPP.h"
 #include "TimerCPP.h"
+#include "battery.hpp"
 #include "bsp_gpio.hpp"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
@@ -28,16 +29,16 @@ extern "C" {
 }
 #endif
 
-UartConfig usart0Conf(usart0_info);
-UartConfig usart1Conf(usart1_info);
-UartConfig usart2Conf(usart2_info);
+// UartConfig usart0Conf(usart0_info);
+// UartConfig usart1Conf(usart1_info);
+// UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
-UartConfig uart6Conf(uart6_info);
-Uart usart0(usart0Conf);
-Uart usart1(usart1Conf);
-Uart usart2(usart2Conf);
+// UartConfig uart6Conf(uart6_info);
+// Uart usart0(usart0Conf);
+// Uart usart1(usart1Conf);
+// Uart usart2(usart2Conf);
 Uart uart3(uart3Conf);
-Uart uart6(uart6Conf);
+// Uart uart6(uart6Conf);
 
 Logger Log(uart3);
 
@@ -124,7 +125,13 @@ class LedBlinkTask : public TaskClassS<256> {
 
     void task() override {
         LED led(GPIO::Port::C, GPIO::Pin::PIN_13);
+        // battery test
+
+        Battery battery;
+        battery.init();
         for (;;) {
+            battery.read();
+            Log.d("Battery: %d", battery.value);
             led.toggle();
             TaskBase::delay(500);
         }

@@ -5,6 +5,27 @@ participant SlaveNode
 participant ConductionPins
 participant ResistancePins
 participant ClipDevice
+== Clip Pin Query ==
+上位机 -> MasterNode : 发送设备配置指令
+MasterNode -> SlaveNode : Write Clip Info Message
+SlaveNode --> MasterNode : Clip Info Message
+alt 指令超时（下同）
+    上位机 -> 上位机 : 记录超时错误
+    上位机 -> MasterNode : 重新发送设备配置指令（最多3次）
+    alt 超时重试3次仍失败
+        上位机 -> 上位机 : 触发异常处理
+    else 成功收到回复
+        MasterNode --> 上位机 : 设备配置指令回复
+    end
+else 正常响应
+    MasterNode --> 上位机 : 设备配置指令回复
+end
+上位机 -> MasterNode : 发送模式选择指令（ClipDevice检测）
+MasterNode --> 上位机 : 模式选择指令回复
+上位机 -> MasterNode : 发送设备控制指令（开）
+MasterNode --> 上位机 : 设备控制指令回复
+MasterNode --> 上位机 : 获得Clip Pin信息
+
 == Devices Config ==
 上位机 -> MasterNode : 发送设备配置指令
 MasterNode -> SlaveNode : Write Conduction Info Message
