@@ -383,7 +383,8 @@ class WriteClipInfoMsg : public Message {
             interval, mode, clipPin);
     }
 
-    void process() override { Log.d("WriteClipInfoMsg process"); };
+    // void process() override { Log.d("WriteClipInfoMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_CLIP_INFO_MSG);
@@ -435,7 +436,8 @@ class ReadResDataMsg : public Message {
         Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
     }
 
-    void process() override { Log.d("ReadResDataMsg process"); };
+    // void process() override { Log.d("ReadResDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_RES_DATA_MSG);
@@ -459,7 +461,8 @@ class ReadClipDataMsg : public Message {
         reserve = data[0];    // 反序列化保留字段
         Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
     }
-    void process() override { "ReadClipDataMsg process"; };
+    // void process() override { "ReadClipDataMsg process"; };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_DATA_MSG);
@@ -484,7 +487,8 @@ class ReadClipInfoMsg : public Message {
         Log.d("ReadClipInfoMsg: reserve = 0x%02X", reserve);
     }
 
-    void process() override { "ReadClipInfoMsg process"; };
+    // void process() override { "ReadClipInfoMsg process"; };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_INFO_MSG);
@@ -513,7 +517,8 @@ class InitMsg : public Message {
         Log.d("InitMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
 
-    void process() override { Log.d("InitMsg process"); };
+    // void process() override { Log.d("InitMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::INIT_MSG);
@@ -570,7 +575,8 @@ class CondInfoMsg : public Message {
             timeSlot, interval, totalConductionNum, startConductionNum,
             conductionNum);
     }
-    void process() override { Log.d("CondInfoMsg process"); };
+    void process() override;
+    // void process() override { Log.d("CondInfoMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::COND_INFO_MSG);
@@ -614,7 +620,8 @@ class ResInfoMsg : public Message {
             resistanceNum);
     }
 
-    void process() override { Log.d("ResInfoMsg process"); };
+    // void process() override { Log.d("ResInfoMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RES_INFO_MSG);
@@ -646,7 +653,8 @@ class ClipInfoMsg : public Message {
               interval, mode, clipPin);
     }
 
-    void process() override { Log.d("ClipInfoMsg process"); };
+    // void process() override { Log.d("ClipInfoMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_INFO_MSG);
@@ -695,7 +703,8 @@ class CondDataMsg : public Message {
         conductionData.assign(data.begin() + 4, data.end());
     }
 
-    void process() override { Log.d("CondDataMsg process"); };
+    // void process() override { Log.d("CondDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::COND_DATA_MSG);
@@ -744,7 +753,8 @@ class ResistanceDataMsg : public Message {
         resistanceData.assign(data.begin() + 4, data.end());
     }
 
-    void process() override { Log.d("ResistanceDataMsg process"); };
+    // void process() override { Log.d("ResistanceDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RES_DATA_MSG);
@@ -783,7 +793,8 @@ class ClipDataMsg : public Message {
               clipData);
     }
 
-    void process() override { Log.d("ClipDataMsg process"); };
+    // void process() override { Log.d("ClipDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_DATA_MSG);
@@ -817,7 +828,8 @@ class InitStatusMsg : public Message {
               lockStatus, clipLed);
     }
 
-    void process() override { Log.d("InitStatusMsg process"); };
+    // void process() override { Log.d("InitStatusMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::INIT_STATUS_MSG);
