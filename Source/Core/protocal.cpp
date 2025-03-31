@@ -48,3 +48,6 @@ std::vector<uint8_t> ResistanceDataMsg::resistanceData;    // 阻值数据字段
 
 DeviceStatus ClipDataMsg::deviceStatus;     // 设备状态
 uint16_t ClipDataMsg::clipData;             // 卡钉数据字段a
+
+uint8_t InitStatusMsg::lockStatus;        // 锁状态
+uint16_t InitStatusMsg::clipLed;          // 卡钉灯位初始化信息

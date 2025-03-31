@@ -806,8 +806,8 @@ class ClipDataMsg : public Message {
 
 class InitStatusMsg : public Message {
    public:
-    uint8_t lockStatus;    // 锁状态
-    uint16_t clipLed;      // 卡钉灯位初始化信息
+    static uint8_t lockStatus;    // 锁状态
+    static uint16_t clipLed;      // 卡钉灯位初始化信息
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(lockStatus);
