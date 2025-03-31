@@ -361,9 +361,9 @@ class WriteResInfoMsg : public Message {
 
 class WriteClipInfoMsg : public Message {
    public:
-    uint8_t interval;    // 采集间隔，单位 ms
-    uint8_t mode;        // 0：非自锁，1：自锁
-    uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
+    static uint8_t interval;    // 采集间隔，单位 ms
+    static uint8_t mode;        // 0：非自锁，1：自锁
+    static uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(interval);    // 序列化采集间隔
