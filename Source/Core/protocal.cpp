@@ -41,3 +41,7 @@ uint16_t ClipInfoMsg::clipPin;    // 16 个卡钉激活信息，激活的位置 
 DeviceStatus CondDataMsg::deviceStatus;              // 设备状态
 uint16_t CondDataMsg::conductionLength;              // 导通数据字段长度
 std::vector<uint8_t> CondDataMsg::conductionData;    // 导通数据字段
+
+DeviceStatus ResistanceDataMsg::deviceStatus;              // 设备状态
+uint16_t ResistanceDataMsg::resistanceLength;              // 阻值数据字段长度
+std::vector<uint8_t> ResistanceDataMsg::resistanceData;    // 阻值数据字段

@@ -716,9 +716,9 @@ class CondDataMsg : public Message {
 
 class ResistanceDataMsg : public Message {
    public:
-    DeviceStatus deviceStatus;              // 设备状态
-    uint16_t resistanceLength;              // 阻值数据长度
-    std::vector<uint8_t> resistanceData;    // 阻值数据
+    static DeviceStatus deviceStatus;              // 设备状态
+    static uint16_t resistanceLength;              // 阻值数据长度
+    static std::vector<uint8_t> resistanceData;    // 阻值数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化设备状态
