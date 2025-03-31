@@ -33,3 +33,7 @@ uint8_t ResInfoMsg::interval;               // 采集间隔，单位 ms
 uint16_t ResInfoMsg::totalResistanceNum;    // 系统中总阻值检测的数量
 uint16_t ResInfoMsg::startResistanceNum;    // 起始阻值数量
 uint16_t ResInfoMsg::resistanceNum;         // 阻值检测数量
+
+uint8_t ClipInfoMsg::interval;    // 采集间隔，单位 ms
+uint8_t ClipInfoMsg::mode;        // 0：非自锁，1：自锁
+uint16_t ClipInfoMsg::clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
