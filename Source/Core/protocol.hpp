@@ -588,11 +588,11 @@ class CondInfoMsg : public Message {
 
 class ResInfoMsg : public Message {
    public:
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
-    uint16_t startResistanceNum;    // 起始阻值数量
-    uint16_t resistanceNum;         // 阻值检测数量
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
+    static uint16_t startResistanceNum;    // 起始阻值数量
+    static uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);

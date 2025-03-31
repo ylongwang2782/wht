@@ -27,3 +27,9 @@ uint8_t CondInfoMsg::interval;               // 采集间隔，单位 ms
 uint16_t CondInfoMsg::totalConductionNum;    // 系统中总导通检测的数量
 uint16_t CondInfoMsg::startConductionNum;    // 起始导通数量
 uint16_t CondInfoMsg::conductionNum;         // 导通检测数量
+
+uint8_t ResInfoMsg::timeSlot;               // 为从节点分配的时隙
+uint8_t ResInfoMsg::interval;               // 采集间隔，单位 ms
+uint16_t ResInfoMsg::totalResistanceNum;    // 系统中总阻值检测的数量
+uint16_t ResInfoMsg::startResistanceNum;    // 起始阻值数量
+uint16_t ResInfoMsg::resistanceNum;         // 阻值检测数量
