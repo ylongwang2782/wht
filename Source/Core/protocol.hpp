@@ -544,11 +544,11 @@ struct DeviceStatus {
 // 导通数据消息（Slave -> Master）
 class CondInfoMsg : public Message {
    public:
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalConductionNum;    // 系统中总导通检测的数量
-    uint16_t startConductionNum;    // 起始导通数量
-    uint16_t conductionNum;         // 导通检测数量
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalConductionNum;    // 系统中总导通检测的数量
+    static uint16_t startConductionNum;    // 起始导通数量
+    static uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
