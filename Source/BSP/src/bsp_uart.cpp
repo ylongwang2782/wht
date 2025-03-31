@@ -97,6 +97,25 @@ UasrtInfo uart6_info = {.baudrate = 115200,
                         .rx_count = 0,
                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
+UasrtInfo uart7_info = {.baudrate = 115200,
+                        .gpio_port = GPIOE,
+                        .tx_pin = GPIO_PIN_1,
+                        .rx_pin = GPIO_PIN_0,
+                        .usart_periph = UART7,
+                        .usart_clk = RCU_UART7,
+                        .usart_port_clk = RCU_GPIOE,
+                        .gpio_af = GPIO_AF_8,
+                        .rcu_dma_periph = RCU_DMA0,
+                        .dma_periph = DMA0,
+                        .dma_sub_per = DMA_SUBPERI5,
+                        .dma_tx_channel = DMA_CH0,
+                        .dma_rx_channel = DMA_CH6,
+                        .nvic_irq = UART7_IRQn,
+                        .nvic_irq_pre_priority = 3,
+                        .nvic_irq_sub_priority = 3,
+                        .rx_count = 0,
+                        .dmaRxDoneSema = xSemaphoreCreateBinary()};
+
 // 全局信号量
 void handle_usart_interrupt(UasrtInfo *config) {
     if (RESET !=
@@ -126,4 +145,6 @@ void USART1_IRQHandler(void) { handle_usart_interrupt(&usart1_info); }
 void USART2_IRQHandler(void) { handle_usart_interrupt(&usart2_info); }
 void UART3_IRQHandler(void) { handle_usart_interrupt(&uart3_info); }
 void UART6_IRQHandler(void) { handle_usart_interrupt(&uart6_info); }
+void UART7_IRQHandler(void) { handle_usart_interrupt(&uart7_info); }
 }
+
