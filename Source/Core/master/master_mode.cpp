@@ -130,7 +130,7 @@ void WriteClipInfoMsg::process() {
 }
 
 void SyncMsg::process() {
-
+    __ProcessBase::rsp_parsed = true;
 }
 
 
