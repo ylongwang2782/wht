@@ -41,10 +41,14 @@ class __ProcessBase {
         return target_id;
     }
 
-    bool send_frame(std::vector<uint8_t>& frame) {
+    bool send_frame(std::vector<uint8_t>& frame, bool rsp = true) {
         send_cnd = 0;
         while (send_cnd < SlaveManager_TX_RETRY_TIMES + 1) {
             if (__send(frame)) {
+                if (!rsp) {
+                    return true;    // 直接返回，不等待从机回复
+                }
+
                 // 发送成功，等待从机回复
                 if (transfer_msg.rx_done_sem.take(SlaveManager_RSP_TIMEOUT) ==
                     false) {
@@ -206,8 +210,6 @@ class DeviceModeProcessor : private __ProcessBase {
     SysMode mode;
 
    public:
-
-
     bool process(ModeCmd mode_cmd) {
         mode = mode_cmd.mode;
         Log.i("SlaveManager: mode config : %u", mode);
@@ -221,7 +223,6 @@ class DeviceCtrlProcessor : private __ProcessBase {
         : __ProcessBase(__transfer_msg) {}
 
    public:
-
    private:
     SyncMsg sync_msg;
 
@@ -235,7 +236,7 @@ class DeviceCtrlProcessor : private __ProcessBase {
         auto sync_packet = PacketPacker::masterPack(sync_msg, 0);
         auto sync_frame = FramePacker::pack(sync_packet);
         // 发送数据
-        return send_frame(sync_frame);
+        return send_frame(sync_frame, false);
     }
 };
 
@@ -304,10 +305,10 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
             // 从pc_manager_msg中获取数据
             while (pc_manager_msg.data_forward_queue.pop(forward_data) ==
                    pdPASS) {
-                Log.i("SlaveManager_Task: Forward data received");
+                Log.i("SlaveManager: Forward data received");
                 switch ((uint8_t)forward_data.type) {
                     case CmdType::DEV_CONF: {
-                        Log.i("SlaveManager_Task: Config data received");
+                        Log.i("SlaveManager: Config data received");
                         if (cfg_processor.process(forward_data.cfg_cmd,
                                                   timeSlot)) {
                             // 配置成功
@@ -326,23 +327,31 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                         break;
                     }
                     case (uint8_t)CmdType::DEV_MODE: {
-                        Log.i("SlaveManager_Task: Mode data received");
-                        mode_processor.process(forward_data.mode_cmd);
-                        pc_manager_msg.event.set(MODE_SUCCESS_EVENT);
+                        Log.i("SlaveManager: Mode data received");
+                        if(mode_processor.process(forward_data.mode_cmd)){
+                            pc_manager_msg.event.set(MODE_SUCCESS_EVENT);
+                        } else {
+                            pc_manager_msg.event.clear(MODE_SUCCESS_EVENT);
+                        }
                         break;
                     }
                     case (uint8_t)CmdType::DEV_RESET: {
-                        Log.i("SlaveManager_Task: Reset data received");
+                        Log.i("SlaveManager: Reset data received");
                         break;
                     }
                     case (uint8_t)CmdType::DEV_CTRL: {
-                        Log.i("SlaveManager_Task: Ctrl data received");
-                        ctrl_processor.process(forward_data.ctrl_cmd,
-                                               mode_processor.mode);
+                        Log.i("SlaveManager: Ctrl data received");
+                        if (ctrl_processor.process(forward_data.ctrl_cmd,
+                                                   mode_processor.mode)) {
+                            pc_manager_msg.event.set(CTRL_SUCCESS_EVENT);
+                        }
+                        else {
+                            pc_manager_msg.event.clear(CTRL_SUCCESS_EVENT);
+                        }
                         break;
                     }
                     case (uint8_t)CmdType::DEV_QUERY: {
-                        Log.i("SlaveManager_Task: Query data received");
+                        Log.i("SlaveManager: Query data received");
                         break;
                     }
                     default:
