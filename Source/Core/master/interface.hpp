@@ -137,7 +137,7 @@ class DeviceConfigInst : private __IfBase {
                     std::string id = item["id"];
                     parseIdString(id, data_forward.cfg_cmd.id);
                     Log.i(
-                        "cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                        "PCinterface: cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
                         data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
                         data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
                 }
@@ -145,13 +145,13 @@ class DeviceConfigInst : private __IfBase {
                 // 设置目标设备的检测线数
                 if (item.contains("cond")) {
                     data_forward.cfg_cmd.cond = item["cond"];
-                    Log.i("cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
+                    Log.i("PCinterface: cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
                 }
 
                 // 设置阻抗检测线数
                 if (item.contains("Z")) {
                     data_forward.cfg_cmd.Z = item["Z"];
-                    Log.i("cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
+                    Log.i("PCinterface: cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
                 }
 
                 // 设置clip数
@@ -172,14 +172,14 @@ class DeviceConfigInst : private __IfBase {
                             __IfBase::hexStringToUint16(pinStr);
                     }
 
-                    Log.i("clip_mode: %u, clip_pin: 0x%04X",
+                    Log.i("PCinterface: clip_mode: %u, clip_pin: 0x%04X",
                           data_forward.cfg_cmd.clip_mode,
                           data_forward.cfg_cmd.clip_pin);
                 }
 
-                Log.i("cfg_cmd.totalHarnessNum: %u",
+                Log.i("PCinterface: cfg_cmd.totalHarnessNum: %u",
                       data_forward.cfg_cmd.totalHarnessNum);
-                Log.i("cfg_cmd.startHarnessNum: %u",
+                Log.i("PCinterface: cfg_cmd.startHarnessNum: %u",
                       data_forward.cfg_cmd.startHarnessNum);
 
                 cfg_success = false;
@@ -191,12 +191,12 @@ class DeviceConfigInst : private __IfBase {
 
                 if (cfg_success) {
                     Log.i(
-                        "dev %.2X-%.2X-%.2X-%.2X config success\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X config success\n",
                         data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
                         data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
                 } else {
                     Log.e(
-                        "dev %.2X-%.2X-%.2X-%.2X config failed\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X config failed\n",
                         data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
                         data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
 
@@ -226,7 +226,7 @@ class DevaceModeInst : private __IfBase {
             mode = static_cast<SysMode>(j["mode"]);
             data_forward.type = CmdType::DEV_MODE;
             data_forward.mode_cmd.mode = mode;
-            Log.i("mode_cmd.mode: %u", data_forward.mode_cmd.mode);
+            Log.i("PCinterface: mode_cmd.mode: %u", data_forward.mode_cmd.mode);
 
             mode_success = false;
             if (__IfBase::forward()) {
@@ -235,9 +235,9 @@ class DevaceModeInst : private __IfBase {
             }
 
             if (mode_success) {
-                Log.i("mode success\n");
+                Log.i("PCinterface: mode success\n");
             } else {
-                Log.e("mode failed\n");
+                Log.e("PCinterface: mode failed\n");
             }
         }
     }
@@ -274,11 +274,11 @@ class DeviceResetInst : private __IfBase {
                         static_cast<LockSta>(item["lock"]);
                 }
 
-                Log.i("rst_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                Log.i("PCinterface: rst_cmd.id: %.2X-%.2X-%.2X-%.2X",
                       data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                       data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
-                Log.i("rst_cmd.clip: 0x%.4X", data_forward.rst_cmd.clip);
-                Log.i("rst_cmd.lock: %u", data_forward.rst_cmd.lock);
+                Log.i("PCinterface: rst_cmd.clip: 0x%.4X", data_forward.rst_cmd.clip);
+                Log.i("PCinterface: rst_cmd.lock: %u", data_forward.rst_cmd.lock);
 
                 rst_success = false;
                 if (__IfBase::forward()) {
@@ -289,12 +289,12 @@ class DeviceResetInst : private __IfBase {
 
                 if (rst_success) {
                     Log.i(
-                        "dev %.2X-%.2X-%.2X-%.2X reset success\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X reset success\n",
                         data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                         data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
                 } else {
                     Log.e(
-                        "dev %.2X-%.2X-%.2X-%.2X reset failed\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X reset failed\n",
                         data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                         data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
 
@@ -319,7 +319,7 @@ class DeviceCtrlInst : private __IfBase {
         if (j.contains("ctrl")) {
             data_forward.ctrl_cmd.ctrl = (CtrlType)j["ctrl"];
 
-            Log.i("ctrl_cmd.ctrl: %u", data_forward.ctrl_cmd.ctrl);
+            Log.i("PCinterface: ctrl_cmd.ctrl: %u", data_forward.ctrl_cmd.ctrl);
 
             ctrl_success = false;
             if (__IfBase::forward()) {
@@ -328,9 +328,9 @@ class DeviceCtrlInst : private __IfBase {
             }
 
             if (ctrl_success) {
-                Log.i("ctrl success\n");
+                Log.i("PCinterface: ctrl success\n");
             } else {
-                Log.e("ctrl failed\n");
+                Log.e("PCinterface: ctrl failed\n");
             }
         }
     }
@@ -363,10 +363,10 @@ class DeviceQueryInst : private __IfBase {
                 }
 
                 Log.i(
-                    "query_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                    "PCinterface: query_cmd.id: %.2X-%.2X-%.2X-%.2X",
                     data_forward.query_cmd.id[0], data_forward.query_cmd.id[1],
                     data_forward.query_cmd.id[2], data_forward.query_cmd.id[3]);
-                Log.i("query_cmd.clip: %u", data_forward.query_cmd.clip);
+                Log.i("PCinterface: query_cmd.clip: %u", data_forward.query_cmd.clip);
 
                 query_success = false;
 
@@ -375,9 +375,9 @@ class DeviceQueryInst : private __IfBase {
                         query_success = true;
                 }
                 if (query_success) {
-                    Log.i("query success\n");
+                    Log.i("PCinterface: query success\n");
                 } else {
-                    Log.e("query failed\n");
+                    Log.e("PCinterface: query failed\n");
                 }
             }
         }
@@ -452,13 +452,13 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
     void jsonSorting(uint8_t* ch, uint16_t len) {
         // 先检查JSON字符串是否有效
         if (!json::accept(ch, ch + len)) {
-            Log.e("jsonSorting: Invalid JSON format");
+            Log.e("PCinterface: Invalid JSON format");
             return;
         }
 
         json j = json::parse((uint8_t*)ch, ch + len, nullptr, false);
         if (j.is_discarded()) {
-            Log.e("jsonSorting: json parse failed");
+            Log.e("PCinterface: json parse failed");
             return;
         }
 
