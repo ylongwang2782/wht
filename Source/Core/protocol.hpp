@@ -766,8 +766,8 @@ class ResistanceDataMsg : public Message {
 
 class ClipDataMsg : public Message {
    public:
-    DeviceStatus deviceStatus;    // 设备状态
-    uint16_t clipData;            // 卡钉板数据
+    static DeviceStatus deviceStatus;    // 设备状态
+    static uint16_t clipData;            // 卡钉板数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化设备状态

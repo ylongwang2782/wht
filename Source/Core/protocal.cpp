@@ -45,3 +45,6 @@ std::vector<uint8_t> CondDataMsg::conductionData;    // 导通数据字段
 DeviceStatus ResistanceDataMsg::deviceStatus;              // 设备状态
 uint16_t ResistanceDataMsg::resistanceLength;              // 阻值数据字段长度
 std::vector<uint8_t> ResistanceDataMsg::resistanceData;    // 阻值数据字段
+
+DeviceStatus ClipDataMsg::deviceStatus;     // 设备状态
+uint16_t ClipDataMsg::clipData;             // 卡钉数据字段a
