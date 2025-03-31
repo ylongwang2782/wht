@@ -500,8 +500,8 @@ class ReadClipInfoMsg : public Message {
 
 class InitMsg : public Message {
    public:
-    uint8_t lock;
-    uint16_t clipLed;    // 新增卡钉灯位初始化信息
+    static uint8_t lock;
+    static uint16_t clipLed;    // 新增卡钉灯位初始化信息
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(lock);

@@ -16,4 +16,8 @@ uint16_t WriteResInfoMsg::resistanceNum;         // 阻值检测数量
 
 uint8_t WriteClipInfoMsg::interval;    // 采集间隔，单位 ms
 uint8_t WriteClipInfoMsg::mode;        // 0：非自锁，1：自锁
-uint16_t WriteClipInfoMsg::clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
+uint16_t WriteClipInfoMsg::clipPin;    // 16 个卡钉激活信息，激活的位置
+                                       // 1，未激活的位置 0
+
+uint8_t InitMsg::lock;        // 锁定状态，0：未锁定，1：锁定
+uint16_t InitMsg::clipLed;    // 新增卡钉灯位初始化信息
