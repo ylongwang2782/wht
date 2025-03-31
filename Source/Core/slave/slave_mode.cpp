@@ -29,11 +29,14 @@ extern "C" {
 }
 #endif
 
+#ifdef SLAVE
+
 // UartConfig usart0Conf(usart0_info);
 // UartConfig usart1Conf(usart1_info);
 // UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
 // UartConfig uart6Conf(uart6_info);
+
 // Uart usart0(usart0Conf);
 // Uart usart1(usart1Conf);
 // Uart usart2(usart2Conf);
@@ -138,11 +141,10 @@ class LedBlinkTask : public TaskClassS<256> {
     }
 };
 
-#ifdef SLAVE
+
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
-#endif
 LogTask logTask;
 
 void SyncMsg::process() {
@@ -213,3 +215,5 @@ int Slave_Init(void) {
 
     return 0;
 }
+
+#endif

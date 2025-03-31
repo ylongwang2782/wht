@@ -52,9 +52,26 @@ void NMI_Handler(void) {
     \param[out] none
     \retval     none
 */
+extern uint32_t __StackTop;     // 栈顶地址（链接脚本定义）
+extern uint32_t __StackLimit;    // 栈底地址
 void HardFault_Handler(void) {
     /* if Hard Fault exception occurs, go to infinite loop */
-    printf(" HardFault_Handler\r\n");
+    uint32_t msp = __get_MSP();
+    uint32_t psp = __get_PSP();
+
+    printf(" HardFault_Handler\n");
+
+    printf("MSP=0x%08X(limit:0x%08X), PSP=0x%08X\r\n", 
+           msp, __StackLimit, psp);
+    
+    // 检查主栈是否溢出
+    if(msp < __StackLimit) {
+        printf("MSP Stack Overflow! Used: %u bytes over limit\r\n", 
+               __StackLimit - msp);
+    }
+
+    
+    // printf("HardFault! MSP=0x%08X, PSP=0x%08X", msp, psp);
     while (1) {
     }
 }
