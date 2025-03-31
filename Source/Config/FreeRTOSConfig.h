@@ -161,7 +161,7 @@
  /* Set configENABLE_BACKWARD_COMPATIBILITY to 1 to map function names and
   * datatypes from old version of FreeRTOS to their latest equivalent.  Defaults
   * to 1 if left undefined. */
- #define configENABLE_BACKWARD_COMPATIBILITY 0
+ #define configENABLE_BACKWARD_COMPATIBILITY 1
  
  /* Each task has its own array of pointers that can be used as thread local
   * storage.  configNUM_THREAD_LOCAL_STORAGE_POINTERS set the number of indexes
@@ -290,7 +290,7 @@
   * or heap_4.c are included in the build.  This value is defaulted to 4096 bytes
   * but it must be tailored to each application.  Note the heap will appear in
   * the .bss section.  See https://www.freertos.org/a00111.html. */
- #define configTOTAL_HEAP_SIZE (1024 * 80)
+ #define configTOTAL_HEAP_SIZE (1024 * 100)
  
  /* Set configAPPLICATION_ALLOCATED_HEAP to 1 to have the application allocate
   * the array used as the FreeRTOS heap.  Set to 0 to have the linker allocate
@@ -406,7 +406,7 @@
   * functions introduce a dependency on string formatting functions that would
   * otherwise not exist - hence they are kept separate.  Defaults to 0 if left
   * undefined. */
- #define configUSE_STATS_FORMATTING_FUNCTIONS 0
+ #define configUSE_STATS_FORMATTING_FUNCTIONS 1
  
  /******************************************************************************/
  /* Co-routine related definitions. ********************************************/
@@ -653,7 +653,7 @@
  #define INCLUDE_xEventGroupSetBitFromISR    1
  #define INCLUDE_xTimerPendFunctionCall      0
  #define INCLUDE_xTaskAbortDelay             0
- #define INCLUDE_xTaskGetHandle              0
+ #define INCLUDE_xTaskGetHandle              1
  #define INCLUDE_xTaskResumeFromISR          1
  
  /**
