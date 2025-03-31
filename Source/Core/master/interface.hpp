@@ -13,7 +13,7 @@
 #include "master_def.hpp"
 extern Logger Log;
 extern UasrtInfo usart1_info;
-extern UartConfig uart1Conf;
+// extern UartConfig uart1Conf;
 extern Uart usart1;
 
 using json = nlohmann::json;
@@ -86,7 +86,7 @@ class __IfBase {
         if (pc_manager_msg.event.wait(FORWARD_SUCCESS_EVENT, true, true,
                                       PCinterface_FORWARD_TIMEOUT)) {
         } else {
-            Log.e("pc_manager_msg.forward_mtx.take failed");
+            Log.e("pc_manager_msg.event.take: forward event, failed");
             return false;
         }
         return true;
@@ -121,32 +121,62 @@ class DeviceConfigInst : private __IfBase {
                 data_forward.cfg_cmd.totalHarnessNum += hrnsNum;
             }
 
+            size_t slave_num = params.size();
+            size_t index = 0;
+
             for (const auto& item : params) {
+                if (index == slave_num - 1) {
+                    data_forward.cfg_cmd.is_last_dev = true;
+                } else {
+                    data_forward.cfg_cmd.is_last_dev = false;
+                }
+                index++;
+
                 // 提取id
-                std::string id = item["id"];
-                parseIdString(id, data_forward.cfg_cmd.id);
+                if (item.contains("id")) {
+                    std::string id = item["id"];
+                    parseIdString(id, data_forward.cfg_cmd.id);
+                    Log.i(
+                        "cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                        data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
+                        data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
+                }
 
                 // 设置目标设备的检测线数
                 if (item.contains("cond")) {
                     data_forward.cfg_cmd.cond = item["cond"];
+                    Log.i("cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
                 }
 
                 // 设置阻抗检测线数
                 if (item.contains("Z")) {
                     data_forward.cfg_cmd.Z = item["Z"];
+                    Log.i("cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
                 }
 
                 // 设置clip数
                 if (item.contains("clip")) {
-                    data_forward.cfg_cmd.clip = item["clip"];
+                    auto& clip = item["clip"];
+
+                    data_forward.cfg_cmd.clip_exist = true;
+
+                    // 解析mode字段
+                    if (clip.contains("mode")) {
+                        data_forward.cfg_cmd.clip_mode = clip["mode"];
+                    }
+
+                    // 解析pin字段(16进制字符串转数值)
+                    if (clip.contains("pin") && clip["pin"].is_string()) {
+                        std::string pinStr = clip["pin"];
+                        data_forward.cfg_cmd.clip_pin =
+                            __IfBase::hexStringToUint16(pinStr);
+                    }
+
+                    Log.i("clip_mode: %u, clip_pin: 0x%04X",
+                          data_forward.cfg_cmd.clip_mode,
+                          data_forward.cfg_cmd.clip_pin);
                 }
 
-                Log.i("cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
-                      data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
-                      data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
-                Log.i("cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
-                Log.i("cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
-                Log.i("cfg_cmd.clip: %u", data_forward.cfg_cmd.clip);
                 Log.i("cfg_cmd.totalHarnessNum: %u",
                       data_forward.cfg_cmd.totalHarnessNum);
                 Log.i("cfg_cmd.startHarnessNum: %u",
@@ -318,7 +348,6 @@ class DeviceQueryInst : private __IfBase {
         memset(&data_forward.query_cmd, 0, sizeof(data_forward.query_cmd));
         if (j.contains("id")) {
             if (j.contains("params")) {
-
                 auto params = j["params"];
                 if (params.contains("clip")) {
                     data_forward.query_cmd.clip = params["clip"];
@@ -326,7 +355,7 @@ class DeviceQueryInst : private __IfBase {
             }
             for (auto item : j["id"]) {
                 std::string id = item;
-  
+
                 if (id == "*") {
                     memset(data_forward.query_cmd.id, 0xFF, 4);
                 } else {
@@ -354,7 +383,6 @@ class DeviceQueryInst : private __IfBase {
         }
     }
 };
-
 class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
    public:
     PCdataTransfer(PCdataTransferMsg& msg)
@@ -382,13 +410,13 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
     PCdataTransferMsg& __msg;
 };
 
-class PCinterface : public TaskClassS<1024> {
+class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
    public:
     using INST = CmdType;
 
     PCinterface(PCmanagerMsg& pc_manager_msg,
                 PCdataTransferMsg& pc_data_transfer_msg)
-        : TaskClassS<1024>("PCinterface_Task", TaskPrio_High),
+        : TaskClassS<PCinterface_STACK_SIZE>("PCinterface_Task", TaskPrio_Mid),
           cfg_inst(pc_manager_msg),
           mode_inst(pc_manager_msg),
           reset_inst(pc_manager_msg),
@@ -397,7 +425,7 @@ class PCinterface : public TaskClassS<1024> {
           __transfer_msg(pc_data_transfer_msg) {}
 
     void task() override {
-        Log.i("PCinterface_Task: Boot\r\n");
+        Log.i("PCinterface_Task: Boot");
 
         uint8_t buffer[PCdataTransferMsg_DATA_QUEUE_SIZE];
         uint16_t rx_cnt = 0;
@@ -422,11 +450,18 @@ class PCinterface : public TaskClassS<1024> {
 
    private:
     void jsonSorting(uint8_t* ch, uint16_t len) {
-        json j = json::parse((uint8_t*)ch, ch + len);
-        if (j.is_discarded()) {
-            Log.e("jsonSorting: json parse failed\r\n");
+        // 先检查JSON字符串是否有效
+        if (!json::accept(ch, ch + len)) {
+            Log.e("jsonSorting: Invalid JSON format");
             return;
         }
+
+        json j = json::parse((uint8_t*)ch, ch + len, nullptr, false);
+        if (j.is_discarded()) {
+            Log.e("jsonSorting: json parse failed");
+            return;
+        }
+
         if (j.contains("inst")) {
             uint8_t inst = j["inst"];
             switch (inst) {
