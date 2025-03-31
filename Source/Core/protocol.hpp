@@ -666,9 +666,9 @@ class ClipInfoMsg : public Message {
 
 class CondDataMsg : public Message {
    public:
-    DeviceStatus deviceStatus;              // 设备状态
-    uint16_t conductionLength;              // 导通数据字段长度
-    std::vector<uint8_t> conductionData;    // 导通数据
+    static DeviceStatus deviceStatus;              // 设备状态
+    static uint16_t conductionLength;              // 导通数据字段长度
+    static std::vector<uint8_t> conductionData;    // 导通数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化设备状态

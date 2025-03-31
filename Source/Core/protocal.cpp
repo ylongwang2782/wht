@@ -37,3 +37,7 @@ uint16_t ResInfoMsg::resistanceNum;         // 阻值检测数量
 uint8_t ClipInfoMsg::interval;    // 采集间隔，单位 ms
 uint8_t ClipInfoMsg::mode;        // 0：非自锁，1：自锁
 uint16_t ClipInfoMsg::clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
+
+DeviceStatus CondDataMsg::deviceStatus;              // 设备状态
+uint16_t CondDataMsg::conductionLength;              // 导通数据字段长度
+std::vector<uint8_t> CondDataMsg::conductionData;    // 导通数据字段
