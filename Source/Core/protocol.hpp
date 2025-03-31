@@ -239,9 +239,12 @@ class FramePacker {
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
    public:
-    uint8_t mode;
-    uint32_t timestamp;
-    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) : mode(m), timestamp(ts) {}
+    static uint8_t mode;
+    static uint32_t timestamp;
+    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0)  {
+        mode = m;
+        timestamp = ts;
+    }
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.clear();    // 清空传入的vector

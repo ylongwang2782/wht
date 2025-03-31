@@ -1,4 +1,6 @@
 #include "protocol.hpp"
+uint8_t SyncMsg::mode;
+uint32_t SyncMsg::timestamp;
 
 uint8_t WriteCondInfoMsg::timeSlot;               // 为从节点分配的时隙
 uint8_t WriteCondInfoMsg::interval;               // 采集间隔，单位 ms
