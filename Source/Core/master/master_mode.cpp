@@ -12,11 +12,11 @@
 #ifdef MASTER
 UartConfig usart1Conf(usart1_info);
 UartConfig usart2Conf(usart2_info);
-UartConfig uart7Conf(uart7_info);
+UartConfig uart7Conf(uart7_info,false);
 // UartConfig uart3Conf(uart3_info);
 
 Uart usart1(usart1Conf);
-Uart usart2(usart2Conf);
+// Uart usart2(usart2Conf);
 Uart uart7(uart7Conf);
 
 Logger Log(uart7);
@@ -46,7 +46,7 @@ static void Master_Task(void *pvParameters) {
     LED led(GPIO::Port::A, GPIO::Pin::PIN_0);
     __LogTask logTask;
     logTask.give();
-
+    // printf("Master_Task: Boot\n");
     Log.i("Master_Task: Boot");
 
     // std::vector<NSS_IO> nss_io_list = {

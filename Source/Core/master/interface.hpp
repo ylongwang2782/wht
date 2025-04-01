@@ -2,7 +2,9 @@
 #define _MASTER_MODE_HPP_
 #include <cstdint>
 #include <cstring>
+#include <string>
 
+#include "FreeRTOScpp.h"
 #include "MutexCPP.h"
 #include "QueueCPP.h"
 #include "TaskCPP.h"
@@ -75,6 +77,11 @@ class __IfBase {
         return result;
     }
 
+    static void formatDevId(uint8_t* output, const __devID& dev) {
+        snprintf((char*)output, 12, "%02X-%02X-%02X-%02X", dev.id[0], dev.id[1],
+                 dev.id[2], dev.id[3]);
+    }
+
     bool forward() {
         if (pc_manager_msg.data_forward_queue.add(
                 data_forward, PCinterface_FORWARD_QUEUE_TIMEOUT)) {
@@ -102,12 +109,14 @@ class DeviceConfigInst : private __IfBase {
    private:
     uint16_t hrnsNum;
     bool cfg_success = false;
+    uint8_t format_id[12];
 
    public:
     std::vector<__devID> cfg_false_dev;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        cfg_success = false;
         data_forward.type = CmdType::DEV_CONF;
         memset(&data_forward.cfg_cmd, 0, sizeof(data_forward.cfg_cmd));
         cfg_false_dev.clear();
@@ -145,7 +154,8 @@ class DeviceConfigInst : private __IfBase {
                 // 设置目标设备的检测线数
                 if (item.contains("cond")) {
                     data_forward.cfg_cmd.cond = item["cond"];
-                    Log.i("PCinterface: cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
+                    Log.i("PCinterface: cfg_cmd.cond: %u",
+                          data_forward.cfg_cmd.cond);
                 }
 
                 // 设置阻抗检测线数
@@ -182,7 +192,6 @@ class DeviceConfigInst : private __IfBase {
                 Log.i("PCinterface: cfg_cmd.startHarnessNum: %u",
                       data_forward.cfg_cmd.startHarnessNum);
 
-                cfg_success = false;
                 if (__IfBase::forward()) {
                     if ((pc_manager_msg.event.get() & CONFIG_SUCCESS_EVENT)) {
                         cfg_success = true;
@@ -209,6 +218,21 @@ class DeviceConfigInst : private __IfBase {
                     data_forward.cfg_cmd.cond;
             }
         }
+
+        json rsp;
+        if (cfg_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_CONF;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_CONF;
+            for (const auto& item : cfg_false_dev) {
+                formatDevId(format_id, item);
+
+                rsp["result"]["id"].push_back(std::string((char*)format_id));
+            }
+        }
+        return rsp.dump();
     }
 };
 
@@ -221,7 +245,7 @@ class DevaceModeInst : private __IfBase {
     bool mode_success = false;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
         if (j.contains("mode")) {
             mode = static_cast<SysMode>(j["mode"]);
             data_forward.type = CmdType::DEV_MODE;
@@ -240,6 +264,17 @@ class DevaceModeInst : private __IfBase {
                 Log.e("PCinterface: mode failed\n");
             }
         }
+
+        json rsp;
+        if (mode_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_MODE;
+            rsp["result"]["mode"] = mode;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_MODE;
+        }
+        return rsp.dump();
     }
 };
 
@@ -249,12 +284,14 @@ class DeviceResetInst : private __IfBase {
 
    private:
     bool rst_success = false;
+    uint8_t format_id[12];
 
    public:
     std::vector<__devID> rst_false_dev;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        rst_success = false;
         rst_false_dev.clear();
         data_forward.type = CmdType::DEV_RESET;
         if (j.contains("params")) {
@@ -277,10 +314,11 @@ class DeviceResetInst : private __IfBase {
                 Log.i("PCinterface: rst_cmd.id: %.2X-%.2X-%.2X-%.2X",
                       data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                       data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
-                Log.i("PCinterface: rst_cmd.clip: 0x%.4X", data_forward.rst_cmd.clip);
-                Log.i("PCinterface: rst_cmd.lock: %u", data_forward.rst_cmd.lock);
+                Log.i("PCinterface: rst_cmd.clip: 0x%.4X",
+                      data_forward.rst_cmd.clip);
+                Log.i("PCinterface: rst_cmd.lock: %u",
+                      data_forward.rst_cmd.lock);
 
-                rst_success = false;
                 if (__IfBase::forward()) {
                     if (!(pc_manager_msg.event.get() & RESET_SUCCESS_EVENT)) {
                         rst_success = false;
@@ -304,6 +342,19 @@ class DeviceResetInst : private __IfBase {
                 }
             }
         }
+        json rsp;
+        if (rst_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_RESET;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_RESET;
+            for (const auto& item : rst_false_dev) {
+                formatDevId(format_id, item);
+                rsp["result"]["id"].push_back(std::string((char*)format_id));
+            }
+        }
+        return rsp.dump();
     }
 };
 class DeviceCtrlInst : private __IfBase {
@@ -314,14 +365,14 @@ class DeviceCtrlInst : private __IfBase {
     bool ctrl_success = false;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        ctrl_success = false;
         data_forward.type = CmdType::DEV_CTRL;
         if (j.contains("ctrl")) {
             data_forward.ctrl_cmd.ctrl = (CtrlType)j["ctrl"];
 
             Log.i("PCinterface: ctrl_cmd.ctrl: %u", data_forward.ctrl_cmd.ctrl);
 
-            ctrl_success = false;
             if (__IfBase::forward()) {
                 if ((pc_manager_msg.event.get() & CTRL_SUCCESS_EVENT))
                     ctrl_success = true;
@@ -333,6 +384,18 @@ class DeviceCtrlInst : private __IfBase {
                 Log.e("PCinterface: ctrl failed\n");
             }
         }
+
+        json rsp;
+        if (ctrl_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_CTRL;
+            rsp["result"]["ctrl"] = data_forward.ctrl_cmd.ctrl; 
+        }
+        else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_CTRL; 
+        }
+        return rsp.dump();
     }
 };
 class DeviceQueryInst : private __IfBase {
@@ -366,7 +429,8 @@ class DeviceQueryInst : private __IfBase {
                     "PCinterface: query_cmd.id: %.2X-%.2X-%.2X-%.2X",
                     data_forward.query_cmd.id[0], data_forward.query_cmd.id[1],
                     data_forward.query_cmd.id[2], data_forward.query_cmd.id[3]);
-                Log.i("PCinterface: query_cmd.clip: %u", data_forward.query_cmd.clip);
+                Log.i("PCinterface: query_cmd.clip: %u",
+                      data_forward.query_cmd.clip);
 
                 query_success = false;
 
@@ -394,15 +458,25 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
-                pdPASS) {
+            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, 0) == pdPASS) {
                 uint16_t len =
                     usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
                 for (int i = 0; i < len; i++) {
-                    __msg.data_queue.add(buffer[i]);
+                    __msg.rx_data_queue.add(buffer[i]);
                 }
                 __msg.rx_done_sem.give();
             };
+            if (__msg.tx_request_sem.take(0)) {
+                __msg.tx_share_mem.lock();
+                const uint8_t* ptr = __msg.tx_share_mem.get();
+                size_t size = __msg.tx_share_mem.size();
+
+                usart1.send(ptr, size);
+
+                __msg.tx_share_mem.unlock();
+                __msg.tx_done_sem.give();
+            }
+            TaskBase::delay(10);
         }
     }
 
@@ -422,7 +496,7 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
           reset_inst(pc_manager_msg),
           ctrl_inst(pc_manager_msg),
           query_inst(pc_manager_msg),
-          __transfer_msg(pc_data_transfer_msg) {}
+          transfer_msg(pc_data_transfer_msg) {}
 
     void task() override {
         Log.i("PCinterface_Task: Boot");
@@ -430,8 +504,9 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
         uint8_t buffer[PCdataTransferMsg_DATA_QUEUE_SIZE];
         uint16_t rx_cnt = 0;
         while (1) {
-            __transfer_msg.rx_done_sem.take();
-            while (__transfer_msg.data_queue.pop(buffer[rx_cnt], 0) == pdPASS) {
+            transfer_msg.rx_done_sem.take();
+            while (transfer_msg.rx_data_queue.pop(buffer[rx_cnt], 0) ==
+                   pdPASS) {
                 rx_cnt++;
             }
 
@@ -446,9 +521,11 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
     DeviceResetInst reset_inst;
     DeviceCtrlInst ctrl_inst;
     DeviceQueryInst query_inst;
-    PCdataTransferMsg& __transfer_msg;
+    PCdataTransferMsg& transfer_msg;
 
    private:
+    // 直接序列化到数组的函数
+
     void jsonSorting(uint8_t* ch, uint16_t len) {
         // 先检查JSON字符串是否有效
         if (!json::accept(ch, ch + len)) {
@@ -464,22 +541,26 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
 
         if (j.contains("inst")) {
             uint8_t inst = j["inst"];
+            std::string rsp;
             switch (inst) {
-                case DEV_CONF:
+                case DEV_CONF: {
                     // 设备配置解析
-                    cfg_inst.forward(j);
+                    rsp = cfg_inst.forward(j);
                     break;
-                case DEV_MODE:
+                }
+
+                case DEV_MODE: {
                     // 设备模式解析
-                    mode_inst.forward(j);
+                    rsp = mode_inst.forward(j);
                     break;
+                }
                 case DEV_RESET:
                     // 设备复位解析
-                    reset_inst.forward(j);
+                    rsp = reset_inst.forward(j);
                     break;
                 case DEV_CTRL:
                     // 设备控制解析
-                    ctrl_inst.forward(j);
+                    rsp = ctrl_inst.forward(j);
                     break;
                 case DEV_QUERY:
                     // 设备查询解析
@@ -487,6 +568,14 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
                     break;
                 default:
                     break;
+            }
+
+            transfer_msg.tx_share_mem.write((uint8_t*)rsp.c_str(), rsp.size());
+            transfer_msg.tx_request_sem.give();
+            if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
+                Log.e(
+                    "PCinterface: respond failed. tx_done_sem.take "
+                    "failed");
             }
         }
     }

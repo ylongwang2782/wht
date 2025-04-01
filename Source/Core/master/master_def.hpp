@@ -51,31 +51,66 @@ class ShareMem {
     ShareMem() : __mutex("mem"), __lock(__mutex) {}
 
     ShareMem(size_t wantedSize) : ShareMem() {
-        shared_mem = (uint8_t*)pvPortMalloc(__size);
-        __size = wantedSize;
+        __shared_mem = (uint8_t*)pvPortMalloc(wantedSize);
+        if (__shared_mem == nullptr) {
+            __init_success = false;
+            __size = 0;
+            return;
+        } else {
+            __init_success = true;
+            __size = wantedSize;
+        }
     }
 
-    ShareMem(uint8_t* __shared_mem, size_t wantedSize) : ShareMem() {
-        shared_mem = __shared_mem;
+    ShareMem(uint8_t* shared_mem, size_t wantedSize) : ShareMem() {
+        __shared_mem = shared_mem;
+        __init_success = true;
         __size = wantedSize;
     }
 
     ShareMem(const ShareMem&) = delete;
-    ~ShareMem() { vPortFree(shared_mem); }
+    ~ShareMem() { vPortFree(__shared_mem); }
 
-    bool request() { return __lock.lock(); }
-    bool request(uint32_t ms) { return __lock.lock(ms); }
-    bool locked() { return __lock.locked(); }
-    void release() { __lock.unlock(); }
+    bool write(const uint8_t* data, size_t size,TickType_t wait = portMAX_DELAY) {
+        if (!__init_success) {
+            return false;
+        }
+        if (data == nullptr) {
+            return false;
+        }
+        if (size > __size) {
+            return false;
+        }
+        __lock.lock(wait);
+        std::copy(data, data + size, __shared_mem);
+        __lock.unlock();
+        return true;
+    }
+
+    bool lock(TickType_t wait = portMAX_DELAY)
+    {
+        if (!__init_success) {
+            return false;
+        }
+        return __lock.lock(wait);
+    }
+    void unlock() {
+        __lock.unlock();
+    }
+    const uint8_t* get(TickType_t wait = portMAX_DELAY) {
+        return __shared_mem;
+    }
     size_t size() { return __size; }
 
    private:
     Mutex __mutex;
     Lock __lock;
     size_t __size;
+    bool __init_success;
+    uint8_t* __shared_mem;
 
    public:
-    uint8_t* shared_mem;
+    
 };
 
 // 配置指令-------------------------------------------------
@@ -83,7 +118,7 @@ struct CfgCmd {
     uint8_t id[4];
     uint16_t cond;
     uint16_t Z;
-    
+
     bool clip_exist;
     uint8_t clip_mode;
     uint16_t clip_pin;
@@ -130,6 +165,12 @@ struct QueryCmd {
     uint8_t clip;
 };
 
+// 状态回复-------------------------------------------------
+enum StatusReply : uint8_t {
+    STATUS_OK = 0,
+    STATUS_ERROR,
+};
+
 // 转发数据-------------------------------------------------
 enum CmdType : uint8_t {
     DEV_CONF = 0,
@@ -156,9 +197,8 @@ class PCdataTransferMsg {
           tx_request_sem("tx_request_sem"),
           tx_done_sem("tx_done_sem"),
           tx_share_mem(PCdataTransfer_TX_BUFFER_SIZE) {}
-    Queue<uint8_t, PCdataTransferMsg_DATA_QUEUE_SIZE> data_queue;
+    Queue<uint8_t, PCdataTransferMsg_DATA_QUEUE_SIZE> rx_data_queue;
     BinarySemaphore rx_done_sem;
-
     BinarySemaphore tx_request_sem;
     BinarySemaphore tx_done_sem;
     ShareMem tx_share_mem;

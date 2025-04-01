@@ -60,6 +60,9 @@
          (SlaveManager_TX_TIMEOUT + SlaveManager_RSP_TIMEOUT) + \
      5000)
 
+// json解析任务 <-> 上位机数据传输任务：回复上位机时数据发送超时时间
+#define PCinterface_RSP_TIMEOUT 1000
+
 
 
 #endif
