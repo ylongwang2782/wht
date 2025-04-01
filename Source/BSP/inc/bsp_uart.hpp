@@ -37,6 +37,7 @@ typedef struct {
     uint8_t nvic_irq_sub_priority;         // NVIC中断子优先级
     uint16_t rx_count;
     SemaphoreHandle_t dmaRxDoneSema;
+    bool use_dma;
 } UasrtInfo;
 
 class UartConfig {
@@ -58,8 +59,9 @@ class UartConfig {
     uint8_t nvic_irq_pre_priority;         // NVIC中断优先级
     uint8_t nvic_irq_sub_priority;         // NVIC中断子优先级
     uint16_t *rx_count;                    // 接收计数
+    bool use_dma;                          // 是否使用DMA
 
-    UartConfig(UasrtInfo &info)
+    UartConfig(UasrtInfo &info, bool enable_dma = true)
         : baudrate(info.baudrate),
           gpio_port(info.gpio_port),
           tx_pin(info.tx_pin),
@@ -76,7 +78,10 @@ class UartConfig {
           nvic_irq(info.nvic_irq),
           nvic_irq_pre_priority(info.nvic_irq_pre_priority),
           nvic_irq_sub_priority(info.nvic_irq_sub_priority),
-          rx_count(&info.rx_count) {}    // 传递 rx_count 指针
+          rx_count(&info.rx_count),    // 传递 rx_count 指针
+          use_dma(enable_dma) {
+        info.use_dma = enable_dma;
+    }
 };
 
 extern UasrtInfo usart0_info;
@@ -91,19 +96,30 @@ class Uart {
     Uart(UartConfig &config) : config(config) {
         initGpio();
         initUsart();
-        initDmaTx();
-        initDmaRx();
+        if (config.use_dma) {
+            initDmaTx();
+            initDmaRx();
+        }
     }
 
     void send(const uint8_t *data, uint16_t len) {
-        dma_channel_disable(config.dma_periph, config.dma_tx_channel);
-        dma_flag_clear(config.dma_periph, config.dma_tx_channel, DMA_FLAG_FTF);
-        dma_memory_address_config(config.dma_periph, config.dma_tx_channel,
-                                  DMA_MEMORY_0, (uintptr_t)data);
-        dma_transfer_number_config(config.dma_periph, config.dma_tx_channel,
-                                   len);
-        dma_channel_enable(config.dma_periph, config.dma_tx_channel);
-        while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
+        if (config.use_dma) {
+            dma_channel_disable(config.dma_periph, config.dma_tx_channel);
+            dma_flag_clear(config.dma_periph, config.dma_tx_channel,
+                           DMA_FLAG_FTF);
+            dma_memory_address_config(config.dma_periph, config.dma_tx_channel,
+                                      DMA_MEMORY_0, (uintptr_t)data);
+            dma_transfer_number_config(config.dma_periph, config.dma_tx_channel,
+                                       len);
+            dma_channel_enable(config.dma_periph, config.dma_tx_channel);
+            while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
+        } else {
+            for (uint16_t i = 0; i < len; i++) {
+                usart_data_transmit(config.usart_periph, *(data + i));
+                while (RESET ==
+                       usart_flag_get(config.usart_periph, USART_FLAG_TC));
+            }
+        }
     }
 
     uint16_t getReceivedData(uint8_t *buffer, uint16_t bufferSize) {
@@ -142,7 +158,13 @@ class Uart {
         usart_dma_transmit_config(config.usart_periph,
                                   USART_TRANSMIT_DMA_ENABLE);
         usart_enable(config.usart_periph);
-        usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+
+        if (config.use_dma) {
+            usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+        } else {
+            // usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+            // usart_interrupt_enable(config.usart_periph, USART_INT_RBNE);
+        }
     }
 
     void initDmaTx() {

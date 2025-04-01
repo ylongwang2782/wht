@@ -118,25 +118,35 @@ UasrtInfo uart7_info = {.baudrate = 115200,
 
 // 全局信号量
 void handle_usart_interrupt(UasrtInfo *config) {
-    if (RESET !=
-        usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_IDLE)) {
-        /* clear IDLE flag */
-        usart_data_receive(config->usart_periph);
-        /* number of data received */
-        config->rx_count = DMA_RX_BUFFER_SIZE -
-                           (dma_transfer_number_get(config->dma_periph,
-                                                    config->dma_rx_channel));
-        dma_channel_disable(config->dma_periph, config->dma_rx_channel);
-        dma_flag_clear(config->dma_periph, config->dma_rx_channel,
-                       DMA_FLAG_FTF);
-        // 通知任务 DMA 接收完成
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xSemaphoreGiveFromISR(config->dmaRxDoneSema, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        dma_transfer_number_config(config->dma_periph, config->dma_rx_channel,
-                                   DMA_RX_BUFFER_SIZE);
-        dma_channel_enable(config->dma_periph, config->dma_rx_channel);
+    if(config->use_dma){
+        if (RESET !=
+            usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_IDLE)) {
+            /* clear IDLE flag */
+            usart_data_receive(config->usart_periph);
+            /* number of data received */
+            config->rx_count = DMA_RX_BUFFER_SIZE -
+                               (dma_transfer_number_get(config->dma_periph,
+                                                        config->dma_rx_channel));
+            dma_channel_disable(config->dma_periph, config->dma_rx_channel);
+            dma_flag_clear(config->dma_periph, config->dma_rx_channel,
+                           DMA_FLAG_FTF);
+            // 通知任务 DMA 接收完成
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xSemaphoreGiveFromISR(config->dmaRxDoneSema, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            dma_transfer_number_config(config->dma_periph, config->dma_rx_channel,
+                                       DMA_RX_BUFFER_SIZE);
+            dma_channel_enable(config->dma_periph, config->dma_rx_channel);
+        }
     }
+    else{
+        if (RESET!=usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_RBNE)) {
+            /* read one byte from the receive data register */
+            usart_data_receive(config->usart_periph);
+            // config->rx_buffer[config->rx_count++] = usart_data_receive(config->usart_periph);
+        } 
+    }
+    
 }
 
 extern "C" {
