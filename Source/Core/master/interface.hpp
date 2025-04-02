@@ -318,7 +318,6 @@ class DeviceQueryInst : private __IfBase {
         memset(&data_forward.query_cmd, 0, sizeof(data_forward.query_cmd));
         if (j.contains("id")) {
             if (j.contains("params")) {
-
                 auto params = j["params"];
                 if (params.contains("clip")) {
                     data_forward.query_cmd.clip = params["clip"];
@@ -326,7 +325,7 @@ class DeviceQueryInst : private __IfBase {
             }
             for (auto item : j["id"]) {
                 std::string id = item;
-  
+
                 if (id == "*") {
                     memset(data_forward.query_cmd.id, 0xFF, 4);
                 } else {
@@ -364,14 +363,14 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
     void task() override {
         Log.i("PCdataTransfer_Task: Boot");
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
+        std::vector<uint8_t> rx_data;
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                uint16_t len =
-                    usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                for (int i = 0; i < len; i++) {
-                    __msg.data_queue.add(buffer[i]);
+                rx_data = usart1.getReceivedData();
+                for (auto it : rx_data) {
+                    __msg.data_queue.add(it);
                 }
                 __msg.rx_done_sem.give();
             };

@@ -82,18 +82,14 @@ class UsartDMATask : public TaskClassS<1024> {
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
     FrameParser parser;
     void task() override {
+        std::vector<uint8_t> rx_data;
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                Log.d("Uart: recv.");
-                uint8_t buffer[DMA_RX_BUFFER_SIZE];
-                uint16_t len =
-                    uart3.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-
-                // 将 buffer 转换为 vector
-                std::vector<uint8_t> raw_data(buffer, buffer + len);
-                auto msg = parser.parse(raw_data);
+                // Log.d("Uart: recv.");
+                rx_data = uart3.getReceivedData();
+                auto msg = parser.parse(rx_data);
                 if (msg != nullptr) {
                     msg->process();
                 } else {
@@ -140,7 +136,6 @@ class LedBlinkTask : public TaskClassS<256> {
         }
     }
 };
-
 
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;

@@ -5,8 +5,6 @@
 
 #include "bsp_log.hpp"
 
-extern Logger Log;
-
 enum class PacketType : uint8_t {
     MasterToSlave = 0x00,    // 对应协议中Master2Slave
     SlaveToMaster = 0x01     // 对应协议中Slave2Master
