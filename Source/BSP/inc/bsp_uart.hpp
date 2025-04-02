@@ -88,6 +88,7 @@ extern UasrtInfo usart0_info;
 extern UasrtInfo usart1_info;
 extern UasrtInfo usart2_info;
 extern UasrtInfo uart3_info;
+extern UasrtInfo usart5_info;
 extern UasrtInfo uart6_info;
 extern UasrtInfo uart7_info;
 

@@ -78,6 +78,25 @@ UasrtInfo uart3_info = {.baudrate = 921600,
                         .rx_count = 0,
                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
+UasrtInfo usart5_info = {.baudrate = 115200,
+                         .gpio_port = GPIOC,
+                         .tx_pin = GPIO_PIN_6,
+                         .rx_pin = GPIO_PIN_7,
+                         .usart_periph = USART5,
+                         .usart_clk = RCU_USART5,
+                         .usart_port_clk = RCU_GPIOC,
+                         .gpio_af = GPIO_AF_8,
+                         .rcu_dma_periph = RCU_DMA1,
+                         .dma_periph = DMA1,
+                         .dma_sub_per = DMA_SUBPERI5,
+                         .dma_tx_channel = DMA_CH6,
+                         .dma_rx_channel = DMA_CH2,
+                         .nvic_irq = USART5_IRQn,
+                         .nvic_irq_pre_priority = 7,
+                         .nvic_irq_sub_priority = 0,
+                         .rx_count = 0,
+                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+
 UasrtInfo uart6_info = {.baudrate = 115200,
                         .gpio_port = GPIOF,
                         .tx_pin = GPIO_PIN_6,
@@ -118,35 +137,36 @@ UasrtInfo uart7_info = {.baudrate = 115200,
 
 // 全局信号量
 void handle_usart_interrupt(UasrtInfo *config) {
-    if(config->use_dma){
-        if (RESET !=
-            usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_IDLE)) {
+    if (config->use_dma) {
+        if (RESET != usart_interrupt_flag_get(config->usart_periph,
+                                              USART_INT_FLAG_IDLE)) {
             /* clear IDLE flag */
             usart_data_receive(config->usart_periph);
             /* number of data received */
             config->rx_count = DMA_RX_BUFFER_SIZE -
-                               (dma_transfer_number_get(config->dma_periph,
-                                                        config->dma_rx_channel));
+                               (dma_transfer_number_get(
+                                   config->dma_periph, config->dma_rx_channel));
             dma_channel_disable(config->dma_periph, config->dma_rx_channel);
             dma_flag_clear(config->dma_periph, config->dma_rx_channel,
                            DMA_FLAG_FTF);
             // 通知任务 DMA 接收完成
             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-            xSemaphoreGiveFromISR(config->dmaRxDoneSema, &xHigherPriorityTaskWoken);
+            xSemaphoreGiveFromISR(config->dmaRxDoneSema,
+                                  &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-            dma_transfer_number_config(config->dma_periph, config->dma_rx_channel,
-                                       DMA_RX_BUFFER_SIZE);
+            dma_transfer_number_config(
+                config->dma_periph, config->dma_rx_channel, DMA_RX_BUFFER_SIZE);
             dma_channel_enable(config->dma_periph, config->dma_rx_channel);
         }
-    }
-    else{
-        if (RESET!=usart_interrupt_flag_get(config->usart_periph, USART_INT_FLAG_RBNE)) {
+    } else {
+        if (RESET != usart_interrupt_flag_get(config->usart_periph,
+                                              USART_INT_FLAG_RBNE)) {
             /* read one byte from the receive data register */
             usart_data_receive(config->usart_periph);
-            // config->rx_buffer[config->rx_count++] = usart_data_receive(config->usart_periph);
-        } 
+            // config->rx_buffer[config->rx_count++] =
+            // usart_data_receive(config->usart_periph);
+        }
     }
-    
 }
 
 extern "C" {
@@ -154,7 +174,7 @@ void USART0_IRQHandler(void) { handle_usart_interrupt(&usart0_info); }
 void USART1_IRQHandler(void) { handle_usart_interrupt(&usart1_info); }
 void USART2_IRQHandler(void) { handle_usart_interrupt(&usart2_info); }
 void UART3_IRQHandler(void) { handle_usart_interrupt(&uart3_info); }
+void USART5_IRQHandler(void) { handle_usart_interrupt(&usart5_info); }
 void UART6_IRQHandler(void) { handle_usart_interrupt(&uart6_info); }
 void UART7_IRQHandler(void) { handle_usart_interrupt(&uart7_info); }
 }
-
