@@ -26,7 +26,7 @@ class __ProcessBase {
    public:
     ManagerDataTransferMsg& transfer_msg;
     static bool rsp_parsed;
-
+    static Slave2MasterMessageID expected_rsp_msg_id;
    private:
     uint8_t send_cnd = 0;
     std::vector<uint8_t> rsp_data;
@@ -178,6 +178,10 @@ class DeviceConfigProcessor : private __ProcessBase {
         auto cond_packet =
             PacketPacker::masterPack(wirte_cond_info_msg, target_id);
         auto cond_frame = FramePacker::pack(cond_packet);
+
+        // 设置预期回复消息ID
+        expected_rsp_msg_id = Slave2MasterMessageID::COND_INFO_MSG;
+
         // 发送数据
         return send_frame(cond_frame);
     }
@@ -193,6 +197,10 @@ class DeviceConfigProcessor : private __ProcessBase {
         auto clip_packet =
             PacketPacker::masterPack(write_clip_info_msg, target_id);
         auto clip_frame = FramePacker::pack(clip_packet);
+
+        // 设置预期回复消息ID
+        expected_rsp_msg_id = Slave2MasterMessageID::CLIP_INFO_MSG;
+
         // 发送数据
         return send_frame(clip_frame);
     }
@@ -231,10 +239,11 @@ class DeviceCtrlProcessor : private __ProcessBase {
         Log.i("SlaveManager: ctrl config start");
         sync_msg.mode = mode;
         sync_msg.timestamp = 0;
+        
         // 打包数据
-
         auto sync_packet = PacketPacker::masterPack(sync_msg, 0);
         auto sync_frame = FramePacker::pack(sync_packet);
+
         // 发送数据
         return send_frame(sync_frame, false);
     }
