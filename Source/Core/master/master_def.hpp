@@ -54,63 +54,62 @@ class ShareMem {
         __shared_mem = (uint8_t*)pvPortMalloc(wantedSize);
         if (__shared_mem == nullptr) {
             __init_success = false;
-            __size = 0;
+            __capacity = 0;
             return;
         } else {
             __init_success = true;
-            __size = wantedSize;
+            __capacity = wantedSize;
         }
     }
 
     ShareMem(uint8_t* shared_mem, size_t wantedSize) : ShareMem() {
         __shared_mem = shared_mem;
         __init_success = true;
-        __size = wantedSize;
+        __capacity = wantedSize;
     }
 
     ShareMem(const ShareMem&) = delete;
     ~ShareMem() { vPortFree(__shared_mem); }
 
-    bool write(const uint8_t* data, size_t size,TickType_t wait = portMAX_DELAY) {
+    bool write(const uint8_t* data, size_t size,
+               TickType_t wait = portMAX_DELAY) {
+        __size = 0;
         if (!__init_success) {
             return false;
         }
         if (data == nullptr) {
             return false;
         }
-        if (size > __size) {
+        if (size > __capacity) {
             return false;
         }
         __lock.lock(wait);
+        __size = size;
         std::copy(data, data + size, __shared_mem);
         __lock.unlock();
         return true;
     }
 
-    bool lock(TickType_t wait = portMAX_DELAY)
-    {
+    bool lock(TickType_t wait = portMAX_DELAY) {
         if (!__init_success) {
             return false;
         }
         return __lock.lock(wait);
     }
-    void unlock() {
-        __lock.unlock();
-    }
-    const uint8_t* get(TickType_t wait = portMAX_DELAY) {
-        return __shared_mem;
-    }
+    void unlock() { __lock.unlock(); }
+    const uint8_t* get(TickType_t wait = portMAX_DELAY) { return __shared_mem; }
     size_t size() { return __size; }
+    size_t capacity() { return __capacity; }
 
    private:
     Mutex __mutex;
     Lock __lock;
     size_t __size;
+    size_t __capacity;
     bool __init_success;
     uint8_t* __shared_mem;
 
    public:
-    
 };
 
 // 配置指令-------------------------------------------------
