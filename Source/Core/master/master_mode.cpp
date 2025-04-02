@@ -16,11 +16,12 @@ UartConfig usart5Conf(usart5_info, false);
 UartConfig uart7Conf(uart7_info, false);
 // UartConfig uart3Conf(uart3_info);
 
-Uart rs232_1(usart5Conf);
-Uart usart1(usart1Conf);
-Uart uart7(uart7Conf);
+// Uart rs232_db9(usart5Conf);
+Uart slave_com(usart5Conf);
+Uart pc_com(usart1Conf);
+Uart log_com(uart7Conf);
 
-Logger Log(uart7);
+Logger Log(log_com);
 
 bool __ProcessBase::rsp_parsed = false;    // 从机回复正确标志位
 Slave2MasterMessageID
@@ -63,14 +64,14 @@ static void Master_Task(void *pvParameters) {
 
     PCinterface pc_interface(pc_manger_msg, pc_data_transfer_msg);
     PCdataTransfer pc_data_transfer(pc_data_transfer_msg);
-    pc_interface.give();
-    pc_data_transfer.give();
-
+    
     // 从机数据传输任务 从机管理任务 初始化
     ManagerDataTransferMsg manager_transfer_msg;
     SlaveManager slave_manager(pc_manger_msg, manager_transfer_msg);
     ManagerDataTransfer manager_data_transfer(manager_transfer_msg);
 
+    pc_interface.give();
+    pc_data_transfer.give();
     slave_manager.give();
     manager_data_transfer.give();
 
@@ -107,7 +108,8 @@ static void Master_Task(void *pvParameters) {
         // printf("\nname          state   priority   stack   task number\n");
         // printf("%s", taskListBuffer);
         // printf("heap minimum: %d\n", xPortGetMinimumEverFreeHeapSize());
-        rs232_1.send((uint8_t *)"Master_Task running\n", 20);
+        // rs232_db9.send((uint8_t *)"Master_Task running\n", 20);
+        // uart7.send((uint8_t *)"Master_Task running\n", 20);
         led.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
     }

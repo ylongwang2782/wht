@@ -16,7 +16,7 @@
 extern Logger Log;
 extern UasrtInfo usart1_info;
 // extern UartConfig uart1Conf;
-extern Uart usart1;
+extern Uart pc_com;
 
 using json = nlohmann::json;
 
@@ -460,7 +460,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, 0) == pdPASS) {
                 uint16_t len =
-                    usart1.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                pc_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
                 for (int i = 0; i < len; i++) {
                     __msg.rx_data_queue.add(buffer[i]);
                 }
@@ -471,7 +471,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                 const uint8_t* ptr = __msg.tx_share_mem.get();
                 size_t size = __msg.tx_share_mem.size();
 
-                usart1.send(ptr, size);
+                pc_com.send(ptr, size);
 
                 __msg.tx_share_mem.unlock();
                 __msg.tx_done_sem.give();
