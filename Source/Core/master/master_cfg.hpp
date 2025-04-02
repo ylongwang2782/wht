@@ -2,8 +2,9 @@
 #define MASTER_CFG_HPP
 
 // system
-#define CONDUCTION_TEST_INTERVAL 5     // 导通检测时间间隔
-#define CLIP_TEST_INTERVAL       20    // 卡钉检测时间间隔
+#define CONDUCTION_TEST_INTERVAL           5      // 导通检测时间间隔
+#define CLIP_TEST_INTERVAL                 20     // 卡钉检测时间间隔
+#define SYNC_TIMER_PERIOD_REDUNDANCY_TICKS 500    // 同步定时器冗余时间
 
 // < MSG 任务通信消息 >---------------------------------------------------
 // 上位机数据传输任务 <-> json解析任务：数据传输队列大小
@@ -62,7 +63,5 @@
 
 // json解析任务 <-> 上位机数据传输任务：回复上位机时数据发送超时时间
 #define PCinterface_RSP_TIMEOUT 1000
-
-
 
 #endif
