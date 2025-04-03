@@ -14,6 +14,8 @@
 class Uci {
    private:
     std::vector<uint8_t> current_packet_;
+    uint32_t packet_count_;
+    uint32_t lost_count_;
 
    public:
     Uci(Uart& uart) : uart(uart) {}
@@ -88,8 +90,71 @@ class Uci {
         }
     }
 
+    // 接收数据解析函数
+    std::vector<uint8_t> parse_received_data(
+        const std::vector<uint8_t>& rx_data) {
+        std::vector<uint8_t> payload;
+
+        // 检查最小长度和包头(0x63)
+        if (rx_data.size() < 6 || rx_data[0] != 0x63) {
+            Log.e("UCI: Invalid packet header or length");
+            return payload;    // 返回空vector表示错误
+        }
+
+        // Parse data length (little-endian format)
+        uint16_t data_len = (rx_data[5] << 8) | rx_data[4];
+
+        // 检查数据长度是否匹配
+        if (rx_data.size() != 6 + data_len) {
+            Log.e("UCI: Packet length mismatch");
+            return payload;
+        }
+
+        // 提取有效载荷数据(跳过前6字节头部)
+        payload.insert(payload.end(), rx_data.begin() + 6, rx_data.end());
+
+        return payload;
+    }
+
    private:
     void send(std::vector<uint8_t>& data) {
         uart.data_send(const_cast<uint8_t*>(data.data()), data.size());
+    }
+
+    // 初始化测试参数
+    void init_packet_test() {
+        packet_count_ = 0;
+        lost_count_ = 0;
+    }
+
+    // 发送测试数据包
+    bool send_test_packet(uint16_t packet_id) {
+        std::vector<uint8_t> test_data = {
+            0xAA,                                     // 测试包标识
+            static_cast<uint8_t>(packet_id >> 8),     // 包ID高字节
+            static_cast<uint8_t>(packet_id & 0xFF)    // 包ID低字节
+        };
+        data_send(test_data);
+        packet_count_++;
+        return true;
+    }
+
+    // 接收并验证测试包
+    bool receive_test_packet(const std::vector<uint8_t>& data) {
+        if (data.size() < 3 || data[0] != 0xAA) {
+            return false;    // 不是测试包
+        }
+
+        uint16_t received_id = (data[1] << 8) | data[2];
+        if (received_id != packet_count_ - lost_count_ - 1) {
+            lost_count_++;
+        }
+        return true;
+    }
+
+    // 获取丢包率
+    float get_packet_loss_rate() const {
+        if (packet_count_ == 0) return 0.0f;
+        return (static_cast<float>(lost_count_) / packet_count_) * 100.0f;
     }
 };

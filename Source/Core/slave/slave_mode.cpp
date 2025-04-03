@@ -16,6 +16,7 @@
 #include "harness.h"
 #include "mode_entry.h"
 #include "protocol.hpp"
+#include "uci.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,13 +32,13 @@ extern "C" {
 
 #ifdef SLAVE
 
-// UartConfig usart0Conf(usart0_info);
+UartConfig usart0Conf(usart0_info);
 // UartConfig usart1Conf(usart1_info);
 // UartConfig usart2Conf(usart2_info);
 UartConfig uart3Conf(uart3_info);
 // UartConfig uart6Conf(uart6_info);
 
-// Uart usart0(usart0Conf);
+Uart usart0(usart0Conf);
 // Uart usart1(usart1Conf);
 // Uart usart2(usart2Conf);
 Uart uart3(uart3Conf);
@@ -46,6 +47,9 @@ Uart uart3(uart3Conf);
 Logger Log(uart3);
 
 Harness harness;
+LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
+Uci uci(usart0);
+
 class MyTimer {
    public:
     MyTimer()
@@ -83,18 +87,24 @@ class UsartDMATask : public TaskClassS<1024> {
     FrameParser parser;
     void task() override {
         std::vector<uint8_t> rx_data;
+        std::vector<uint8_t> uci_data;
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
+            if (xSemaphoreTake(usart0_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
                 // Log.d("Uart: recv.");
-                rx_data = uart3.getReceivedData();
-                auto msg = parser.parse(rx_data);
-                if (msg != nullptr) {
-                    msg->process();
-                } else {
-                    Log.d("Uart: parse fail.");
-                }
+                sysLed.toggle();
+
+                rx_data = usart0.getReceivedData();
+                uci_data = uci.parse_received_data(rx_data);
+                Log.d("Uart: uci_data.size(): %d", uci_data.size());
+
+                // auto msg = parser.parse(rx_data);
+                // if (msg != nullptr) {
+                //     msg->process();
+                // } else {
+                //     Log.d("Uart: parse fail.");
+                // }
             }
         }
     }
@@ -123,15 +133,22 @@ class LedBlinkTask : public TaskClassS<256> {
     LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
 
     void task() override {
-        LED led(GPIO::Port::C, GPIO::Pin::PIN_13);
         // battery test
-
         Battery battery;
         battery.init();
+
+        // uci test
+        std::vector<uint8_t> tx_data = {0x01, 0x02, 0x03, 0x04, 0x05};
+        uci.mode_set(RX_MODE);
+
         for (;;) {
             battery.read();
-            Log.d("Battery: %d", battery.value);
-            led.toggle();
+            // Log.d("Battery: %d", battery.value);
+
+            // uci.data_send(tx_data);
+            
+            sysLed.toggle();
+            
             TaskBase::delay(500);
         }
     }
