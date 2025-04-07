@@ -132,7 +132,7 @@ class DeviceConfigInst : private __IfBase {
 
             size_t slave_num = params.size();
             size_t index = 0;
-
+            data_forward.cfg_cmd.slave_dev_num = slave_num;
             for (const auto& item : params) {
                 if (index == slave_num - 1) {
                     data_forward.cfg_cmd.is_last_dev = true;

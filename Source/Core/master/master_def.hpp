@@ -124,6 +124,7 @@ struct CfgCmd {
 
     uint16_t totalHarnessNum;
     uint16_t startHarnessNum;
+    uint16_t slave_dev_num;
     bool is_last_dev;
 };
 
