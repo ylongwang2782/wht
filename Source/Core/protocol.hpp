@@ -528,6 +528,7 @@ class InitMsg : public Message {
     }
 };
 
+#pragma pack(push, 1)
 // 设备状态结构体
 struct DeviceStatus {
     uint16_t colorSensor : 1;
@@ -541,6 +542,7 @@ struct DeviceStatus {
     uint16_t accessory2 : 1;
     uint16_t res : 7;
 };
+#pragma pack(pop)
 // 导通数据消息（Slave -> Master）
 class CondInfoMsg : public Message {
    public:
