@@ -389,11 +389,10 @@ class DeviceCtrlInst : private __IfBase {
         if (ctrl_success) {
             rsp["status"] = STATUS_OK;
             rsp["result"]["inst"] = DEV_CTRL;
-            rsp["result"]["ctrl"] = data_forward.ctrl_cmd.ctrl; 
-        }
-        else {
+            rsp["result"]["ctrl"] = data_forward.ctrl_cmd.ctrl;
+        } else {
             rsp["status"] = STATUS_ERROR;
-            rsp["result"]["inst"] = DEV_CTRL; 
+            rsp["result"]["inst"] = DEV_CTRL;
         }
         return rsp.dump();
     }
@@ -460,13 +459,14 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, 0) == pdPASS) {
                 uint16_t len =
-                pc_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                    pc_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
                 for (int i = 0; i < len; i++) {
                     __msg.rx_data_queue.add(buffer[i]);
                 }
                 __msg.rx_done_sem.give();
             };
             if (__msg.tx_request_sem.take(0)) {
+
                 __msg.tx_share_mem.lock();
                 const uint8_t* ptr = __msg.tx_share_mem.get();
                 size_t size = __msg.tx_share_mem.size();
@@ -475,6 +475,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
 
                 __msg.tx_share_mem.unlock();
                 __msg.tx_done_sem.give();
+
             }
             TaskBase::delay(10);
         }
@@ -570,13 +571,24 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
                     break;
             }
 
-            transfer_msg.tx_share_mem.write((uint8_t*)rsp.c_str(), rsp.size());
-            transfer_msg.tx_request_sem.give();
-            if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
-                Log.e(
-                    "PCinterface: respond failed. tx_done_sem.take "
-                    "failed");
+            // 获取共享内存写访问权限，避免在数据发送前共享内存内的数据被复写
+            if (transfer_msg.tx_share_mem.get_write_access(
+                    PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
+                transfer_msg.tx_share_mem.write((uint8_t*)rsp.c_str(),
+                                                rsp.size());
+                transfer_msg.tx_request_sem.give();
+                if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
+                    Log.e(
+                        "PCinterface: respond failed. tx_done_sem.take "
+                        "failed");
+                }
+                // 释放写访问权限
+                transfer_msg.tx_share_mem.release_write_access();
             }
+            else{
+                Log.e("PCinterface: tx_share_mem.get_write_access failed");
+            }
+
         }
     }
 };
