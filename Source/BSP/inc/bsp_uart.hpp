@@ -95,7 +95,7 @@ class Uart {
         initDmaRx();
     }
 
-    void data_send(uint8_t *data, uint16_t len) {
+    void data_send(const uint8_t *data, uint16_t len) {
         for (uint16_t i = 0; i < len; i++) {
             usart_data_transmit(config.usart_periph, data[i]);
             while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
