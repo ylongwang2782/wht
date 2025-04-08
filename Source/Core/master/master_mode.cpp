@@ -59,8 +59,10 @@ static void Master_Task(void *pvParameters) {
     // nss_io_list);
 
     // 上位机数据传输任务 json解析任务 初始化
-    PCmanagerMsg pc_manger_msg;
     PCdataTransferMsg pc_data_transfer_msg;
+    PCmanagerMsg pc_manger_msg(pc_data_transfer_msg.tx_share_mem,
+                               pc_data_transfer_msg.tx_request_sem,
+                               pc_data_transfer_msg.tx_done_sem);
 
     PCinterface pc_interface(pc_manger_msg, pc_data_transfer_msg);
     PCdataTransfer pc_data_transfer(pc_data_transfer_msg);
@@ -208,6 +210,20 @@ void ResInfoMsg::process() {
     if (ResInfoMsg::resistanceNum != WriteResInfoMsg::resistanceNum) {
         Log.e("ResInfoMsg: resistanceNum not match");
         __ProcessBase::rsp_parsed = false;
+    }
+}
+
+void ReadCondDataMsg::process() {
+    
+}
+
+void CondDataMsg::process() {
+    __ProcessBase::rsp_parsed = true;
+    if (__ProcessBase::expected_rsp_msg_id !=
+        Slave2MasterMessageID::COND_DATA_MSG) {
+        Log.e("CondDataMsg: msg_id not match");
+        __ProcessBase::rsp_parsed = false;
+        return;
     }
 }
 
