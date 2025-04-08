@@ -12,6 +12,7 @@
 #include "com_list.hpp"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
+#include "pc_protocol.hpp"
 #include "protocol.hpp"
 
 using namespace ComList;
@@ -259,6 +260,28 @@ class DeviceCtrlProcessor : private __ProcessBase {
     }
 };
 
+class ReadCondProcessor : private __ProcessBase {
+   public:
+    ReadCondProcessor(ManagerDataTransferMsg& __transfer_msg)
+        : __ProcessBase(__transfer_msg) {}
+
+   private:
+    ReadCondDataMsg read_cond_data_msg;
+    CondDataMsg data_msg;
+
+   public:
+    bool process() {
+        Log.i("SlaveManager: read cond data start");
+        // 打包数据
+        auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, 0);
+        auto cond_frame = FramePacker::pack(cond_packet);
+        expected_rsp_msg_id = Slave2MasterMessageID::COND_DATA_MSG;
+        return send_frame(cond_frame);
+    }
+
+    CondDataMsg& get_data_msg() { return data_msg; }
+};
+
 class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
    public:
     ManagerDataTransfer(ManagerDataTransferMsg& __manager_transfer_msg)
@@ -282,7 +305,7 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
             }
             if (xSemaphoreTake(usart2_info.dmaRxDoneSema, 0) == pdPASS) {
                 uint16_t len =
-                slave_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
+                    slave_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
                 for (int i = 0; i < len; i++) {
                     transfer_msg.rx_data_queue.add(buffer[i]);
                 }
@@ -295,7 +318,7 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
 
 class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
    public:
-    struct slave_dev {
+    struct SlaveDev {
         uint8_t id[4];
         uint8_t timeSlot;
     };
@@ -306,20 +329,34 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
           cfg_processor(__manager_transfer_msg),
           mode_processor(__manager_transfer_msg),
           ctrl_processor(__manager_transfer_msg),
+          read_cond_processor(__manager_transfer_msg),
           sync_timer("sync_timer", this, &SlaveManager::sync_timer_callback,
                      pdMS_TO_TICKS(500), pdTRUE) {}
 
    private:
+    enum CfgState : uint8_t {
+        CONGIG_START = 0,
+        CONFIG_PROCESSING,
+        CONFIG_DONE,
+    };
+
     PCmanagerMsg& pc_manager_msg;
     DeviceConfigProcessor cfg_processor;
     DeviceModeProcessor mode_processor;
     DeviceCtrlProcessor ctrl_processor;
+    ReadCondProcessor read_cond_processor;
 
     DataForward forward_data;
+    std::vector<SlaveDev> slave_dev;
     uint8_t timeSlot = 0;
     bool running = false;
+    uint16_t slave_dev_index;
+    CfgState cfg_state = CONGIG_START;
+    bool wait_for_data = false;
 
     FreeRTOScpp::TimerMember<SlaveManager> sync_timer;
+    BinarySemaphore sync_sem;
+    UploadCondDataFrame upload_cond_data_frame;
 
    private:
     uint16_t get_timer_period() {
@@ -330,35 +367,63 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
         }
         return 1000;
     }
-    void sync_timer_callback() { Log.i("SlaveManager: sync timer callback"); }
+    void sync_timer_callback() { sync_sem.give(); }
+    void config_process() {
+        bool ret = true;
+        SlaveDev dev;
+        switch (cfg_state) {
+            case CONGIG_START: {
+                Log.i("SlaveManager: config process start");
+                timeSlot = 0;
+                slave_dev_index = 0;
+                slave_dev.clear();
+                slave_dev.reserve(forward_data.cfg_cmd.slave_dev_num);
+                ret = cfg_processor.process(forward_data.cfg_cmd, timeSlot);
+                break;
+            }
+            case CONFIG_PROCESSING:
+                ret = cfg_processor.process(forward_data.cfg_cmd, timeSlot);
+                break;
+            case CONFIG_DONE:
+                break;
+        }
+        // 注册从机设备
+        memcpy(dev.id, forward_data.cfg_cmd.id, 4);
+        dev.timeSlot = timeSlot;
+        slave_dev.push_back(dev);
+        timeSlot++;
+        slave_dev_index++;
+        if (slave_dev_index >= forward_data.cfg_cmd.slave_dev_num) {
+            // 所有从机配置完成
+            cfg_state = CONGIG_START;
+            Log.i("SlaveManager: config process done, device num: %u",
+                  forward_data.cfg_cmd.slave_dev_num);
+        } else {
+            cfg_state = CONFIG_PROCESSING;
+        }
+
+        if (ret) {
+            // 配置成功
+            pc_manager_msg.event.set(CONFIG_SUCCESS_EVENT);
+        } else {
+            // 配置失败
+            pc_manager_msg.event.clear(CONFIG_SUCCESS_EVENT);
+        }
+    }
     void task() override {
         Log.i("SlaveManager_Task: Boot");
 
         // sync_timer.period()
         for (;;) {
             // 从pc_manager_msg中获取数据
-            while (pc_manager_msg.data_forward_queue.pop(forward_data) ==
+            while (pc_manager_msg.data_forward_queue.pop(forward_data, 0) ==
                    pdPASS) {
                 Log.i("SlaveManager: Forward data received");
                 switch ((uint8_t)forward_data.type) {
                     case CmdType::DEV_CONF: {
                         Log.i("SlaveManager: Config data received");
                         if (!running) {
-                            if (cfg_processor.process(forward_data.cfg_cmd,
-                                                      timeSlot)) {
-                                // 配置成功
-                                pc_manager_msg.event.set(CONFIG_SUCCESS_EVENT);
-                            } else {
-                                // 配置失败
-                                pc_manager_msg.event.clear(
-                                    CONFIG_SUCCESS_EVENT);
-                            }
-
-                            if (forward_data.cfg_cmd.is_last_dev) {
-                                timeSlot = 0;
-                            } else {
-                                timeSlot++;
-                            }
+                            config_process();
                         } else {
                             Log.e(
                                 "SlaveManager: Device is running, discard "
@@ -396,12 +461,16 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                             pc_manager_msg.event.clear(CTRL_SUCCESS_EVENT);
                         }
                         if (ctrl_processor.state() == DEV_ENABLE) {
-                            running = true;
-                            TickType_t period = get_timer_period();
-                            Log.i("SlaveManager: sync timer period: %u",
-                                  period);
-                            sync_timer.period(period);
-                            sync_timer.start();
+                            if (running == false) {
+                                running = true;
+                                TickType_t period = get_timer_period();
+                                Log.i("SlaveManager: sync timer period: %u",
+                                      period);
+                                slave_dev_index = 0;
+                                wait_for_data = false;
+                                sync_sem.give();
+                                sync_timer.period(period);
+                            }
                         } else {
                             running = false;
                             sync_timer.stop();
@@ -417,7 +486,56 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                 }
                 pc_manager_msg.event.set(FORWARD_SUCCESS_EVENT);
             }
-            // vTaskDelay(pdMS_TO_TICKS(1000));
+
+            if (ctrl_processor.state() == DEV_ENABLE) {
+                if (sync_sem.take(0)) {
+                    if (wait_for_data == true) {
+                        sync_timer.stop();
+
+                        for (auto it = slave_dev.begin(); it != slave_dev.end();
+                             it++) {
+                            if (read_cond_processor.process()) {
+                                Log.i("SlaveManager: read cond data success");
+                                if (pc_manager_msg.upload_data.get_write_access(
+                                        PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
+                                    // 共享资源上锁，禁止外部读写
+                                    pc_manager_msg.upload_data.lock();
+                                    upload_cond_data_frame.pack(
+                                        pc_manager_msg.upload_data.get(),
+                                        read_cond_processor.get_data_msg(),
+                                        it->id);
+                                    //共享资源解锁，允许读取数据
+                                    pc_manager_msg.upload_data.unlock();
+
+                                    // 发送数据给上位机，释放发送请求信号量
+                                    pc_manager_msg.upload_request_sem.give();
+
+                                    // 等待发送完成
+                                    if (!pc_manager_msg.upload_done_sem.take(
+                                            SlaveManager_UPLOAD_TIMEOUT)) {
+                                        Log.e(
+                                            "SlaveManager: "
+                                            "upload_done_sem.take "
+                                            "failed");
+                                    }
+
+                                    // 释放写访问权限
+                                    pc_manager_msg.upload_data
+                                        .release_write_access();
+                                }
+                            }
+                        }
+                        wait_for_data = false;
+                        sync_timer.start();
+                    }
+                    if (wait_for_data == false) {
+                        wait_for_data = true;
+                        ctrl_processor.send_sync_frame();
+                        sync_timer.start();
+                    }
+                }
+            }
+            TaskBase::delay(5);
         }
     }
 };
