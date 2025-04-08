@@ -1,3 +1,5 @@
+#ifndef PROTOCOL_HPP
+#define PROTOCOL_HPP
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -1093,3 +1095,4 @@ class FrameParser {
         }
     }
 };
+#endif
