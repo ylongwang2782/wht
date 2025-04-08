@@ -455,13 +455,14 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
     void task() override {
         Log.i("PCdataTransfer_Task: Boot");
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
+        std::vector<uint8_t> rx_data;
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, 0) == pdPASS) {
-                uint16_t len =
-                    pc_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                for (int i = 0; i < len; i++) {
-                    __msg.rx_data_queue.add(buffer[i]);
+            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+                pdPASS) {
+                rx_data = usart1.getReceivedData();
+                for (auto it : rx_data) {
+                    __msg.data_queue.add(it);
                 }
                 __msg.rx_done_sem.give();
             };
