@@ -6,7 +6,7 @@
 
 #include "protocol.hpp"
 
-class FrameHeader2PC {
+class UploadFrameHeader {
    public:
     enum DataType : uint8_t {
         COND_DATA,
@@ -24,14 +24,29 @@ class FrameHeader2PC {
     };
 #pragma pack(pop)
     FrameHeader header;
-    FrameHeader2PC() = default;
-    ~FrameHeader2PC() = default;
-    static bool checkParity(const std::vector<uint8_t>& data, bool evenParity = true) {
-        if(data.empty()) return false;
-        
+    UploadFrameHeader() = default;
+    ~UploadFrameHeader() = default;
+    static bool checkParity(const std::vector<uint8_t>& data,
+                            bool evenParity = true) {
+        if (data.empty()) return false;
+
         uint8_t parity = 0;
-        for(const auto& byte : data) {
-            parity ^= byte;  // 计算异或校验
+        for (const auto& byte : data) {
+            parity ^= byte;    // 计算异或校验
+        }
+        // 计算奇校验位
+        bool result = (__builtin_popcount(parity) & 1) == 1;
+        // 如果是偶校验则取反
+        return evenParity ? !result : result;
+    }
+
+    static bool checkParity(uint8_t* data, uint16_t length,
+                            bool evenParity = true) {
+        if (length == 0) return false;
+
+        uint8_t parity = 0;
+        for (uint16_t i = 0; i < length; ++i) {
+            parity ^= data[i];    // 计算异或校验
         }
         // 计算奇校验位
         bool result = (__builtin_popcount(parity) & 1) == 1;
@@ -51,20 +66,42 @@ class FrameHeader2PC {
                       reinterpret_cast<uint8_t*>(&header) + sizeof(header));
         output.insert(output.end(), payload, payload + payload_size);
         output.push_back(checkParity(output, true));
+    }
 
+    void pack(uint8_t* output, uint8_t* payload, uint16_t payload_size) {
+        header.delimiter[0] = 0xA5;
+        header.delimiter[1] = 0xFF;
+        header.delimiter[2] = 0xCC;
+        header.length = payload_size + sizeof(header) + 1;
+
+        memcpy(output, &header, sizeof(header));
+        memcpy(output + sizeof(header), payload, payload_size);
+        output[sizeof(header) + payload_size] =
+            checkParity(output, sizeof(header) + payload_size, true);
     }
 };
 
-class CondData2PC: private FrameHeader2PC {
+class UploadCondDataFrame : private UploadFrameHeader {
    public:
-    CondData2PC() = default;
-    ~CondData2PC() = default;
-    void pack(std::vector<uint8_t>& output, const CondDataMsg& msg,uint8_t* devID) {
+    UploadCondDataFrame() = default;
+    ~UploadCondDataFrame() = default;
+    void pack(std::vector<uint8_t>& output, const CondDataMsg& msg,
+              uint8_t* devID) {
         memcpy(header.devID, devID, 4);
-        header.type = FrameHeader2PC::DataType::COND_DATA;
+        header.type = UploadFrameHeader::DataType::COND_DATA;
         header.status = msg.deviceStatus;
         header.payload_size = msg.conductionLength;
-        FrameHeader2PC::pack(output, msg.conductionData.data(), msg.conductionLength);
+        UploadFrameHeader::pack(output, msg.conductionData.data(),
+                                msg.conductionLength);
+    }
+
+    void pack(uint8_t* output, const CondDataMsg& msg, uint8_t* devID) {
+        memcpy(header.devID, devID, 4);
+        header.type = UploadFrameHeader::DataType::COND_DATA;
+        header.status = msg.deviceStatus;
+        header.payload_size = msg.conductionLength;
+        UploadFrameHeader::pack(output, msg.conductionData.data(),
+                                msg.conductionLength);
     }
 };
 #endif
