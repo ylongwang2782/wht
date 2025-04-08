@@ -5,6 +5,9 @@
 #define CONDUCTION_TEST_INTERVAL           5      // 导通检测时间间隔
 #define CLIP_TEST_INTERVAL                 20     // 卡钉检测时间间隔
 #define SYNC_TIMER_PERIOD_REDUNDANCY_TICKS 500    // 同步定时器冗余时间
+#define PC_TX_SHARE_MEM_ACCESS_TIMEOUT \
+    1000    // 获取上位机数据传输共享内存写权限超时
+#define PC_TX_TIMEOUT 1000    // 向上位机发送数据超时
 
 // < MSG 任务通信消息 >---------------------------------------------------
 // 上位机数据传输任务 <-> json解析任务：数据传输队列大小
@@ -35,6 +38,9 @@
 // 从机回复超时
 #define SlaveManager_SlaveRSP_TIMEOUT 1000
 
+// 上报数据超时
+#define SlaveManager_UPLOAD_TIMEOUT PC_TX_TIMEOUT    
+
 // < ManagerDataTransfer 从机数据传输任务 >------------------------------
 // 从机数据转发任务 栈大小
 #define ManagerDataTransfer_STACK_SIZE 3 * 512
@@ -62,6 +68,5 @@
      5000)
 
 // json解析任务 <-> 上位机数据传输任务：回复上位机时数据发送超时时间
-#define PCinterface_RSP_TIMEOUT 1000
-
+#define PCinterface_RSP_TIMEOUT    PC_TX_TIMEOUT
 #endif
