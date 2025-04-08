@@ -460,9 +460,9 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
-                rx_data = usart1.getReceivedData();
+                rx_data = pc_com.getReceivedData();
                 for (auto it : rx_data) {
-                    __msg.data_queue.add(it);
+                    __msg.rx_data_queue.add(it);
                 }
                 __msg.rx_done_sem.give();
             };
