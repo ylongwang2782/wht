@@ -48,7 +48,13 @@ class Uint8ArrayIterator {
 // 共享内存-------------------------------------------------
 class ShareMem {
    public:
-    ShareMem() : __mutex("mem"), __lock(__mutex) {}
+    ShareMem()
+        : __mutex("mem"),
+          __lock(__mutex),
+          __write_mtx("write_mtx"),
+          __write_access(__write_mtx) {
+        __write_access.unlock();
+    }
 
     ShareMem(size_t wantedSize) : ShareMem() {
         __shared_mem = (uint8_t*)pvPortMalloc(wantedSize);
@@ -71,6 +77,14 @@ class ShareMem {
     ShareMem(const ShareMem&) = delete;
     ~ShareMem() { vPortFree(__shared_mem); }
 
+    // 申请共享内存的写访问权限，防止数据在发送前被修改
+    bool get_write_access(TickType_t wait = portMAX_DELAY) {
+        return __write_access.lock(wait);
+    }
+
+    // 释放共享内存的写访问权限，等待数据转发完成后在释放写访问权限
+    void release_write_access() { __write_access.unlock(); }
+    
     bool write(const uint8_t* data, size_t size,
                TickType_t wait = portMAX_DELAY) {
         __size = 0;
@@ -83,6 +97,13 @@ class ShareMem {
         if (size > __capacity) {
             return false;
         }
+
+        // 当前无写访问权限
+        if(!__write_access.lock()) {
+            return false;
+        }
+
+        // 资源上锁，避免资源竞争
         __lock.lock(wait);
         __size = size;
         std::copy(data, data + size, __shared_mem);
@@ -97,13 +118,16 @@ class ShareMem {
         return __lock.lock(wait);
     }
     void unlock() { __lock.unlock(); }
-    const uint8_t* get(TickType_t wait = portMAX_DELAY) { return __shared_mem; }
+    uint8_t* get() { return __shared_mem; }
     size_t size() { return __size; }
     size_t capacity() { return __capacity; }
 
    private:
     Mutex __mutex;
     Lock __lock;
+    Mutex __write_mtx;
+    Lock __write_access;
+    // BinarySemaphore __write_access;
     size_t __size;
     size_t __capacity;
     bool __init_success;
@@ -214,8 +238,17 @@ class PCdataTransferMsg {
 #define QUERY_SUCCESS_EVENT   (EventBits_t)((EventBits_t)1 << 5)
 class PCmanagerMsg {
    public:
+    PCmanagerMsg(ShareMem& __upload_data, BinarySemaphore& __upload_request_sem,
+                 BinarySemaphore& __upload_done_sem)
+        : data_forward_queue("data_forward_queue"),
+          upload_data(__upload_data),
+          upload_request_sem(__upload_request_sem),
+          upload_done_sem(__upload_done_sem) {}
     Queue<DataForward, PCmanagerMsg_FORWARD_QUEUE_SIZE> data_forward_queue;
     EventGroup event;
+    ShareMem& upload_data;
+    BinarySemaphore& upload_request_sem;
+    BinarySemaphore& upload_done_sem;
 };
 
 // 从机数据传输任务 <-> 从机管理任务
