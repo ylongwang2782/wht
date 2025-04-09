@@ -11,19 +11,18 @@
 #include "task.h"
 
 #ifdef MASTER
-UartConfig usart1Conf(usart1_info);
-UartConfig usart5Conf(usart5_info, false);
-UartConfig uart7Conf(uart7_info, false);
+
+UasrtInfo& pc_com_info = usart1_info;
+UasrtInfo& slave_com_info = usart0_info;
+UasrtInfo& log_com_info = uart7_info;
+
+UartConfig log_com_cfg(log_com_info, false);
+Uart log_com(log_com_cfg);
+Logger Log(log_com);
 // UartConfig uart3Conf(uart3_info);
 
-// Uart rs232_db9(usart5Conf);
-Uart slave_com(usart5Conf);
-Uart pc_com(usart1Conf);
-Uart log_com(uart7Conf);
-
-Logger Log(log_com);
-
 bool __ProcessBase::rsp_parsed = false;    // 从机回复正确标志位
+
 Slave2MasterMessageID
     __ProcessBase::expected_rsp_msg_id;    // 期望从机回复的消息ID
 
@@ -38,25 +37,19 @@ class __LogTask : public TaskClassS<1024> {
             // 从队列中获取日志消息
             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
                 Log.uart.send(
-                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
+                    reinterpret_cast<const uint8_t*>(logMsg.message.data()),
                     strlen(logMsg.message.data()));
             }
         }
     }
 };
 
-static void Master_Task(void *pvParameters) {
+static void Master_Task(void* pvParameters) {
     LED led(GPIO::Port::A, GPIO::Pin::PIN_0);
     __LogTask logTask;
     logTask.give();
     // printf("Master_Task: Boot\n");
     Log.i("Master_Task: Boot");
-
-    // std::vector<NSS_IO> nss_io_list = {
-    //     {GPIOB, GPIO_PIN_12},
-    // };
-    // SpiDev<SpiMode::Master> master_dev(SPI1_C1MOSI_C2MISO_B10SCLK_B12NSS,
-    // nss_io_list);
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -66,7 +59,7 @@ static void Master_Task(void *pvParameters) {
 
     PCinterface pc_interface(pc_manger_msg, pc_data_transfer_msg);
     PCdataTransfer pc_data_transfer(pc_data_transfer_msg);
-    
+
     // 从机数据传输任务 从机管理任务 初始化
     ManagerDataTransferMsg manager_transfer_msg;
     SlaveManager slave_manager(pc_manger_msg, manager_transfer_msg);
@@ -213,9 +206,7 @@ void ResInfoMsg::process() {
     }
 }
 
-void ReadCondDataMsg::process() {
-    
-}
+void ReadCondDataMsg::process() {}
 
 void CondDataMsg::process() {
     __ProcessBase::rsp_parsed = true;

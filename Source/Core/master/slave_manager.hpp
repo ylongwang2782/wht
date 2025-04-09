@@ -14,11 +14,11 @@
 #include "master_def.hpp"
 #include "pc_protocol.hpp"
 #include "protocol.hpp"
+#include "uci.hpp"
 
 using namespace ComList;
 extern Logger Log;
-extern Uart slave_com;
-
+extern UasrtInfo& slave_com_info;
 class __ProcessBase {
    public:
     __ProcessBase(ManagerDataTransferMsg& __transfer_msg)
@@ -100,6 +100,7 @@ class __ProcessBase {
     }
 
     bool __rsp_process() {
+        rsp_parsed = false;
         uint16_t rsp_len = transfer_msg.rx_data_queue.waiting();
         if (rsp_data.capacity() < rsp_len) {
             rsp_data.resize(rsp_len);
@@ -110,6 +111,9 @@ class __ProcessBase {
         while (transfer_msg.rx_data_queue.pop(data, 0)) {
             // 处理接收到的数据
             rsp_data.push_back(data);
+        }
+        for (auto it : rsp_data) {
+            Log.d("SlaveManager: rx_data: 0x%02X", it);
         }
         // 解析数据
         auto msg = frame_parser.parse(rsp_data);
@@ -294,21 +298,40 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
    private:
     void task() override {
         Log.i("SlaveDataTransfer_Task: Boot");
+
+        taskENTER_CRITICAL();
+        UartConfig slave_com_cfg(slave_com_info, true);
+        Uart slave_com(slave_com_cfg);
+        taskEXIT_CRITICAL();
+
+#ifdef SLAVE_USE_UWB
+        
+#endif
+
+        std::vector<uint8_t> rx_data;
         uint8_t data;
-        uint8_t buffer[DMA_RX_BUFFER_SIZE];
         for (;;) {
             if (transfer_msg.tx_request_sem.take(0)) {
+#ifdef SLAVE_USE_UWB
+                
+#else
+                // 使用串口直接调试
                 while (transfer_msg.tx_data_queue.pop(data, 0)) {
                     slave_com.send(&data, 1);
                 }
+#endif
                 transfer_msg.tx_done_sem.give();
             }
-            if (xSemaphoreTake(usart2_info.dmaRxDoneSema, 0) == pdPASS) {
-                uint16_t len =
-                    slave_com.getReceivedData(buffer, DMA_RX_BUFFER_SIZE);
-                for (int i = 0; i < len; i++) {
-                    transfer_msg.rx_data_queue.add(buffer[i]);
+            if (xSemaphoreTake(slave_com_info.dmaRxDoneSema, 0) == pdPASS) {
+                rx_data = slave_com.getReceivedData();
+
+#ifdef SLAVE_USE_UWB
+                
+#else
+                for (auto it = rx_data.begin(); it != rx_data.end(); it++) {
+                    transfer_msg.rx_data_queue.add(*it);
                 }
+#endif
                 transfer_msg.rx_done_sem.give();
             }
             TaskBase::delay(10);
@@ -504,7 +527,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                                         pc_manager_msg.upload_data.get(),
                                         read_cond_processor.get_data_msg(),
                                         it->id);
-                                    //共享资源解锁，允许读取数据
+                                    // 共享资源解锁，允许读取数据
                                     pc_manager_msg.upload_data.unlock();
 
                                     // 发送数据给上位机，释放发送请求信号量

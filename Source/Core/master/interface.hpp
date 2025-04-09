@@ -14,9 +14,8 @@
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 extern Logger Log;
-extern UasrtInfo usart1_info;
-// extern UartConfig uart1Conf;
-extern Uart pc_com;
+extern UasrtInfo& pc_com_info;
+
 
 using json = nlohmann::json;
 
@@ -454,11 +453,17 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
           __msg(msg) {}
     void task() override {
         Log.i("PCdataTransfer_Task: Boot");
+
+        taskENTER_CRITICAL();
+        UartConfig pc_com_cfg(pc_com_info,true);
+        Uart pc_com(pc_com_cfg);
+        taskEXIT_CRITICAL();
+        
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
         std::vector<uint8_t> rx_data;
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+            if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) ==
                 pdPASS) {
                 rx_data = pc_com.getReceivedData();
                 for (auto it : rx_data) {
@@ -478,7 +483,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                 __msg.tx_done_sem.give();
 
             }
-            TaskBase::delay(10);
+            TaskBase::delay(5);
         }
     }
 
@@ -580,7 +585,7 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
                 transfer_msg.tx_request_sem.give();
                 if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
                     Log.e(
-                        "PCinterface: respond failed. tx_done_sem.take "
+                        "PCinterface: json respond failed. tx_done_sem.take "
                         "failed");
                 }
                 // 释放写访问权限
