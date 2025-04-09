@@ -2,6 +2,8 @@
 #define MASTER_CFG_HPP
 
 // system
+// #define SLAVE_USE_UWB
+
 #define CONDUCTION_TEST_INTERVAL           5      // 导通检测时间间隔
 #define CLIP_TEST_INTERVAL                 20     // 卡钉检测时间间隔
 #define SYNC_TIMER_PERIOD_REDUNDANCY_TICKS 500    // 同步定时器冗余时间
@@ -33,7 +35,7 @@
 #define SlaveManager_RSP_TIMEOUT 1000
 
 // 从机回复超时后重发次数
-#define SlaveManager_TX_RETRY_TIMES 3
+#define SlaveManager_TX_RETRY_TIMES 1
 
 // 从机回复超时
 #define SlaveManager_SlaveRSP_TIMEOUT 1000
