@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "CX310.hpp"
 #include "FreeRTOS.h"
 #include "TaskCPP.h"
 #include "TimerCPP.h"
@@ -16,7 +17,6 @@
 #include "harness.h"
 #include "mode_entry.h"
 #include "protocol.hpp"
-#include "uci.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,7 +48,7 @@ Logger Log(uart3);
 
 Harness harness;
 LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
-Uci uci(usart0);
+CX310Class CX310(usart0);
 
 class MyTimer {
    public:
@@ -88,6 +88,7 @@ class UsartDMATask : public TaskClassS<1024> {
     void task() override {
         std::vector<uint8_t> rx_data;
         std::vector<uint8_t> uci_data;
+
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(usart0_info.dmaRxDoneSema, portMAX_DELAY) ==
@@ -95,9 +96,9 @@ class UsartDMATask : public TaskClassS<1024> {
                 // Log.d("Uart: recv.");
                 sysLed.toggle();
 
-                rx_data = usart0.getReceivedData();
-                uci_data = uci.parse_received_data(rx_data);
-                Log.d("Uart: uci_data.size(): %d", uci_data.size());
+                // rx_data = usart0.getReceivedData();
+                // uci_data = CX310.parse_received_data(rx_data);
+                // Log.d("Uart: uci_data.size(): %d", uci_data.size());
 
                 // auto msg = parser.parse(rx_data);
                 // if (msg != nullptr) {
@@ -137,18 +138,19 @@ class LedBlinkTask : public TaskClassS<256> {
         Battery battery;
         battery.init();
 
-        // uci test
+        // CX310.setChannel(5);
+        CX310.setRate(2);
+        CX310.setRxMode();
+
         std::vector<uint8_t> tx_data = {0x01, 0x02, 0x03, 0x04, 0x05};
-        uci.mode_set(RX_MODE);
 
         for (;;) {
             battery.read();
             // Log.d("Battery: %d", battery.value);
 
-            // uci.data_send(tx_data);
-            
-            sysLed.toggle();
-            
+            // CX310.startTransmit(tx_data);
+            // sysLed.toggle();
+
             TaskBase::delay(500);
         }
     }
@@ -218,12 +220,8 @@ void ReadCondDataMsg::process() {
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
-    // print uid in hex format
-    Log.d("Slave_Init: %02X", uid.value);
 
-    // // enable cx310 recv mode with 23 01 00 00 using usart0
-    // std::array<uint8_t, 4> cx310_recv_mode = {0x23, 0x01, 0x00, 0x00};
-    // usart0.send(cx310_recv_mode.data(), cx310_recv_mode.size());
+    Log.d("Slave_Init: %02X", uid.value);
 
     return 0;
 }
