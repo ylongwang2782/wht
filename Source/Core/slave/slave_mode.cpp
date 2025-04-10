@@ -18,7 +18,6 @@
 #include "mode_entry.h"
 #include "protocol.hpp"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,7 +48,7 @@ Logger Log(uart3);
 
 Harness harness;
 LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
-CX310Class CX310(uart3);
+CX310Class CX310(usart0);
 
 class MyTimer {
    public:
@@ -89,9 +88,6 @@ class UsartDMATask : public TaskClassS<1024> {
     void task() override {
         std::vector<uint8_t> rx_data;
         std::vector<uint8_t> uci_data;
-
-        CX310.setChannel(5);
-        // CX310.setRxMode();
 
         for (;;) {
             // 等待 DMA 完成信号
@@ -142,7 +138,10 @@ class LedBlinkTask : public TaskClassS<256> {
         Battery battery;
         battery.init();
 
-        // CX310 init
+        // CX310.setChannel(5);
+        CX310.setRate(2);
+        CX310.setRxMode();
+
         std::vector<uint8_t> tx_data = {0x01, 0x02, 0x03, 0x04, 0x05};
 
         for (;;) {
@@ -150,7 +149,6 @@ class LedBlinkTask : public TaskClassS<256> {
             // Log.d("Battery: %d", battery.value);
 
             // CX310.startTransmit(tx_data);
-
             // sysLed.toggle();
 
             TaskBase::delay(500);
@@ -161,7 +159,7 @@ class LedBlinkTask : public TaskClassS<256> {
 UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
-// LogTask logTask;
+LogTask logTask;
 
 void SyncMsg::process() {
     Log.d("SyncMsg process");
@@ -222,12 +220,8 @@ void ReadCondDataMsg::process() {
 
 int Slave_Init(void) {
     UIDReader &uid = UIDReader::getInstance();
-    // print uid in hex format
-    Log.d("Slave_Init: %02X", uid.value);
 
-    // // enable CX310Class recv mode with 23 01 00 00 using usart0
-    // std::array<uint8_t, 4> cx310_recv_mode = {0x23, 0x01, 0x00, 0x00};
-    // usart0.send(cx310_recv_mode.data(), cx310_recv_mode.size());
+    Log.d("Slave_Init: %02X", uid.value);
 
     return 0;
 }

@@ -98,8 +98,7 @@ class CX310Class {
     }
 
     void setChannel(byte channel) {
-        byte header = (CONTROL_PACKET_CMD << 5) | (PBF_COMPLETE_MESSAGE << 4)
-        |
+        byte header = (CONTROL_PACKET_CMD << 5) | (PBF_COMPLETE_MESSAGE << 4) |
                       UWB_DATA_CONTROL_GROUP;
         byte oid = APP_DATA_CFG_SET_CMD;
         byte paramNum = 1;
@@ -114,6 +113,19 @@ class CX310Class {
         //                                   0x01, 0x04, 0x01, 0x09};
         // uart.send(rxModeData.data(), rxModeData.size());
         // uart.data_send(rxModeData.data(), rxModeData.size());
+    }
+
+    // set rate 23 03 00 04 01 16 01 02
+    void setRate(byte rate) {
+        byte header = (CONTROL_PACKET_CMD << 5) | (PBF_COMPLETE_MESSAGE << 4) |
+                      UWB_DATA_CONTROL_GROUP;
+        byte oid = APP_DATA_CFG_SET_CMD;
+        byte paramNum = 1;
+        byte paramID = 16;
+        byte paramLen = 1;
+        byte paramValue = rate;
+        const std::vector<byte> payload = {paramNum, paramID, paramLen,
+                                           paramValue};
     }
 
     void newReceive() {
