@@ -171,8 +171,8 @@ void Master2Slave::CondCfgMsg::process() {
     Log.d("CondCfgMsg process");
 
     // 1. REPLY
-    // 1.1 构造 CondInfoMsg
-    Slave2Master::CondInfoMsg condInfoMsg;
+    // 1.1 构造 CondCfgMsg
+    Slave2Master::CondCfgMsg condInfoMsg;
     condInfoMsg.timeSlot = timeSlot;
     condInfoMsg.interval = interval;
     condInfoMsg.totalConductionNum = totalConductionNum;
