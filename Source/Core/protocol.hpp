@@ -1,3 +1,24 @@
+/**
+ * @file protocol.hpp
+ * @author wang.yunlong (wang.yunlong9@byd.com)
+ * @brief 通信协议定义文件，包含：
+ *        - 消息类型枚举定义
+ *        - 数据包结构体(帧头、负载等)
+ *        - 消息类及序列化/反序列化方法
+ *        - 标准解析流程：
+ *          1. 使用FrameParser解析原始数据
+ *          2. 获取对应消息对象
+ *          3. 调用process()处理消息
+ *        - 标准消息构造流程：
+ *          1. 构造具体消息对象并设置字段
+ *          2. 使用PacketPacker打包为Packet
+ *          3. 使用FramePacker打包为完整帧
+ * @version 0.1
+ * @date 2025-04-11
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 #include <cstdint>
 #include <cstdio>
 #include <memory>
