@@ -2,6 +2,9 @@
 
 #include <cstdio>
 
+Uart* Uart::dev[Uart::_UART_NUM];
+bool Uart::is_bsp_init = false;
+
 UasrtInfo usart0_info = {.baudrate = 921600,
                          .gpio_port = GPIOB,
                          .tx_pin = GPIO_PIN_6,
@@ -16,7 +19,7 @@ UasrtInfo usart0_info = {.baudrate = 921600,
                          .dma_tx_channel = DMA_CH7,
                          .dma_rx_channel = DMA_CH2,
                          .nvic_irq = USART0_IRQn,
-                         .nvic_irq_pre_priority = 1,
+                         .nvic_irq_pre_priority = 10,
                          .nvic_irq_sub_priority = 3,
                          .rx_count = 0,
                          .dmaRxDoneSema = xSemaphoreCreateBinary()};
@@ -136,7 +139,7 @@ UasrtInfo uart7_info = {.baudrate = 115200,
                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
 // 全局信号量
-void handle_usart_interrupt(UasrtInfo *config) {
+void handle_usart_interrupt(UasrtInfo* config) {
     if (config->use_dma) {
         if (RESET != usart_interrupt_flag_get(config->usart_periph,
                                               USART_INT_FLAG_IDLE)) {
@@ -158,23 +161,36 @@ void handle_usart_interrupt(UasrtInfo *config) {
                 config->dma_periph, config->dma_rx_channel, DMA_RX_BUFFER_SIZE);
             dma_channel_enable(config->dma_periph, config->dma_rx_channel);
         }
-    } else {
-        if (RESET != usart_interrupt_flag_get(config->usart_periph,
-                                              USART_INT_FLAG_RBNE)) {
-            /* read one byte from the receive data register */
-            usart_data_receive(config->usart_periph);
-            // config->rx_buffer[config->rx_count++] =
-            // usart_data_receive(config->usart_periph);
-        }
     }
 }
 
 extern "C" {
-void USART0_IRQHandler(void) { handle_usart_interrupt(&usart0_info); }
-void USART1_IRQHandler(void) { handle_usart_interrupt(&usart1_info); }
-void USART2_IRQHandler(void) { handle_usart_interrupt(&usart2_info); }
-void UART3_IRQHandler(void) { handle_usart_interrupt(&uart3_info); }
-void USART5_IRQHandler(void) { handle_usart_interrupt(&usart5_info); }
-void UART6_IRQHandler(void) { handle_usart_interrupt(&uart6_info); }
-void UART7_IRQHandler(void) { handle_usart_interrupt(&uart7_info); }
+void USART0_IRQHandler(void) {
+    handle_usart_interrupt(&usart0_info);
+    Uart::dev[Uart::_UART0]->irq_handler();
+}
+void USART1_IRQHandler(void) {
+    handle_usart_interrupt(&usart1_info);
+    Uart::dev[Uart::_UART1]->irq_handler();
+}
+void USART2_IRQHandler(void) {
+    handle_usart_interrupt(&usart2_info);
+    Uart::dev[Uart::_UART2]->irq_handler();
+}
+void UART3_IRQHandler(void) {
+    handle_usart_interrupt(&uart3_info);
+    Uart::dev[Uart::_UART3]->irq_handler();
+}
+void USART5_IRQHandler(void) {
+    handle_usart_interrupt(&usart5_info);
+    Uart::dev[Uart::_UART5]->irq_handler();
+}
+void UART6_IRQHandler(void) {
+    handle_usart_interrupt(&uart6_info);
+    Uart::dev[Uart::_UART6]->irq_handler();
+}
+void UART7_IRQHandler(void) {
+    handle_usart_interrupt(&uart7_info);
+    Uart::dev[Uart::_UART7]->irq_handler();
+}
 }
