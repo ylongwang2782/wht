@@ -9,7 +9,8 @@ enum class PacketType : uint8_t {
     Master2Slave = 0x00,      // 对应协议中Master2Slave
     Slave2Master = 0x01,      // 对应协议中Slave2Master
     Backend2Master = 0x02,    // 对应协议中Backend2Master
-    Master2Backend = 0x03     // 对应协议中Master2Backend
+    Master2Backend = 0x03,    // 对应协议中Master2Backend
+    Slave2Backend = 0x04      // 对应协议中Slave2Backend
 };
 
 enum class Master2SlaveMessageID : uint8_t {
@@ -48,6 +49,12 @@ enum class Master2BackendMessageID : uint8_t {
     CONDUCTION_DATA_MSG = 0x10,    // 导通数据
     RESISTANCE_DATA_MSG = 0x11,    // 阻值数据
     CLIPPING_DATA_MSG = 0x12       // 卡钉数据
+};
+
+enum class Slave2BackendMessageID : uint8_t {
+    COND_DATA_MSG = 0x00,
+    RES_DATA_MSG = 0x01,
+    CLIP_DATA_MSG = 0x02,
 };
 
 class FrameBase {
@@ -237,6 +244,60 @@ struct Master2BackendPacket {
         return true;
     }
 };
+struct DeviceStatus {
+    uint16_t colorSensor : 1;
+    uint16_t sleeveLimit : 1;
+    uint16_t electromagnetUnlockButton : 1;
+    uint16_t batteryLowPowerAlarm : 1;
+    uint16_t pressureSensor : 1;
+    uint16_t electromagneticLock1 : 1;
+    uint16_t electromagneticLock2 : 1;
+    uint16_t accessory1 : 1;
+    uint16_t accessory2 : 1;
+    uint16_t res : 7;
+};
+struct Slave2BackendPacket {
+    uint8_t message_id;              // 消息类型标识
+    DeviceStatus device_status;      // 设备状态(2字节)
+    std::vector<uint8_t> payload;    // 消息的序列化数据
+
+    // 序列化 Slave2BackendPacket
+    std::vector<uint8_t> serialize() const {
+        std::vector<uint8_t> data;
+        data.reserve(3 + payload.size());    // 1 + 2 + payload size
+
+        // 序列化消息ID
+        data.push_back(message_id);
+
+        // 序列化设备状态
+        uint16_t status = *reinterpret_cast<const uint16_t*>(&device_status);
+        data.push_back(static_cast<uint8_t>(status));         // 低字节
+        data.push_back(static_cast<uint8_t>(status >> 8));    // 高字节
+
+        // 序列化payload
+        data.insert(data.end(), payload.begin(), payload.end());
+        return data;
+    }
+
+    // 反序列化 Slave2BackendPacket
+    bool deserialize(const std::vector<uint8_t>& data) {
+        if (data.size() < 3) {
+            Log.e("Slave2BackendPacket data too short");
+            return false;
+        }
+
+        // 反序列化消息ID
+        message_id = data[0];
+
+        // 反序列化设备状态
+        uint16_t status = data[1] | (data[2] << 8);
+        device_status = *reinterpret_cast<DeviceStatus*>(&status);
+
+        // 反序列化payload
+        payload.assign(data.begin() + 3, data.end());
+        return true;
+    }
+};
 
 class PacketPacker {
    public:
@@ -269,6 +330,14 @@ class PacketPacker {
     static Master2BackendPacket master2BackendPack(const Message& msg,
                                                    uint32_t slave_id) {
         Master2BackendPacket packet;
+        packet.message_id = msg.message_type();    // 获取消息类型
+        msg.serialize(packet.payload);
+        return packet;
+    }
+
+    static Slave2BackendPacket slave2BackendPack(const Message& msg,
+                                                 uint32_t slave_id) {
+        Slave2BackendPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         msg.serialize(packet.payload);
         return packet;
@@ -347,6 +416,25 @@ class FramePacker {
         FrameHeader header;
         header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Master2Backend);
+        header.fragment_sequence = fragment_seq;
+        header.more_fragments_flag = more_fragments;
+        header.data_length = static_cast<uint16_t>(packet_data.size());
+
+        // 合并帧头和 Master2SlavePacket 数据
+        std::vector<uint8_t> frame = header.serialize();
+        frame.insert(frame.end(), packet_data.begin(), packet_data.end());
+        return frame;
+    }
+
+    static std::vector<uint8_t> pack(const Slave2BackendPacket& packet,
+                                     uint8_t slot = 0, uint8_t fragment_seq = 0,
+                                     uint8_t more_fragments = 0) {
+        std::vector<uint8_t> packet_data = packet.serialize();
+
+        // 构建帧头
+        FrameHeader header;
+        header.slot = slot;
+        header.packet_id = static_cast<uint8_t>(PacketType::Slave2Backend);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
         header.data_length = static_cast<uint16_t>(packet_data.size());
@@ -620,19 +708,6 @@ class RstMsg : public Message {
 }    // namespace Master2Slave
 
 namespace Slave2Master {
-// 设备状态结构体
-struct DeviceStatus {
-    uint16_t colorSensor : 1;
-    uint16_t sleeveLimit : 1;
-    uint16_t electromagnetUnlockButton : 1;
-    uint16_t batteryLowPowerAlarm : 1;
-    uint16_t pressureSensor : 1;
-    uint16_t electromagneticLock1 : 1;
-    uint16_t electromagneticLock2 : 1;
-    uint16_t accessory1 : 1;
-    uint16_t accessory2 : 1;
-    uint16_t res : 7;
-};
 // 导通数据消息（Slave -> Master）
 class CondCfgMsg : public Message {
    public:
@@ -763,144 +838,6 @@ class ClipCfgMsg : public Message {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_INFO_MSG);
     }
 };
-
-class CondDataMsg : public Message {
-   public:
-    DeviceStatus deviceStatus;              // 设备状态
-    uint16_t conductionLength;              // 导通数据字段长度
-    std::vector<uint8_t> conductionData;    // 导通数据
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        // 序列化设备状态
-        uint16_t status = *reinterpret_cast<const uint16_t*>(&deviceStatus);
-        data.push_back(static_cast<uint8_t>(status));         // 低字节
-        data.push_back(static_cast<uint8_t>(status >> 8));    // 高字节
-
-        // 序列化导通数据长度
-        data.push_back(static_cast<uint8_t>(conductionLength));    // 低字节
-        data.push_back(
-            static_cast<uint8_t>(conductionLength >> 8));    // 高字节
-
-        // 序列化导通数据
-        data.insert(data.end(), conductionData.begin(), conductionData.end());
-    }
-
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() < 4) {
-            Log.e("CondDataMsg: Invalid CondDataMsg data size");
-            return;
-        }
-
-        // 反序列化设备状态
-        uint16_t status = data[0] | (data[1] << 8);
-        deviceStatus = *reinterpret_cast<DeviceStatus*>(&status);
-
-        // 反序列化导通数据长度
-        conductionLength = data[2] | (data[3] << 8);
-
-        // 反序列化导通数据
-        if (data.size() != 4 + conductionLength) {
-            Log.e("CondDataMsg: Invalid conduction data size");
-            return;
-        }
-        conductionData.assign(data.begin() + 4, data.end());
-    }
-
-    void process() override { Log.d("CondDataMsg process"); };
-
-    uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::COND_DATA_MSG);
-    }
-};
-
-class ResistanceDataMsg : public Message {
-   public:
-    DeviceStatus deviceStatus;              // 设备状态
-    uint16_t resistanceLength;              // 阻值数据长度
-    std::vector<uint8_t> resistanceData;    // 阻值数据
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        // 序列化设备状态
-        uint16_t status = *reinterpret_cast<const uint16_t*>(&deviceStatus);
-        data.push_back(static_cast<uint8_t>(status));         // 低字节
-        data.push_back(static_cast<uint8_t>(status >> 8));    // 高字节
-
-        // 序列化阻值数据长度
-        data.push_back(static_cast<uint8_t>(resistanceLength));    // 低字节
-        data.push_back(
-            static_cast<uint8_t>(resistanceLength >> 8));    // 高字节
-
-        // 序列化阻值数据
-        data.insert(data.end(), resistanceData.begin(), resistanceData.end());
-    }
-
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() < 4) {
-            Log.e("ResistanceDataMsg: Invalid ResistanceDataMsg data size");
-            return;
-        }
-
-        // 反序列化设备状态
-        uint16_t status = data[0] | (data[1] << 8);
-        deviceStatus = *reinterpret_cast<DeviceStatus*>(&status);
-
-        // 反序列化阻值数据长度
-        resistanceLength = data[2] | (data[3] << 8);
-
-        // 反序列化阻值数据
-        if (data.size() != 4 + resistanceLength) {
-            Log.e("ResistanceDataMsg: Invalid resistance data size");
-            return;
-        }
-        resistanceData.assign(data.begin() + 4, data.end());
-    }
-
-    void process() override { Log.d("ResistanceDataMsg process"); };
-
-    uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::RES_DATA_MSG);
-    }
-};
-
-class ClipDataMsg : public Message {
-   public:
-    DeviceStatus deviceStatus;    // 设备状态
-    uint16_t clipData;            // 卡钉板数据
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        // 序列化设备状态
-        uint16_t status = *reinterpret_cast<const uint16_t*>(&deviceStatus);
-        data.push_back(static_cast<uint8_t>(status));         // 低字节
-        data.push_back(static_cast<uint8_t>(status >> 8));    // 高字节
-
-        // 序列化卡钉板数据
-        data.push_back(static_cast<uint8_t>(clipData));         // 低字节
-        data.push_back(static_cast<uint8_t>(clipData >> 8));    // 高字节
-    }
-
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 4) {
-            Log.e("ClipDataMsg: Invalid ClipDataMsg data size");
-            return;
-        }
-
-        // 反序列化设备状态
-        uint16_t status = data[0] | (data[1] << 8);
-        deviceStatus = *reinterpret_cast<DeviceStatus*>(&status);
-
-        // 反序列化卡钉板数据
-        clipData = data[2] | (data[3] << 8);
-        Log.d("ClipDataMsg: deviceStatus = 0x%04X, clipData = 0x%04X", status,
-              clipData);
-    }
-
-    void process() override { Log.d("ClipDataMsg process"); };
-
-    uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_DATA_MSG);
-    }
-};
-
 class RstMsg : public Message {
    public:
     uint8_t status;        // 新增状态码
@@ -1369,8 +1306,124 @@ class CtrlMsg : public Message {
         return static_cast<uint8_t>(Master2BackendMessageID::CTRL_MSG);
     }
 };
-
 }    // namespace Master2Backend
+
+namespace Slave2Backend {
+
+class CondDataMsg : public Message {
+   public:
+    uint16_t conductionLength;              // 导通数据字段长度
+    std::vector<uint8_t> conductionData;    // 导通数据
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // 序列化导通数据长度
+        data.push_back(static_cast<uint8_t>(conductionLength));    // 低字节
+        data.push_back(
+            static_cast<uint8_t>(conductionLength >> 8));    // 高字节
+
+        // 序列化导通数据
+        data.insert(data.end(), conductionData.begin(), conductionData.end());
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() < 2) {
+            Log.e("CondDataMsg: Invalid data size");
+            return;
+        }
+
+        // 反序列化导通数据长度
+        conductionLength = data[0] | (data[1] << 8);
+
+        // 反序列化导通数据
+        if (data.size() != 2 + conductionLength) {
+            Log.e("CondDataMsg: Invalid conduction data size");
+            return;
+        }
+        conductionData.assign(data.begin() + 2, data.end());
+
+        Log.d("CondDataMsg: length=%d, dataSize=%d", conductionLength,
+              conductionData.size());
+    }
+
+    void process() override { Log.d("CondDataMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2BackendMessageID::COND_DATA_MSG);
+    }
+};
+
+class ResDataMsg : public Message {
+   public:
+    uint16_t resistanceLength;              // 阻值数据长度
+    std::vector<uint8_t> resistanceData;    // 阻值数据
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // 序列化阻值数据长度
+        data.push_back(static_cast<uint8_t>(resistanceLength));    // 低字节
+        data.push_back(
+            static_cast<uint8_t>(resistanceLength >> 8));    // 高字节
+
+        // 序列化阻值数据
+        data.insert(data.end(), resistanceData.begin(), resistanceData.end());
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() < 2) {
+            Log.e("ResDataMsg: Invalid data size");
+            return;
+        }
+
+        // 反序列化阻值数据长度
+        resistanceLength = data[0] | (data[1] << 8);
+
+        // 反序列化阻值数据
+        if (data.size() != 2 + resistanceLength) {
+            Log.e("ResDataMsg: Invalid resistance data size");
+            return;
+        }
+        resistanceData.assign(data.begin() + 2, data.end());
+
+        Log.d("ResDataMsg: length=%d, dataSize=%d", resistanceLength,
+              resistanceData.size());
+    }
+
+    void process() override { Log.d("ResDataMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2BackendMessageID::RES_DATA_MSG);
+    }
+};
+
+class ClipDataMsg : public Message {
+   public:
+    uint16_t clipData;    // 卡钉板数据
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // 序列化卡钉板数据
+        data.push_back(static_cast<uint8_t>(clipData));         // 低字节
+        data.push_back(static_cast<uint8_t>(clipData >> 8));    // 高字节
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 2) {
+            Log.e("ClipDataMsg: Invalid data size");
+            return;
+        }
+
+        // 反序列化卡钉板数据
+        clipData = data[0] | (data[1] << 8);
+
+        Log.d("ClipDataMsg: clipData=0x%04X", clipData);
+    }
+
+    void process() override { Log.d("ClipDataMsg process"); };
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2BackendMessageID::CLIP_DATA_MSG);
+    }
+};
+
+}    // namespace Slave2Backend
 
 class FrameParser {
    public:
@@ -1579,25 +1632,6 @@ class FrameParser {
                     msg->deserialize(packet.payload);
                     return msg;
                 }
-                case Slave2MasterMessageID::COND_DATA_MSG: {
-                    Log.d("FrameParser: processing COND_DATA_MSG message");
-                    auto msg = std::make_unique<Slave2Master::CondDataMsg>();
-                    msg->deserialize(packet.payload);
-                    return msg;
-                }
-                case Slave2MasterMessageID::RES_DATA_MSG: {
-                    Log.d("FrameParser: processing RES_DATA_MSG message");
-                    auto msg =
-                        std::make_unique<Slave2Master::ResistanceDataMsg>();
-                    msg->deserialize(packet.payload);
-                    return msg;
-                }
-                case Slave2MasterMessageID::CLIP_DATA_MSG: {
-                    Log.d("FrameParser: processing CLIP_DATA_MSG message");
-                    auto msg = std::make_unique<Slave2Master::ClipDataMsg>();
-                    msg->deserialize(packet.payload);
-                    return msg;
-                }
                 case Slave2MasterMessageID::RST_MSG: {
                     Log.d("FrameParser: processing RST_MSG message");
                     auto msg = std::make_unique<Slave2Master::RstMsg>();
@@ -1730,6 +1764,57 @@ class FrameParser {
                 default:
                     Log.e(
                         "FrameParser: unsupported Master2Backend message "
+                        "type=0x%02X",
+                        static_cast<uint8_t>(packet.message_id));
+                    return nullptr;
+            }
+        } else if (header.packet_id ==
+                   static_cast<uint8_t>(PacketType::Slave2Backend)) {
+            Slave2BackendPacket packet;
+            if (!packet.deserialize(packet_data)) {
+                Log.e("Failed to deserialize packet");
+                return nullptr;
+            }
+
+            const char* msgTypeStr = "Unknown";
+            switch (static_cast<Slave2BackendMessageID>(packet.message_id)) {
+                case Slave2BackendMessageID::COND_DATA_MSG:
+                    msgTypeStr = "COND_DATA_MSG";
+                    break;
+                case Slave2BackendMessageID::RES_DATA_MSG:
+                    msgTypeStr = "RES_DATA_MSG";
+                    break;
+                case Slave2BackendMessageID::CLIP_DATA_MSG:
+                    msgTypeStr = "CLIP_DATA_MSG";
+                    break;
+                default:
+                    break;
+            }
+
+            Log.d("FrameParser: packet parsed, msg type=%s (0x%02X) ",
+                  msgTypeStr, packet.message_id);
+            switch (static_cast<Slave2BackendMessageID>(packet.message_id)) {
+                case Slave2BackendMessageID::COND_DATA_MSG: {
+                    Log.d("FrameParser: processing COND_DATA_MSG message");
+                    auto msg = std::make_unique<Slave2Backend::CondDataMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                case Slave2BackendMessageID::RES_DATA_MSG: {
+                    Log.d("FrameParser: processing RES_DATA_MSG message");
+                    auto msg = std::make_unique<Slave2Backend::ResDataMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                case Slave2BackendMessageID::CLIP_DATA_MSG: {
+                    Log.d("FrameParser: processing CLIP_DATA_MSG message");
+                    auto msg = std::make_unique<Slave2Backend::ClipDataMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                default:
+                    Log.e(
+                        "FrameParser: unsupported Slave2Backend message "
                         "type=0x%02X",
                         static_cast<uint8_t>(packet.message_id));
                     return nullptr;

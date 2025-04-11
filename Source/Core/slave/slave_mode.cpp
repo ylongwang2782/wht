@@ -194,21 +194,9 @@ void Master2Slave::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
 
 void Master2Slave::ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
-    Slave2Master::CondDataMsg condDataMsg;
+    Slave2Backend::CondDataMsg condDataMsg;
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
-    condDataMsg.deviceStatus = Slave2Master::DeviceStatus{
-        1,    // colorSensor
-        1,    // sleeveLimit
-        1,    // electromagnetUnlockButton
-        1,    // batteryLowPowerAlarm
-        1,    // pressureSensor
-        1,    // electromagneticLock1
-        1,    // electromagneticLock2
-        1,    // accessory1
-        1,    // accessory2
-        1     // reserved
-    };
 
     // 2. 打包为 Packet
     auto condDataPacket = PacketPacker::slavePack(condDataMsg, 0x3732485B);
