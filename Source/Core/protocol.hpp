@@ -30,7 +30,7 @@ enum class Slave2MasterMessageID : uint8_t {
     COND_DATA_MSG = 0x20,      // 导通数据
     RES_DATA_MSG = 0x21,       // 阻值数据
     CLIP_DATA_MSG = 0x22,      // 卡钉数据
-    INIT_STATUS_MSG = 0x30,    // 卡钉数量
+    RST_MSG = 0x30,    // 卡钉数量
 };
 
 class FrameBase {
@@ -777,12 +777,14 @@ class ClipDataMsg : public Message {
     }
 };
 
-class InitStatusMsg : public Message {
+class RstMsg : public Message {
    public:
+    uint8_t status;        // 新增状态码
     uint8_t lockStatus;    // 锁状态
     uint16_t clipLed;      // 卡钉灯位初始化信息
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(status);    // 新增状态码序列化
         data.push_back(lockStatus);
         // 序列化卡钉灯位信息
         data.push_back(static_cast<uint8_t>(clipLed));         // 低字节
@@ -790,24 +792,22 @@ class InitStatusMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 3) {
-            Log.e("InitStatusMsg: Invalid InitStatusMsg data size");
+        if (data.size() != 4) {    // 修改为4字节(原3+新增1)
+            Log.e("RstMsg: Invalid RstMsg data size");
             return;
         }
 
-        // 反序列化锁状态
-        lockStatus = data[0];
-
-        // 反序列化卡钉灯位信息
-        clipLed = data[1] | (data[2] << 8);
-        Log.d("InitStatusMsg: lockStatus = 0x%02X, clipLed = 0x%04X",
-              lockStatus, clipLed);
+        status = data[0];                      // 新增状态码反序列化
+        lockStatus = data[1];                  // 调整字段索引(+1)
+        clipLed = data[2] | (data[3] << 8);    // 调整字段索引(+1)
+        Log.d("RstMsg: status=0x%02X, lockStatus = 0x%02X, clipLed = 0x%04X",
+              status, lockStatus, clipLed);
     }
 
-    void process() override { Log.d("InitStatusMsg process"); };
+    void process() override { Log.d("RstMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::INIT_STATUS_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::RST_MSG);
     }
 };
 }    // namespace Slave2Master
@@ -988,8 +988,8 @@ class FrameParser {
                 case Slave2MasterMessageID::CLIP_DATA_MSG:
                     msgTypeStr = "CLIP_DATA_MSG";
                     break;
-                case Slave2MasterMessageID::INIT_STATUS_MSG:
-                    msgTypeStr = "INIT_STATUS_MSG";
+                case Slave2MasterMessageID::RST_MSG:
+                    msgTypeStr = "RST_MSG";
                     break;
                 default:
                     break;
@@ -1038,9 +1038,9 @@ class FrameParser {
                     msg->deserialize(packet.payload);
                     return msg;
                 }
-                case Slave2MasterMessageID::INIT_STATUS_MSG: {
-                    Log.d("FrameParser: processing INIT_STATUS_MSG message");
-                    auto msg = std::make_unique<Master2Slave::RstMsg>();
+                case Slave2MasterMessageID::RST_MSG: {
+                    Log.d("FrameParser: processing RST_MSG message");
+                    auto msg = std::make_unique<Slave2Master::RstMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
