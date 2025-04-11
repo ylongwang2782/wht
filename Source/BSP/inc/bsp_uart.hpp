@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "QueueCPP.h"
+
 extern "C" {
 #include "FreeRTOS.h"
 #include "gd32f4xx.h"
@@ -38,6 +40,7 @@ typedef struct {
     uint8_t nvic_irq_sub_priority;         // NVIC中断子优先级
     uint16_t rx_count;
     SemaphoreHandle_t dmaRxDoneSema;
+    bool use_dma;
 } UasrtInfo;
 
 class UartConfig {
@@ -59,8 +62,11 @@ class UartConfig {
     uint8_t nvic_irq_pre_priority;         // NVIC中断优先级
     uint8_t nvic_irq_sub_priority;         // NVIC中断子优先级
     uint16_t *rx_count;                    // 接收计数
+    bool use_dma;                          // 是否使用DMA
+    uint16_t rxQueueSize;                  // 接收队列大小
 
-    UartConfig(UasrtInfo &info)
+    UartConfig(UasrtInfo &info, bool enable_dma = true,
+               uint16_t _rxQueueSize = 1)
         : baudrate(info.baudrate),
           gpio_port(info.gpio_port),
           tx_pin(info.tx_pin),
@@ -77,22 +83,50 @@ class UartConfig {
           nvic_irq(info.nvic_irq),
           nvic_irq_pre_priority(info.nvic_irq_pre_priority),
           nvic_irq_sub_priority(info.nvic_irq_sub_priority),
-          rx_count(&info.rx_count) {}    // 传递 rx_count 指针
+          rx_count(&info.rx_count),    // 传递 rx_count 指针
+          use_dma(enable_dma),
+          rxQueueSize(_rxQueueSize) {
+        info.use_dma = enable_dma;
+    }
 };
 
 extern UasrtInfo usart0_info;
 extern UasrtInfo usart1_info;
 extern UasrtInfo usart2_info;
 extern UasrtInfo uart3_info;
+extern UasrtInfo usart5_info;
 extern UasrtInfo uart6_info;
+extern UasrtInfo uart7_info;
+
+extern "C" {
+void USART0_IRQHandler(void);
+void USART1_IRQHandler(void);
+void USART2_IRQHandler(void);
+void UART3_IRQHandler(void);
+void USART5_IRQHandler(void);
+void UART6_IRQHandler(void);
+void UART7_IRQHandler(void);
+}
 
 class Uart {
    public:
-    Uart(UartConfig &config) : config(config) {
+    friend void USART0_IRQHandler(void);
+    friend void USART1_IRQHandler(void);
+    friend void USART2_IRQHandler(void);
+    friend void UART3_IRQHandler(void);
+    friend void USART5_IRQHandler(void);
+    friend void UART6_IRQHandler(void);
+    friend void UART7_IRQHandler(void);
+
+    Uart(UartConfig &config) : config(config), rxQueue(config.rxQueueSize) {
+        initBSP();
         initGpio();
         initUsart();
-        initDmaTx();
-        initDmaRx();
+        deviceRegister();
+        if (config.use_dma) {
+            initDmaTx();
+            initDmaRx();
+        }
     }
 
     void data_send(const uint8_t *data, uint16_t len) {
@@ -103,29 +137,127 @@ class Uart {
     }
 
     void send(const uint8_t *data, uint16_t len) {
-        dma_channel_disable(config.dma_periph, config.dma_tx_channel);
-        dma_flag_clear(config.dma_periph, config.dma_tx_channel, DMA_FLAG_FTF);
-        dma_memory_address_config(config.dma_periph, config.dma_tx_channel,
-                                  DMA_MEMORY_0, (uintptr_t)data);
-        dma_transfer_number_config(config.dma_periph, config.dma_tx_channel,
-                                   len);
-        dma_channel_enable(config.dma_periph, config.dma_tx_channel);
-        while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
+        if (config.use_dma) {
+            dma_channel_disable(config.dma_periph, config.dma_tx_channel);
+            dma_flag_clear(config.dma_periph, config.dma_tx_channel,
+                           DMA_FLAG_FTF);
+            dma_memory_address_config(config.dma_periph, config.dma_tx_channel,
+                                      DMA_MEMORY_0, (uintptr_t)data);
+            dma_transfer_number_config(config.dma_periph, config.dma_tx_channel,
+                                       len);
+            dma_channel_enable(config.dma_periph, config.dma_tx_channel);
+            while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
+        } else {
+            for (uint16_t i = 0; i < len; i++) {
+                usart_data_transmit(config.usart_periph, *(data + i));
+                while (RESET ==
+                       usart_flag_get(config.usart_periph, USART_FLAG_TC));
+            }
+        }
+    }
+
+    bool recv_1byte(uint8_t &data, TickType_t time = portMAX_DELAY) {
+        if (!config.use_dma) {
+            return rxQueue.pop(data, time);
+        }
+        return false;
     }
 
     std::vector<uint8_t> getReceivedData() {
         std::vector<uint8_t> buffer;
         // Resize the buffer to ensure it has enough space
-        buffer.resize(*config.rx_count);
-        memcpy(buffer.data(), dmaRxBuffer, *config.rx_count);
-        // clear
-        *config.rx_count = 0;
+        if (config.use_dma) {
+            buffer.resize(*config.rx_count);
+            memcpy(buffer.data(), dmaRxBuffer, *config.rx_count);
+            // clear
+            *config.rx_count = 0;
+        } else {
+            uint8_t data;
+            buffer.reserve(rxQueue.waiting());
+            while (rxQueue.pop(data, 0)) {
+                buffer.push_back(data);
+            }
+        }
+
         return buffer;
     }
 
    private:
     UartConfig &config;
     uint8_t dmaRxBuffer[DMA_RX_BUFFER_SIZE];
+
+    enum UART_ID : uint8_t {
+        _UART0 = 0,
+        _UART1,
+        _UART2,
+        _UART3,
+        _UART4,
+        _UART5,
+        _UART6,
+        _UART7,
+
+        _UART_NUM,
+    };
+    static Uart *dev[_UART_NUM];
+    static bool is_bsp_init;
+    Queue<uint8_t> rxQueue;
+    long waswoken = pdFALSE;
+
+    void irq_handler() {
+        if (!config.use_dma) {
+            if (RESET != usart_interrupt_flag_get(config.usart_periph,
+                                                  USART_INT_FLAG_RBNE)) {
+            }
+            rxQueue.add_ISR(usart_data_receive(config.usart_periph), waswoken);
+            portYIELD_FROM_ISR(waswoken);
+        }
+    }
+
+    void initBSP() {
+        if (!is_bsp_init) {
+            for (uint8_t i = 0; i < _UART_NUM; i++) {
+                dev[i] = nullptr;
+            }
+            is_bsp_init = true;
+        }
+    }
+
+    void deviceRegister() {
+        switch (config.usart_periph) {
+            case USART0: {
+                dev[_UART0] = this;
+                break;
+            }
+            case USART1: {
+                dev[_UART1] = this;
+                break;
+            }
+            case USART2: {
+                dev[_UART2] = this;
+                break;
+            }
+            case UART3: {
+                dev[_UART3] = this;
+                break;
+            }
+            case UART4: {
+                dev[_UART4] = this;
+                break;
+            }
+            case USART5: {
+                dev[_UART5] = this;
+                break;
+            }
+            case UART6: {
+                dev[_UART6] = this;
+                break;
+            }
+            case UART7: {
+                dev[_UART7] = this;
+                break;
+            }
+        }
+    }
 
     void initGpio() {
         rcu_periph_clock_enable(config.usart_port_clk);
@@ -151,7 +283,15 @@ class Uart {
         usart_dma_transmit_config(config.usart_periph,
                                   USART_TRANSMIT_DMA_ENABLE);
         usart_enable(config.usart_periph);
-        usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+
+        if (config.use_dma) {
+            usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+        } else {
+            // usart_interrupt_enable(config.usart_periph, USART_INT_IDLE);
+            nvic_irq_enable(config.nvic_irq, config.nvic_irq_pre_priority,
+                            config.nvic_irq_sub_priority);
+            usart_interrupt_enable(config.usart_periph, USART_INT_RBNE);
+        }
     }
 
     void initDmaTx() {
