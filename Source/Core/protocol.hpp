@@ -6,31 +6,31 @@
 #include "bsp_log.hpp"
 
 enum class PacketType : uint8_t {
-    MasterToSlave = 0x00,    // 对应协议中Master2Slave
-    SlaveToMaster = 0x01     // 对应协议中Slave2Master
+    Master2Slave = 0x00,      // 对应协议中Master2Slave
+    Slave2Master = 0x01,      // 对应协议中Slave2Master
+    Backend2Master = 0x02,    // 对应协议中Backend2Master
+    Master2Backend = 0x03     // 对应协议中Master2Backend
 };
 
-// 添加 Master 到 Slave 的消息类型枚举
 enum class Master2SlaveMessageID : uint8_t {
-    SYNC_MSG,               // 同步消息
-    WRITE_COND_INFO_MSG,    // 写入导通信息
-    WRITE_RES_INFO_MSG,     // 写入阻值信息
-    WRITE_CLIP_INFO_MSG,    // 写入卡钉信息
-    READ_COND_DATA_MSG,     // 读取
-    READ_RES_DATA_MSG,      // 读取
-    READ_CLIP_DATA_MSG,     // 读取
-    READ_CLIP_INFO_MSG,     // 读取
-    INIT_MSG
+    SYNC_MSG = 0x00,              // 同步消息
+    COND_CFG_MSG = 0x10,          // 写入导通信息
+    RES_CFG_MSG = 0x11,           // 写入阻值信息
+    CLIP_CFG_MSG = 0x12,          // 写入卡钉信息
+    READ_COND_DATA_MSG = 0x20,    // 读取
+    READ_RES_DATA_MSG = 0x21,     // 读取
+    READ_CLIP_DATA_MSG = 0x22,    // 读取
+    RST_MSG = 0x30
 };
 
 enum class Slave2MasterMessageID : uint8_t {
-    COND_INFO_MSG = 0x00,      // 导通信息
-    RES_INFO_MSG = 0x01,       // 阻值信息
-    CLIP_INFO_MSG = 0x02,      // 卡钉信息
-    COND_DATA_MSG = 0x03,      // 导通数据
-    RES_DATA_MSG = 0x04,       // 阻值数据
-    CLIP_DATA_MSG = 0x05,      // 卡钉数据
-    INIT_STATUS_MSG = 0x06,    // 卡钉数量
+    COND_INFO_MSG = 0x10,      // 导通信息
+    RES_INFO_MSG = 0x11,       // 阻值信息
+    CLIP_INFO_MSG = 0x12,      // 卡钉信息
+    COND_DATA_MSG = 0x20,      // 导通数据
+    RES_DATA_MSG = 0x21,       // 阻值数据
+    CLIP_DATA_MSG = 0x22,      // 卡钉数据
+    INIT_STATUS_MSG = 0x30,    // 卡钉数量
 };
 
 class FrameBase {
@@ -201,7 +201,7 @@ class FramePacker {
         // 构建帧头
         FrameHeader header;
         header.slot = slot;
-        header.packet_id = static_cast<uint8_t>(PacketType::MasterToSlave);
+        header.packet_id = static_cast<uint8_t>(PacketType::Master2Slave);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
         header.data_length = static_cast<uint16_t>(packet_data.size());
@@ -222,7 +222,7 @@ class FramePacker {
         // 构建帧头
         FrameHeader header;
         header.slot = slot;
-        header.packet_id = static_cast<uint8_t>(PacketType::SlaveToMaster);
+        header.packet_id = static_cast<uint8_t>(PacketType::Slave2Master);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
         header.data_length = static_cast<uint16_t>(packet_data.size());
@@ -234,6 +234,7 @@ class FramePacker {
     }
 };
 
+namespace Master2Slave {
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
    public:
@@ -267,7 +268,7 @@ class SyncMsg : public Message {
     }
 };
 
-class WriteCondInfoMsg : public Message {
+class CondCfgMsg : public Message {
    public:
     static uint8_t timeSlot;               // 为从节点分配的时隙
     static uint8_t interval;               // 采集间隔，单位 ms
@@ -288,7 +289,7 @@ class WriteCondInfoMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
-            Log.e("WriteCondInfoMsg: Invalid WriteCondInfoMsg data size");
+            Log.e("CondCfgMsg: Invalid CondCfgMsg data size");
             return;
         }
         timeSlot = data[0];
@@ -297,7 +298,7 @@ class WriteCondInfoMsg : public Message {
         startConductionNum = (data[5] << 8) | data[4];
         conductionNum = (data[7] << 8) | data[6];
         Log.d(
-            "WriteCondInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "CondCfgMsg: timeSlot = 0x%02X, interval = 0x%02X, "
             "totalConductionNum "
             "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
             timeSlot, interval, totalConductionNum, startConductionNum,
@@ -306,11 +307,11 @@ class WriteCondInfoMsg : public Message {
     void process() override;
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_COND_INFO_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::COND_CFG_MSG);
     }
 };
 
-class WriteResInfoMsg : public Message {
+class ResCfgMsg : public Message {
    public:
     uint8_t timeSlot;               // 为从节点分配的时隙
     uint8_t interval;               // 采集间隔，单位 ms
@@ -331,7 +332,7 @@ class WriteResInfoMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
-            Log.e("WriteResInfoMsg: Invalid WriteResInfoMsg data size");
+            Log.e("ResCfgMsg: Invalid ResCfgMsg data size");
             return;
         }
         timeSlot = data[0];
@@ -340,7 +341,7 @@ class WriteResInfoMsg : public Message {
         startResistanceNum = (data[5] << 8) | data[4];
         resistanceNum = (data[7] << 8) | data[6];
         Log.d(
-            "WriteResInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "ResCfgMsg: timeSlot = 0x%02X, interval = 0x%02X, "
             "totalResistanceNum = 0x%04X, "
             "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
             timeSlot, interval, totalResistanceNum, startResistanceNum,
@@ -350,11 +351,11 @@ class WriteResInfoMsg : public Message {
     void process() override;
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_RES_INFO_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::RES_CFG_MSG);
     }
 };
 
-class WriteClipInfoMsg : public Message {
+class ClipCfgMsg : public Message {
    public:
     uint8_t interval;    // 采集间隔，单位 ms
     uint8_t mode;        // 0：非自锁，1：自锁
@@ -369,22 +370,22 @@ class WriteClipInfoMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {    // 修改为4字节
-            Log.e("WriteClipInfoMsg: Invalid WriteClipInfoMsg data size");
+            Log.e("ClipCfgMsg: Invalid ClipCfgMsg data size");
             return;
         }
         interval = data[0];                    // 反序列化采集间隔
         mode = data[1];                        // 反序列化 mode
         clipPin = data[2] | (data[3] << 8);    // 低字节在前，高字节在后
         Log.d(
-            "WriteClipInfoMsg: interval = 0x%02X, mode = 0x%02X, clipPin = "
+            "ClipCfgMsg: interval = 0x%02X, mode = 0x%02X, clipPin = "
             "0x%04X",
             interval, mode, clipPin);
     }
 
-    void process() override { Log.d("WriteClipInfoMsg process"); };
+    void process() override { Log.d("ClipCfgMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::WRITE_CLIP_INFO_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::CLIP_CFG_MSG);
     }
 };
 
@@ -464,32 +465,7 @@ class ReadClipDataMsg : public Message {
     }
 };
 
-class ReadClipInfoMsg : public Message {
-   public:
-    uint8_t reserve;    // 保留字段，固定为0
-
-    ReadClipInfoMsg() : reserve(0) {}
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(reserve);    // 序列化保留字段
-    }
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 1) {
-            Log.e("ReadClipInfoMsg: Invalid ReadClipInfoMsg data size");
-            return;
-        }
-        reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadClipInfoMsg: reserve = 0x%02X", reserve);
-    }
-
-    void process() override { "ReadClipInfoMsg process"; };
-
-    uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_INFO_MSG);
-    }
-};
-
-class InitMsg : public Message {
+class RstMsg : public Message {
    public:
     uint8_t lock;
     uint16_t clipLed;    // 新增卡钉灯位初始化信息
@@ -503,20 +479,21 @@ class InitMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 3) {    // 修改为3字节
-            Log.e("InitMsg: Invalid InitMsg data size");
+            Log.e("RstMsg: Invalid RstMsg data size");
         }
         lock = data[0];
         // 新增 clipLed 反序列化
         clipLed = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
-        Log.d("InitMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
+        Log.d("RstMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
 
-    void process() override { Log.d("InitMsg process"); };
+    void process() override { Log.d("RstMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Master2SlaveMessageID::INIT_MSG);
+        return static_cast<uint8_t>(Master2SlaveMessageID::RST_MSG);
     }
 };
+}    // namespace Master2Slave
 
 // 设备状态结构体
 struct DeviceStatus {
@@ -850,7 +827,7 @@ class FrameParser {
         Log.d("FrameParser: payload extracted, len=%d", packet_data.size());
 
         if (header.packet_id ==
-            static_cast<uint8_t>(PacketType::MasterToSlave)) {
+            static_cast<uint8_t>(PacketType::Master2Slave)) {
             // 3. 反序列化 Master2SlavePacket
             Master2SlavePacket packet;
             if (!packet.deserialize(packet_data)) {
@@ -863,20 +840,20 @@ class FrameParser {
                 case Master2SlaveMessageID::SYNC_MSG:
                     msgTypeStr = "SYNC_MSG";
                     break;
-                case Master2SlaveMessageID::WRITE_COND_INFO_MSG:
-                    msgTypeStr = "WRITE_COND_INFO_MSG";
+                case Master2SlaveMessageID::COND_CFG_MSG:
+                    msgTypeStr = "COND_CFG_MSG";
                     break;
-                case Master2SlaveMessageID::WRITE_RES_INFO_MSG:
-                    msgTypeStr = "WRITE_RES_INFO_MSG";
+                case Master2SlaveMessageID::RES_CFG_MSG:
+                    msgTypeStr = "RES_CFG_MSG";
                     break;
-                case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG:
-                    msgTypeStr = "WRITE_CLIP_INFO_MSG";
+                case Master2SlaveMessageID::CLIP_CFG_MSG:
+                    msgTypeStr = "CLIP_CFG_MSG";
                     break;
                 case Master2SlaveMessageID::READ_COND_DATA_MSG:
                     msgTypeStr = "READ_COND_DATA_MSG";
                     break;
-                case Master2SlaveMessageID::INIT_MSG:
-                    msgTypeStr = "INIT_MSG";
+                case Master2SlaveMessageID::RST_MSG:
+                    msgTypeStr = "RST_MSG";
                     break;
                 default:
                     break;
@@ -890,47 +867,48 @@ class FrameParser {
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG: {
                     Log.d("FrameParser: processing SYNC_MSG message");
-                    auto msg = std::make_unique<SyncMsg>();
+                    auto msg = std::make_unique<Master2Slave::SyncMsg>();
                     msg->deserialize(packet.payload);
                     Log.d("FrameParser: SYNC_MSG message deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::WRITE_COND_INFO_MSG: {
+                case Master2SlaveMessageID::COND_CFG_MSG: {
                     Log.d(
-                        "FrameParser: processing WRITE_COND_INFO_MSG "
+                        "FrameParser: processing COND_CFG_MSG "
                         "message");
-                    auto msg = std::make_unique<WriteCondInfoMsg>();
+                    auto msg = std::make_unique<Master2Slave::CondCfgMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
-                        "FrameParser: WRITE_COND_INFO_MSG message "
+                        "FrameParser: COND_CFG_MSG message "
                         "deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::WRITE_RES_INFO_MSG: {
+                case Master2SlaveMessageID::RES_CFG_MSG: {
                     Log.d(
-                        "FrameParser: processing WRITE_RES_INFO_MSG "
+                        "FrameParser: processing RES_CFG_MSG "
                         "message");
-                    auto msg = std::make_unique<WriteResInfoMsg>();
+                    auto msg = std::make_unique<Master2Slave::ResCfgMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
-                        "FrameParser: WRITE_RES_INFO_MSG message "
+                        "FrameParser: RES_CFG_MSG message "
                         "deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::WRITE_CLIP_INFO_MSG: {
+                case Master2SlaveMessageID::CLIP_CFG_MSG: {
                     Log.d(
-                        "FrameParser: processing WRITE_CLIP_INFO_MSG "
+                        "FrameParser: processing CLIP_CFG_MSG "
                         "message");
-                    auto msg = std::make_unique<WriteClipInfoMsg>();
+                    auto msg = std::make_unique<Master2Slave::ClipCfgMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
-                        "FrameParser: WRITE_CLIP_INFO_MSG message "
+                        "FrameParser: CLIP_CFG_MSG message "
                         "deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::READ_COND_DATA_MSG: {
                     Log.d("FrameParser: processing READ_COND_DATA_MSG message");
-                    auto msg = std::make_unique<ReadCondDataMsg>();
+                    auto msg =
+                        std::make_unique<Master2Slave::ReadCondDataMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
                         "FrameParser: READ_COND_DATA_MSG message deserialized");
@@ -938,7 +916,7 @@ class FrameParser {
                 }
                 case Master2SlaveMessageID::READ_RES_DATA_MSG: {
                     Log.d("FrameParser: processing READ_RES_DATA_MSG message");
-                    auto msg = std::make_unique<ReadResDataMsg>();
+                    auto msg = std::make_unique<Master2Slave::ReadResDataMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
                         "FrameParser: READ_RES_DATA_MSG message deserialized");
@@ -946,25 +924,18 @@ class FrameParser {
                 }
                 case Master2SlaveMessageID::READ_CLIP_DATA_MSG: {
                     Log.d("FrameParser: processing READ_CLIP_DATA_MSG message");
-                    auto msg = std::make_unique<ReadClipDataMsg>();
+                    auto msg =
+                        std::make_unique<Master2Slave::ReadClipDataMsg>();
                     msg->deserialize(packet.payload);
                     Log.d(
                         "FrameParser: READ_CLIP_DATA_MSG message deserialized");
                     return msg;
                 }
-                case Master2SlaveMessageID::READ_CLIP_INFO_MSG: {
-                    Log.d("FrameParser: processing READ_CLIP_INFO_MSG message");
-                    auto msg = std::make_unique<ReadClipInfoMsg>();
+                case Master2SlaveMessageID::RST_MSG: {
+                    Log.d("FrameParser: processing RST_MSG message");
+                    auto msg = std::make_unique<Master2Slave::RstMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_CLIP_INFO_MSG message deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::INIT_MSG: {
-                    Log.d("FrameParser: processing INIT_MSG message");
-                    auto msg = std::make_unique<InitMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d("FrameParser: INIT_MSG message deserialized");
+                    Log.d("FrameParser: RST_MSG message deserialized");
                     return msg;
                 }
                 default:
@@ -975,7 +946,7 @@ class FrameParser {
                     return nullptr;
             }
         } else if (header.packet_id ==
-                   static_cast<uint8_t>(PacketType::SlaveToMaster)) {
+                   static_cast<uint8_t>(PacketType::Slave2Master)) {
             Slave2MasterPacket packet;
 
             // 3. 反序列化 Slave2MasterPacket
@@ -1055,7 +1026,7 @@ class FrameParser {
                 }
                 case Slave2MasterMessageID::INIT_STATUS_MSG: {
                     Log.d("FrameParser: processing INIT_STATUS_MSG message");
-                    auto msg = std::make_unique<InitMsg>();
+                    auto msg = std::make_unique<Master2Slave::RstMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
