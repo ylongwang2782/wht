@@ -172,7 +172,7 @@ void Master2Slave::CondCfgMsg::process() {
 
     // 1. REPLY
     // 1.1 构造 CondInfoMsg
-    CondInfoMsg condInfoMsg;
+    Slave2Master::CondInfoMsg condInfoMsg;
     condInfoMsg.timeSlot = timeSlot;
     condInfoMsg.interval = interval;
     condInfoMsg.totalConductionNum = totalConductionNum;
@@ -194,10 +194,10 @@ void Master2Slave::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
 
 void Master2Slave::ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
-    CondDataMsg condDataMsg;
+    Slave2Master::CondDataMsg condDataMsg;
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
-    condDataMsg.deviceStatus = DeviceStatus{
+    condDataMsg.deviceStatus = Slave2Master::DeviceStatus{
         1,    // colorSensor
         1,    // sleeveLimit
         1,    // electromagnetUnlockButton

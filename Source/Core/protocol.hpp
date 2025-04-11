@@ -495,6 +495,7 @@ class RstMsg : public Message {
 };
 }    // namespace Master2Slave
 
+namespace Slave2Master {
 // 设备状态结构体
 struct DeviceStatus {
     uint16_t colorSensor : 1;
@@ -511,6 +512,7 @@ struct DeviceStatus {
 // 导通数据消息（Slave -> Master）
 class CondInfoMsg : public Message {
    public:
+    uint8_t status;                 // 新增状态码
     uint8_t timeSlot;               // 为从节点分配的时隙
     uint8_t interval;               // 采集间隔，单位 ms
     uint16_t totalConductionNum;    // 系统中总导通检测的数量
@@ -518,6 +520,7 @@ class CondInfoMsg : public Message {
     uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(status);    // 新增状态码序列化
         data.push_back(timeSlot);
         data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalConductionNum));
@@ -529,20 +532,21 @@ class CondInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 8) {    // 修改为8字节
+        if (data.size() != 9) {    // 修改为9字节(原8+新增1)
             Log.e("CondInfoMsg: Invalid CondInfoMsg data size");
             return;
         }
-        timeSlot = data[0];
-        interval = data[1];    // 反序列化采集间隔
-        totalConductionNum = (data[3] << 8) | data[2];
-        startConductionNum = (data[5] << 8) | data[4];
-        conductionNum = (data[7] << 8) | data[6];
+        status = data[0];    // 新增状态码反序列化
+        timeSlot = data[1];
+        interval = data[2];    // 调整字段索引(+1)
+        totalConductionNum = (data[4] << 8) | data[3];
+        startConductionNum = (data[6] << 8) | data[5];
+        conductionNum = (data[8] << 8) | data[7];
         Log.d(
-            "CondInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "CondInfoMsg: status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
             "totalConductionNum = 0x%04X, "
             "startConductionNum = 0x%04X, conductionNum = 0x%04X",
-            timeSlot, interval, totalConductionNum, startConductionNum,
+            status, timeSlot, interval, totalConductionNum, startConductionNum,
             conductionNum);
     }
     void process() override { Log.d("CondInfoMsg process"); };
@@ -554,6 +558,7 @@ class CondInfoMsg : public Message {
 
 class ResInfoMsg : public Message {
    public:
+    uint8_t status;                 // 新增状态码
     uint8_t timeSlot;               // 为从节点分配的时隙
     uint8_t interval;               // 采集间隔，单位 ms
     uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
@@ -561,6 +566,7 @@ class ResInfoMsg : public Message {
     uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(status);    // 新增状态码序列化
         data.push_back(timeSlot);
         data.push_back(interval);    // 序列化采集间隔
         data.push_back(static_cast<uint8_t>(totalResistanceNum >> 8));
@@ -572,20 +578,21 @@ class ResInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 8) {    // 修改为8字节
+        if (data.size() != 9) {    // 修改为9字节(原8+新增1)
             Log.e("ResInfoMsg: Invalid ResInfoMsg data size");
             return;
         }
-        timeSlot = data[0];
-        interval = data[1];    // 反序列化采集间隔
-        totalResistanceNum = (data[3] << 8) | data[2];
-        startResistanceNum = (data[5] << 8) | data[4];
-        resistanceNum = (data[7] << 8) | data[6];
+        status = data[0];    // 新增状态码反序列化
+        timeSlot = data[1];
+        interval = data[2];    // 调整字段索引(+1)
+        totalResistanceNum = (data[4] << 8) | data[3];
+        startResistanceNum = (data[6] << 8) | data[5];
+        resistanceNum = (data[8] << 8) | data[7];
         Log.d(
-            "ResInfoMsg: timeSlot = 0x%02X, interval = 0x%02X, "
+            "ResInfoMsg: status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
             "totalResistanceNum = 0x%04X, "
             "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
-            timeSlot, interval, totalResistanceNum, startResistanceNum,
+            status, timeSlot, interval, totalResistanceNum, startResistanceNum,
             resistanceNum);
     }
 
@@ -598,11 +605,13 @@ class ResInfoMsg : public Message {
 
 class ClipInfoMsg : public Message {
    public:
+    uint8_t status;      // 新增状态码
     uint8_t interval;    // 采集间隔，单位 ms
     uint8_t mode;        // 0：非自锁，1：自锁
     uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(status);      // 新增状态码序列化
         data.push_back(interval);    // 序列化采集间隔
         data.push_back(mode);        // 序列化 mode
         data.push_back(static_cast<uint8_t>(clipPin));    // 低字节在前
@@ -610,15 +619,18 @@ class ClipInfoMsg : public Message {
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 4) {    // 修改为4字节
+        if (data.size() != 5) {    // 修改为5字节(原4+新增1)
             Log.e("ClipInfoMsg: Invalid ClipInfoMsg data size");
             return;
         }
-        interval = data[0];                    // 反序列化采集间隔
-        mode = data[1];                        // 反序列化 mode
-        clipPin = data[2] | (data[3] << 8);    // 低字节在前，高字节在后
-        Log.d("ClipInfoMsg: interval = 0x%02X, mode = 0x%02X, clipPin = 0x%04X",
-              interval, mode, clipPin);
+        status = data[0];                      // 新增状态码反序列化
+        interval = data[1];                    // 调整字段索引(+1)
+        mode = data[2];                        // 调整字段索引(+1)
+        clipPin = data[3] | (data[4] << 8);    // 调整字段索引(+1)
+        Log.d(
+            "ClipInfoMsg: status=0x%02X, interval = 0x%02X, mode = 0x%02X, "
+            "clipPin = 0x%04X",
+            status, interval, mode, clipPin);
     }
 
     void process() override { Log.d("ClipInfoMsg process"); };
@@ -798,6 +810,7 @@ class InitStatusMsg : public Message {
         return static_cast<uint8_t>(Slave2MasterMessageID::INIT_STATUS_MSG);
     }
 };
+}    // namespace Slave2Master
 
 class FrameParser {
    public:
@@ -990,37 +1003,38 @@ class FrameParser {
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
                 case Slave2MasterMessageID::COND_INFO_MSG: {
                     Log.d("FrameParser: processing COND_INFO_MSG message");
-                    auto msg = std::make_unique<CondInfoMsg>();
+                    auto msg = std::make_unique<Slave2Master::CondInfoMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::RES_INFO_MSG: {
                     Log.d("FrameParser: processing RES_INFO_MSG message");
-                    auto msg = std::make_unique<ResInfoMsg>();
+                    auto msg = std::make_unique<Slave2Master::ResInfoMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::CLIP_INFO_MSG: {
                     Log.d("FrameParser: processing CLIP_INFO_MSG message");
-                    auto msg = std::make_unique<ClipInfoMsg>();
+                    auto msg = std::make_unique<Slave2Master::ClipInfoMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::COND_DATA_MSG: {
                     Log.d("FrameParser: processing COND_DATA_MSG message");
-                    auto msg = std::make_unique<CondDataMsg>();
+                    auto msg = std::make_unique<Slave2Master::CondDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::RES_DATA_MSG: {
                     Log.d("FrameParser: processing RES_DATA_MSG message");
-                    auto msg = std::make_unique<ResistanceDataMsg>();
+                    auto msg =
+                        std::make_unique<Slave2Master::ResistanceDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::CLIP_DATA_MSG: {
                     Log.d("FrameParser: processing CLIP_DATA_MSG message");
-                    auto msg = std::make_unique<ClipDataMsg>();
+                    auto msg = std::make_unique<Slave2Master::ClipDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
