@@ -46,13 +46,10 @@ enum class Master2SlaveMessageID : uint8_t {
 };
 
 enum class Slave2MasterMessageID : uint8_t {
-    COND_INFO_MSG = 0x10,    // 导通信息
-    RES_INFO_MSG = 0x11,     // 阻值信息
-    CLIP_INFO_MSG = 0x12,    // 卡钉信息
-    COND_DATA_MSG = 0x20,    // 导通数据
-    RES_DATA_MSG = 0x21,     // 阻值数据
-    CLIP_DATA_MSG = 0x22,    // 卡钉数据
-    RST_MSG = 0x30,          // 卡钉数量
+    COND_CFG_MSG = 0x00,    // 导通信息
+    RES_CFG_MSG = 0x01,     // 阻值信息
+    CLIP_CFG_MSG = 0x02,    // 卡钉信息
+    RST_MSG = 0x03,
 };
 
 enum class Backend2MasterMessageID : uint8_t {
@@ -471,9 +468,12 @@ namespace Master2Slave {
 // 同步消息（Master -> Slave）
 class SyncMsg : public Message {
    public:
-    uint8_t mode;
-    uint32_t timestamp;
-    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) : mode(m), timestamp(ts) {}
+    static uint8_t mode;
+    static uint32_t timestamp;
+    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) {
+        mode = m;
+        timestamp = ts;
+    }
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.clear();    // 清空传入的vector
@@ -546,11 +546,11 @@ class CondCfgMsg : public Message {
 
 class ResCfgMsg : public Message {
    public:
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
-    uint16_t startResistanceNum;    // 起始阻值数量
-    uint16_t resistanceNum;         // 阻值检测数量
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
+    static uint16_t startResistanceNum;    // 起始阻值数量
+    static uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
@@ -590,9 +590,10 @@ class ResCfgMsg : public Message {
 
 class ClipCfgMsg : public Message {
    public:
-    uint8_t interval;    // 采集间隔，单位 ms
-    uint8_t mode;        // 0：非自锁，1：自锁
-    uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
+    static uint8_t interval;    // 采集间隔，单位 ms
+    static uint8_t mode;        // 0：非自锁，1：自锁
+    static uint16_t
+        clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(interval);    // 序列化采集间隔
@@ -700,8 +701,8 @@ class ReadClipDataMsg : public Message {
 
 class RstMsg : public Message {
    public:
-    uint8_t lock;
-    uint16_t clipLed;    // 新增卡钉灯位初始化信息
+    static uint8_t lock;
+    static uint16_t clipLed;    // 新增卡钉灯位初始化信息
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(lock);
@@ -732,12 +733,12 @@ namespace Slave2Master {
 // 导通数据消息（Slave -> Master）
 class CondCfgMsg : public Message {
    public:
-    uint8_t status;                 // 新增状态码
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalConductionNum;    // 系统中总导通检测的数量
-    uint16_t startConductionNum;    // 起始导通数量
-    uint16_t conductionNum;         // 导通检测数量
+    static uint8_t status;                 // 新增状态码
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalConductionNum;    // 系统中总导通检测的数量
+    static uint16_t startConductionNum;    // 起始导通数量
+    static uint16_t conductionNum;         // 导通检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);    // 新增状态码序列化
@@ -772,18 +773,18 @@ class CondCfgMsg : public Message {
     void process() override { Log.d("CondCfgMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::COND_INFO_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::COND_CFG_MSG);
     }
 };
 
 class ResCfgMsg : public Message {
    public:
-    uint8_t status;                 // 新增状态码
-    uint8_t timeSlot;               // 为从节点分配的时隙
-    uint8_t interval;               // 采集间隔，单位 ms
-    uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
-    uint16_t startResistanceNum;    // 起始阻值数量
-    uint16_t resistanceNum;         // 阻值检测数量
+    static uint8_t status;                 // 新增状态码
+    static uint8_t timeSlot;               // 为从节点分配的时隙
+    static uint8_t interval;               // 采集间隔，单位 ms
+    static uint16_t totalResistanceNum;    // 系统中总阻值检测的数量
+    static uint16_t startResistanceNum;    // 起始阻值数量
+    static uint16_t resistanceNum;         // 阻值检测数量
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);    // 新增状态码序列化
@@ -819,16 +820,17 @@ class ResCfgMsg : public Message {
     void process() override { Log.d("ResCfgMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::RES_INFO_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::RES_CFG_MSG);
     }
 };
 
 class ClipCfgMsg : public Message {
    public:
-    uint8_t status;      // 新增状态码
-    uint8_t interval;    // 采集间隔，单位 ms
-    uint8_t mode;        // 0：非自锁，1：自锁
-    uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
+    static uint8_t status;      // 新增状态码
+    static uint8_t interval;    // 采集间隔，单位 ms
+    static uint8_t mode;        // 0：非自锁，1：自锁
+    static uint16_t
+        clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);      // 新增状态码序列化
@@ -856,14 +858,14 @@ class ClipCfgMsg : public Message {
     void process() override { Log.d("ClipCfgMsg process"); };
 
     uint8_t message_type() const override {
-        return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_INFO_MSG);
+        return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_CFG_MSG);
     }
 };
 class RstMsg : public Message {
    public:
-    uint8_t status;        // 新增状态码
-    uint8_t lockStatus;    // 锁状态
-    uint16_t clipLed;      // 卡钉灯位初始化信息
+    static uint8_t status;        // 新增状态码
+    static uint8_t lockStatus;    // 锁状态
+    static uint16_t clipLed;      // 卡钉灯位初始化信息
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);    // 新增状态码序列化
@@ -905,8 +907,8 @@ class SlaveCfgMsg : public Message {
         uint16_t clipStatus;      // 卡钉初始化状态
     };
 
-    uint8_t slaveNum;                   // 从机数量
-    std::vector<SlaveConfig> slaves;    // 从机配置列表
+    static uint8_t slaveNum;                   // 从机数量
+    static std::vector<SlaveConfig> slaves;    // 从机配置列表
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(slaveNum);    // 序列化从机数量
@@ -981,7 +983,7 @@ class SlaveCfgMsg : public Message {
 
 class ModeCfgMsg : public Message {
    public:
-    uint8_t mode;    // 模式配置
+    static uint8_t mode;    // 模式配置
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(mode);    // 序列化模式
@@ -1011,8 +1013,8 @@ class RstMsg : public Message {
         uint16_t clipStatus;    // 卡钉复位状态
     };
 
-    uint8_t slaveNum;                        // 从机数量
-    std::vector<SlaveResetConfig> slaves;    // 从机复位配置列表
+    static uint8_t slaveNum;                        // 从机数量
+    static std::vector<SlaveResetConfig> slaves;    // 从机复位配置列表
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(slaveNum);    // 序列化从机数量
@@ -1116,9 +1118,9 @@ class SlaveCfgMsg : public Message {
         uint16_t clipStatus;      // 卡钉初始化状态
     };
 
-    uint8_t status;                     // 响应状态
-    uint8_t slaveNum;                   // 从机数量
-    std::vector<SlaveConfig> slaves;    // 从机配置列表
+    static uint8_t status;                     // 响应状态
+    static uint8_t slaveNum;                   // 从机数量
+    static std::vector<SlaveConfig> slaves;    // 从机配置列表
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);      // 序列化响应状态
@@ -1195,8 +1197,8 @@ class SlaveCfgMsg : public Message {
 
 class ModeCfgMsg : public Message {
    public:
-    uint8_t status;    // 响应状态
-    uint8_t mode;      // 模式配置
+    static uint8_t status;    // 响应状态
+    static uint8_t mode;      // 模式配置
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);    // 序列化响应状态
@@ -1228,9 +1230,9 @@ class RstMsg : public Message {
         uint8_t lock;           // 锁状态控制
     };
 
-    uint8_t status;                          // 响应状态
-    uint8_t slaveNum;                        // 从机数量
-    std::vector<SlaveResetConfig> slaves;    // 从机复位配置列表
+    static uint8_t status;                          // 响应状态
+    static uint8_t slaveNum;                        // 从机数量
+    static std::vector<SlaveResetConfig> slaves;    // 从机复位配置列表
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);      // 序列化响应状态
@@ -1302,8 +1304,8 @@ class RstMsg : public Message {
 
 class CtrlMsg : public Message {
    public:
-    uint8_t status;           // 响应状态
-    uint8_t runningStatus;    // 运行状态控制
+    static uint8_t status;           // 响应状态
+    static uint8_t runningStatus;    // 运行状态控制
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);           // 序列化响应状态
@@ -1333,8 +1335,8 @@ namespace Slave2Backend {
 
 class CondDataMsg : public Message {
    public:
-    uint16_t conductionLength;              // 导通数据字段长度
-    std::vector<uint8_t> conductionData;    // 导通数据
+    static uint16_t conductionLength;              // 导通数据字段长度
+    static std::vector<uint8_t> conductionData;    // 导通数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化导通数据长度
@@ -1375,8 +1377,8 @@ class CondDataMsg : public Message {
 
 class ResDataMsg : public Message {
    public:
-    uint16_t resistanceLength;              // 阻值数据长度
-    std::vector<uint8_t> resistanceData;    // 阻值数据
+    static uint16_t resistanceLength;              // 阻值数据长度
+    static std::vector<uint8_t> resistanceData;    // 阻值数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化阻值数据长度
@@ -1417,7 +1419,7 @@ class ResDataMsg : public Message {
 
 class ClipDataMsg : public Message {
    public:
-    uint16_t clipData;    // 卡钉板数据
+    static uint16_t clipData;    // 卡钉板数据
 
     void serialize(std::vector<uint8_t>& data) const override {
         // 序列化卡钉板数据
@@ -1604,23 +1606,14 @@ class FrameParser {
 
             const char* msgTypeStr = "Unknown";
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
-                case Slave2MasterMessageID::COND_INFO_MSG:
-                    msgTypeStr = "COND_INFO_MSG";
+                case Slave2MasterMessageID::COND_CFG_MSG:
+                    msgTypeStr = "COND_CFG_MSG";
                     break;
-                case Slave2MasterMessageID::RES_INFO_MSG:
-                    msgTypeStr = "RES_INFO_MSG";
+                case Slave2MasterMessageID::RES_CFG_MSG:
+                    msgTypeStr = "RES_CFG_MSG";
                     break;
-                case Slave2MasterMessageID::CLIP_INFO_MSG:
-                    msgTypeStr = "CLIP_INFO_MSG";
-                    break;
-                case Slave2MasterMessageID::COND_DATA_MSG:
-                    msgTypeStr = "COND_DATA_MSG";
-                    break;
-                case Slave2MasterMessageID::RES_DATA_MSG:
-                    msgTypeStr = "RES_DATA_MSG";
-                    break;
-                case Slave2MasterMessageID::CLIP_DATA_MSG:
-                    msgTypeStr = "CLIP_DATA_MSG";
+                case Slave2MasterMessageID::CLIP_CFG_MSG:
+                    msgTypeStr = "CLIP_CFG_MSG";
                     break;
                 case Slave2MasterMessageID::RST_MSG:
                     msgTypeStr = "RST_MSG";
@@ -1635,20 +1628,20 @@ class FrameParser {
                 msgTypeStr, packet.message_id, packet.source_id);
 
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
-                case Slave2MasterMessageID::COND_INFO_MSG: {
-                    Log.d("FrameParser: processing COND_INFO_MSG message");
+                case Slave2MasterMessageID::COND_CFG_MSG: {
+                    Log.d("FrameParser: processing COND_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::CondCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
-                case Slave2MasterMessageID::RES_INFO_MSG: {
-                    Log.d("FrameParser: processing RES_INFO_MSG message");
+                case Slave2MasterMessageID::RES_CFG_MSG: {
+                    Log.d("FrameParser: processing RES_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ResCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
-                case Slave2MasterMessageID::CLIP_INFO_MSG: {
-                    Log.d("FrameParser: processing CLIP_INFO_MSG message");
+                case Slave2MasterMessageID::CLIP_CFG_MSG: {
+                    Log.d("FrameParser: processing CLIP_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ClipCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
