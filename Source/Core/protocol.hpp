@@ -19,7 +19,6 @@
  * @copyright Copyright (c) 2025
  *
  */
-
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -471,11 +470,7 @@ class SyncMsg : public Message {
    public:
     static uint8_t mode;
     static uint32_t timestamp;
-
     explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0) {
-
-    explicit SyncMsg(uint8_t m = 0, uint32_t ts = 0)  {
-
         mode = m;
         timestamp = ts;
     }
@@ -597,12 +592,8 @@ class ClipCfgMsg : public Message {
    public:
     static uint8_t interval;    // 采集间隔，单位 ms
     static uint8_t mode;        // 0：非自锁，1：自锁
-
     static uint16_t
         clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
-
-    static uint16_t clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
-
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(interval);    // 序列化采集间隔
@@ -625,9 +616,7 @@ class ClipCfgMsg : public Message {
             interval, mode, clipPin);
     }
 
-
-    // void process() override { Log.d("WriteClipInfoMsg process"); };
-    void process() override;
+    void process() override { Log.d("ClipCfgMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::CLIP_CFG_MSG);
@@ -679,8 +668,7 @@ class ReadResDataMsg : public Message {
         Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
     }
 
-    // void process() override { Log.d("ReadResDataMsg process"); };
-    void process() override;
+    void process() override { Log.d("ReadResDataMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_RES_DATA_MSG);
@@ -704,17 +692,14 @@ class ReadClipDataMsg : public Message {
         reserve = data[0];    // 反序列化保留字段
         Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
     }
-    // void process() override { "ReadClipDataMsg process"; };
-    void process() override;
+    void process() override { "ReadClipDataMsg process"; };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_DATA_MSG);
     }
 };
 
-
 class RstMsg : public Message {
-
    public:
     static uint8_t lock;
     static uint16_t clipLed;    // 新增卡钉灯位初始化信息
@@ -736,9 +721,7 @@ class RstMsg : public Message {
         Log.d("RstMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
 
-
     void process() override { Log.d("RstMsg process"); };
-
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::RST_MSG);
@@ -746,9 +729,7 @@ class RstMsg : public Message {
 };
 }    // namespace Master2Slave
 
-
 namespace Slave2Master {
-
 // 导通数据消息（Slave -> Master）
 class CondCfgMsg : public Message {
    public:
@@ -789,10 +770,7 @@ class CondCfgMsg : public Message {
             status, timeSlot, interval, totalConductionNum, startConductionNum,
             conductionNum);
     }
-
-    void process() override;
-    // void process() override { Log.d("CondInfoMsg process"); };
-
+    void process() override { Log.d("CondCfgMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::COND_CFG_MSG);
@@ -801,7 +779,6 @@ class CondCfgMsg : public Message {
 
 class ResCfgMsg : public Message {
    public:
-
     static uint8_t status;                 // 新增状态码
     static uint8_t timeSlot;               // 为从节点分配的时隙
     static uint8_t interval;               // 采集间隔，单位 ms
@@ -840,10 +817,7 @@ class ResCfgMsg : public Message {
             resistanceNum);
     }
 
-
-    // void process() override { Log.d("ResInfoMsg process"); };
-    void process() override;
-
+    void process() override { Log.d("ResCfgMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RES_CFG_MSG);
@@ -852,13 +826,11 @@ class ResCfgMsg : public Message {
 
 class ClipCfgMsg : public Message {
    public:
-
     static uint8_t status;      // 新增状态码
     static uint8_t interval;    // 采集间隔，单位 ms
     static uint8_t mode;        // 0：非自锁，1：自锁
     static uint16_t
         clipPin;    // 16 个卡钉激活信息，激活的位置 1，未激活的位置 0
-
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);      // 新增状态码序列化
@@ -883,10 +855,7 @@ class ClipCfgMsg : public Message {
             status, interval, mode, clipPin);
     }
 
-
-    // void process() override { Log.d("ClipInfoMsg process"); };
-    void process() override;
-
+    void process() override { Log.d("ClipCfgMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_CFG_MSG);
@@ -894,11 +863,9 @@ class ClipCfgMsg : public Message {
 };
 class RstMsg : public Message {
    public:
-
     static uint8_t status;        // 新增状态码
     static uint8_t lockStatus;    // 锁状态
     static uint16_t clipLed;      // 卡钉灯位初始化信息
-
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);    // 新增状态码序列化
@@ -921,9 +888,7 @@ class RstMsg : public Message {
               status, lockStatus, clipLed);
     }
 
-    // void process() override { Log.d("CondDataMsg process"); };
-    void process() override;
-
+    void process() override { Log.d("RstMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RST_MSG);
@@ -934,7 +899,6 @@ class RstMsg : public Message {
 namespace Backend2Master {
 class SlaveCfgMsg : public Message {
    public:
-
     struct SlaveConfig {
         uint32_t id;              // 从机ID (4字节)
         uint8_t conductionNum;    // 导通检测数量
@@ -942,7 +906,6 @@ class SlaveCfgMsg : public Message {
         uint8_t clipMode;         // 卡钉检测模式
         uint16_t clipStatus;      // 卡钉初始化状态
     };
-
 
     static uint8_t slaveNum;                   // 从机数量
     static std::vector<SlaveConfig> slaves;    // 从机配置列表
@@ -1010,10 +973,7 @@ class SlaveCfgMsg : public Message {
         }
     }
 
-
-    // void process() override { Log.d("ResistanceDataMsg process"); };
-    void process() override;
-
+    void process() override { Log.d("SlaveCfgMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(
@@ -1023,9 +983,7 @@ class SlaveCfgMsg : public Message {
 
 class ModeCfgMsg : public Message {
    public:
-
     static uint8_t mode;    // 模式配置
-
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(mode);    // 序列化模式
@@ -1116,10 +1074,7 @@ class RstMsg : public Message {
         }
     }
 
-
-    // void process() override { Log.d("ClipDataMsg process"); };
-    void process() override;
-
+    void process() override { Log.d("RstMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Backend2MasterMessageID::RST_MSG);
@@ -1128,9 +1083,7 @@ class RstMsg : public Message {
 
 class CtrlMsg : public Message {
    public:
-
     uint8_t runningStatus;    // 运行状态控制
-
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(runningStatus);    // 序列化运行状态
@@ -1457,8 +1410,7 @@ class ResDataMsg : public Message {
               resistanceData.size());
     }
 
-    // void process() override { Log.d("InitStatusMsg process"); };
-    void process() override;
+    void process() override { Log.d("ResDataMsg process"); };
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2BackendMessageID::RES_DATA_MSG);
@@ -1888,4 +1840,3 @@ class FrameParser {
         }
     }
 };
-#endif
