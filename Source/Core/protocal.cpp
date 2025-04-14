@@ -49,24 +49,28 @@ uint16_t Slave2Master::RstMsg::clipLed = 0;
 
 // Backend2Master 命名空间静态变量初始化
 uint8_t Backend2Master::SlaveCfgMsg::slaveNum = 0;
-std::vector<Backend2Master::SlaveCfgMsg::SlaveConfig> Backend2Master::SlaveCfgMsg::slaves;
+std::vector<Backend2Master::SlaveCfgMsg::SlaveConfig>
+    Backend2Master::SlaveCfgMsg::slaves;
 
 uint8_t Backend2Master::ModeCfgMsg::mode = 0;
 
 uint8_t Backend2Master::RstMsg::slaveNum = 0;
-std::vector<Backend2Master::RstMsg::SlaveResetConfig> Backend2Master::RstMsg::slaves;
+std::vector<Backend2Master::RstMsg::SlaveResetConfig>
+    Backend2Master::RstMsg::slaves;
 
 // Master2Backend 命名空间静态变量初始化
 uint8_t Master2Backend::SlaveCfgMsg::status = 0;
 uint8_t Master2Backend::SlaveCfgMsg::slaveNum = 0;
-std::vector<Master2Backend::SlaveCfgMsg::SlaveConfig> Master2Backend::SlaveCfgMsg::slaves;
+std::vector<Master2Backend::SlaveCfgMsg::SlaveConfig>
+    Master2Backend::SlaveCfgMsg::slaves;
 
 uint8_t Master2Backend::ModeCfgMsg::status = 0;
 uint8_t Master2Backend::ModeCfgMsg::mode = 0;
 
 uint8_t Master2Backend::RstMsg::status = 0;
 uint8_t Master2Backend::RstMsg::slaveNum = 0;
-std::vector<Master2Backend::RstMsg::SlaveResetConfig> Master2Backend::RstMsg::slaves;
+std::vector<Master2Backend::RstMsg::SlaveResetConfig>
+    Master2Backend::RstMsg::slaves;
 
 uint8_t Master2Backend::CtrlMsg::status = 0;
 uint8_t Master2Backend::CtrlMsg::runningStatus = 0;
