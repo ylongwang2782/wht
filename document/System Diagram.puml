@@ -1,0 +1,118 @@
+@startuml systemDiagram
+participant Backend
+participant Master
+participant Slave
+participant ConductionPins
+participant ResistancePins
+participant ClipDevice
+== Devices Config ==
+Backend -> Master : Slave Config Message
+Master -> Slave : Conduction Config Message
+Slave --> Master : Conduction Config Message
+Master -> Slave : Resistance Config Message
+Slave --> Master : Resistance Config Message
+Master -> Slave : Clip Config Message
+Slave --> Master : Clip Config Message
+alt 指令超时（下同）
+    Backend -> Backend : 记录超时错误
+    Backend -> Master : 重新发送设备配置指令（最多3次）
+    alt 超时重试3次仍失败
+        Backend -> Backend : 触发异常处理
+    else 成功收到回复
+        Master --> Backend : 设备配置指令回复
+    end
+else 正常响应
+    Master --> Backend : 设备配置指令回复
+end
+
+== Conduction Test ==
+Backend -> Master : Mode Config Message(0x00)
+Master --> Backend : Mode Config Message
+
+Backend -> Master : Ctrl Message(0x01)
+Master --> Backend : Ctrl Message
+
+loop 导通数据传输
+    Master -> Slave : Sync Message
+
+    loop for each Slave from 0 to n
+
+        loop for each pin from 0 to 61
+            Slave -> ConductionPins: conduction.read(pin)
+            ConductionPins --> Slave: Pin Level
+        end
+
+        Master -> Slave : Read Conduction Data Message
+        Slave --> Backend : Conduction Data Message
+    end
+
+    Backend -> Backend : 判断数据是否足够
+end
+
+Backend -> Master : Ctrl Message(0x00)
+Master --> Backend : Ctrl Message
+
+== Resistance Test ==
+Backend -> Master : Mode Config Message(0x01)
+Master --> Backend : Mode Config Message
+
+Backend -> Master : Ctrl Message(0x01)
+Master --> Backend : Ctrl Message
+
+loop 阻值数据传输
+    Master -> Slave : Sync Message
+
+    loop for each Slave from 0 to n
+
+        loop for each pin from 0 to 61
+            Slave -> ResistancePins: Resistance.read(pin)
+            ResistancePins --> Slave: Resistance Data
+        end
+
+        Master -> Slave : Read Resistance Data Message
+        Slave --> Backend : Resistance Data Message
+    end
+
+    Backend -> Backend : 判断数据是否足够
+end
+
+Backend -> Master : Ctrl Message(0x00)
+Master --> Backend : Ctrl Message
+
+== Clip Test ==
+Backend -> Master : Mode Config Message(0x02)
+Master --> Backend : Mode Config Message
+Backend -> Master : Ctrl Message(0x01)
+Master --> Backend : Ctrl Message
+
+loop ClipDevice数据传输
+
+    Master -> Slave : Sync Message
+
+    loop for each Slave from 0 to n
+
+        loop for each clip from 0 to n
+            Slave -> ClipDevice : Clip.Read()
+            ClipDevice -> Slave: ClipData
+        end
+        Master -> Slave : Read Clip Data Message
+        Slave --> Backend : Clip Data Message
+    end
+
+    Backend -> Backend : 判断数据是否足够
+
+end
+
+Backend -> Master : Ctrl Message(0x00)
+Master --> Backend : Ctrl Message
+
+== Devices Reset ==
+Backend -> Master : Rst Message
+Master --> Backend : Rst Message
+
+loop for each Slave from 0 to n
+    Master -> Slave : Rst Message
+    Slave --> Master : Rst Message
+end
+
+@enduml

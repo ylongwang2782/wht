@@ -44,7 +44,7 @@ Uart usart0(usart0Conf);
 Uart uart3(uart3Conf);
 // Uart uart6(uart6Conf);
 
-Logger Log(uart3);
+Logger Log(usart0);
 
 Harness harness;
 LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
@@ -96,16 +96,17 @@ class UsartDMATask : public TaskClassS<1024> {
                 // Log.d("Uart: recv.");
                 sysLed.toggle();
 
-                // rx_data = usart0.getReceivedData();
+                rx_data = usart0.getReceivedData();
+
                 // uci_data = CX310.parse_received_data(rx_data);
                 // Log.d("Uart: uci_data.size(): %d", uci_data.size());
 
-                // auto msg = parser.parse(rx_data);
-                // if (msg != nullptr) {
-                //     msg->process();
-                // } else {
-                //     Log.d("Uart: parse fail.");
-                // }
+                auto msg = parser.parse(rx_data);
+                if (msg != nullptr) {
+                    msg->process();
+                } else {
+                    Log.d("Uart: parse fail.");
+                }
             }
         }
     }
@@ -161,17 +162,17 @@ LedBlinkTask ledBlinkTask;
 MyTimer myTimer;
 LogTask logTask;
 
-void SyncMsg::process() {
+void Master2Slave::SyncMsg::process() {
     Log.d("SyncMsg process");
     myTimer.startWithCount(4);
 }
 
-void WriteCondInfoMsg::process() {
-    Log.d("WriteCondInfoMsg process");
+void Master2Slave::CondCfgMsg::process() {
+    Log.d("CondCfgMsg process");
 
     // 1. REPLY
-    // 1.1 构造 CondInfoMsg
-    CondInfoMsg condInfoMsg;
+    // 1.1 构造 CondCfgMsg
+    Slave2Master::CondCfgMsg condInfoMsg;
     condInfoMsg.timeSlot = timeSlot;
     condInfoMsg.interval = interval;
     condInfoMsg.totalConductionNum = totalConductionNum;
@@ -189,25 +190,13 @@ void WriteCondInfoMsg::process() {
     uart3.send(condInfoFrame.data(), condInfoFrame.size());
 }
 
-void WriteResInfoMsg::process() { Log.d("WriteResInfoMsg process"); }
+void Master2Slave::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
 
-void ReadCondDataMsg::process() {
+void Master2Slave::ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
-    CondDataMsg condDataMsg;
+    Slave2Backend::CondDataMsg condDataMsg;
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
-    condDataMsg.deviceStatus = DeviceStatus{
-        1,    // colorSensor
-        1,    // sleeveLimit
-        1,    // electromagnetUnlockButton
-        1,    // batteryLowPowerAlarm
-        1,    // pressureSensor
-        1,    // electromagneticLock1
-        1,    // electromagneticLock2
-        1,    // accessory1
-        1,    // accessory2
-        1     // reserved
-    };
 
     // 2. 打包为 Packet
     auto condDataPacket = PacketPacker::slavePack(condDataMsg, 0x3732485B);
