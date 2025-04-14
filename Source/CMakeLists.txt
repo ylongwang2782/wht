@@ -16,8 +16,17 @@ add_executable(${EXECUTABLE_NAME})
 include_directories(Config # 配置文件目录
 )
 
-# 设置目标的私有编译定义，cpp需要提前定义__cpluscplus
-target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470 __cpluscplus)
+# 定义选项（默认关闭）
+option(SLAVE "Build in slave mode" OFF)
+set(SLAVE ON) # 定义 SLAVE 并设为 ON
+
+if(SLAVE)
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470
+                                                        __cpluscplus)
+else()
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER GD32F470
+                                                        __cpluscplus)
+endif()
 
 add_subdirectory(BSP)
 add_subdirectory(Core)
@@ -26,7 +35,8 @@ add_subdirectory(Middlewares)
 # add_subdirectory(Retarget)
 
 # 链接目标与其他库
-target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel FreeRTOScpp)
+target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel
+                      FreeRTOScpp)
 
 # ===============================================================================
 
