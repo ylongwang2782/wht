@@ -8,7 +8,6 @@
 #include "QueueCPP.h"
 #include "bsp_uart.hpp"
 
-
 extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -42,7 +41,7 @@ class Logger {
     void log(Level level, const char *format, va_list args) {
         // 定义日志级别的字符串表示
         static const char *levelStr[] = {"VERBOSE", "DEBUG", "INFO", "WARN",
-                                         "ERROR"};
+                                         "ERROR", "RAW"};
 
         // 缓冲区大小
         constexpr size_t bufferSize = LOG_QUEUE_SIZE;
@@ -53,19 +52,12 @@ class Logger {
         // 格式化日志内容
         vsnprintf(buffer, sizeof(buffer), format, args);
 
-        if (level != Level::RAW) {
-            // 添加级别前缀
-            char finalMessage[bufferSize + 8];
-            snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
-                     levelStr[static_cast<int>(level)], buffer);
-            // 输出日志
-            output(level, finalMessage);
-        } else {
-            char finalMessage[bufferSize];
-            snprintf(finalMessage, sizeof(finalMessage), "%s\n", buffer);
-            // 输出日志
-            output(level, finalMessage);
-        }
+        // 添加级别前缀
+        char finalMessage[bufferSize + 8];
+        snprintf(finalMessage, sizeof(finalMessage), "[%s]:%s\n",
+                 levelStr[static_cast<int>(level)], buffer);
+        // 输出日志
+        output(level, finalMessage);
     }
     void v(const char *format, ...) {
         va_list args;
@@ -106,6 +98,21 @@ class Logger {
         log(Level::ERROR, format, args);
 
         va_end(args);
+    }
+
+    void r(uint8_t *data, size_t size) {
+        char buffer[size * 3];    // 每个字节需要两个字符+一个空格，最后一个字节不需要空格
+        for (size_t i = 0; i < size; i++) {
+            // 最后一个字节不加空格
+            if (i == size - 1) {
+                snprintf(buffer + i * 3, 3, "%02X", data[i]);
+            } else {
+                snprintf(buffer + i * 3, 4, "%02X ", data[i]);
+            }
+        }
+        buffer[size * 3 - 1] = '\0';    // 添加字符串终止符
+        va_list emptyArgs;
+        log(Level::RAW, buffer, emptyArgs);
     }
 
    private:

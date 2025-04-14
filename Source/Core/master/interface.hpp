@@ -2,7 +2,9 @@
 #define _MASTER_MODE_HPP_
 #include <cstdint>
 #include <cstring>
+#include <string>
 
+#include "FreeRTOScpp.h"
 #include "MutexCPP.h"
 #include "QueueCPP.h"
 #include "TaskCPP.h"
@@ -12,9 +14,8 @@
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 extern Logger Log;
-extern UasrtInfo usart1_info;
-extern UartConfig uart1Conf;
-extern Uart usart1;
+extern UasrtInfo& pc_com_info;
+
 
 using json = nlohmann::json;
 
@@ -75,6 +76,11 @@ class __IfBase {
         return result;
     }
 
+    static void formatDevId(uint8_t* output, const __devID& dev) {
+        snprintf((char*)output, 12, "%02X-%02X-%02X-%02X", dev.id[0], dev.id[1],
+                 dev.id[2], dev.id[3]);
+    }
+
     bool forward() {
         if (pc_manager_msg.data_forward_queue.add(
                 data_forward, PCinterface_FORWARD_QUEUE_TIMEOUT)) {
@@ -86,7 +92,7 @@ class __IfBase {
         if (pc_manager_msg.event.wait(FORWARD_SUCCESS_EVENT, true, true,
                                       PCinterface_FORWARD_TIMEOUT)) {
         } else {
-            Log.e("pc_manager_msg.forward_mtx.take failed");
+            Log.e("pc_manager_msg.event.take: forward event, failed");
             return false;
         }
         return true;
@@ -102,12 +108,14 @@ class DeviceConfigInst : private __IfBase {
    private:
     uint16_t hrnsNum;
     bool cfg_success = false;
+    uint8_t format_id[12];
 
    public:
     std::vector<__devID> cfg_false_dev;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        cfg_success = false;
         data_forward.type = CmdType::DEV_CONF;
         memset(&data_forward.cfg_cmd, 0, sizeof(data_forward.cfg_cmd));
         cfg_false_dev.clear();
@@ -121,38 +129,68 @@ class DeviceConfigInst : private __IfBase {
                 data_forward.cfg_cmd.totalHarnessNum += hrnsNum;
             }
 
+            size_t slave_num = params.size();
+            size_t index = 0;
+            data_forward.cfg_cmd.slave_dev_num = slave_num;
             for (const auto& item : params) {
+                if (index == slave_num - 1) {
+                    data_forward.cfg_cmd.is_last_dev = true;
+                } else {
+                    data_forward.cfg_cmd.is_last_dev = false;
+                }
+                index++;
+
                 // 提取id
-                std::string id = item["id"];
-                parseIdString(id, data_forward.cfg_cmd.id);
+                if (item.contains("id")) {
+                    std::string id = item["id"];
+                    parseIdString(id, data_forward.cfg_cmd.id);
+                    Log.i(
+                        "PCinterface: cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                        data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
+                        data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
+                }
 
                 // 设置目标设备的检测线数
                 if (item.contains("cond")) {
                     data_forward.cfg_cmd.cond = item["cond"];
+                    Log.i("PCinterface: cfg_cmd.cond: %u",
+                          data_forward.cfg_cmd.cond);
                 }
 
                 // 设置阻抗检测线数
                 if (item.contains("Z")) {
                     data_forward.cfg_cmd.Z = item["Z"];
+                    Log.i("PCinterface: cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
                 }
 
                 // 设置clip数
                 if (item.contains("clip")) {
-                    data_forward.cfg_cmd.clip = item["clip"];
+                    auto& clip = item["clip"];
+
+                    data_forward.cfg_cmd.clip_exist = true;
+
+                    // 解析mode字段
+                    if (clip.contains("mode")) {
+                        data_forward.cfg_cmd.clip_mode = clip["mode"];
+                    }
+
+                    // 解析pin字段(16进制字符串转数值)
+                    if (clip.contains("pin") && clip["pin"].is_string()) {
+                        std::string pinStr = clip["pin"];
+                        data_forward.cfg_cmd.clip_pin =
+                            __IfBase::hexStringToUint16(pinStr);
+                    }
+
+                    Log.i("PCinterface: clip_mode: %u, clip_pin: 0x%04X",
+                          data_forward.cfg_cmd.clip_mode,
+                          data_forward.cfg_cmd.clip_pin);
                 }
 
-                Log.i("cfg_cmd.id: %.2X-%.2X-%.2X-%.2X",
-                      data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
-                      data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
-                Log.i("cfg_cmd.cond: %u", data_forward.cfg_cmd.cond);
-                Log.i("cfg_cmd.Z: %u", data_forward.cfg_cmd.Z);
-                Log.i("cfg_cmd.clip: %u", data_forward.cfg_cmd.clip);
-                Log.i("cfg_cmd.totalHarnessNum: %u",
+                Log.i("PCinterface: cfg_cmd.totalHarnessNum: %u",
                       data_forward.cfg_cmd.totalHarnessNum);
-                Log.i("cfg_cmd.startHarnessNum: %u",
+                Log.i("PCinterface: cfg_cmd.startHarnessNum: %u",
                       data_forward.cfg_cmd.startHarnessNum);
 
-                cfg_success = false;
                 if (__IfBase::forward()) {
                     if ((pc_manager_msg.event.get() & CONFIG_SUCCESS_EVENT)) {
                         cfg_success = true;
@@ -161,12 +199,12 @@ class DeviceConfigInst : private __IfBase {
 
                 if (cfg_success) {
                     Log.i(
-                        "dev %.2X-%.2X-%.2X-%.2X config success\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X config success\n",
                         data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
                         data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
                 } else {
                     Log.e(
-                        "dev %.2X-%.2X-%.2X-%.2X config failed\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X config failed\n",
                         data_forward.cfg_cmd.id[0], data_forward.cfg_cmd.id[1],
                         data_forward.cfg_cmd.id[2], data_forward.cfg_cmd.id[3]);
 
@@ -179,6 +217,21 @@ class DeviceConfigInst : private __IfBase {
                     data_forward.cfg_cmd.cond;
             }
         }
+
+        json rsp;
+        if (cfg_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_CONF;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_CONF;
+            for (const auto& item : cfg_false_dev) {
+                formatDevId(format_id, item);
+
+                rsp["result"]["id"].push_back(std::string((char*)format_id));
+            }
+        }
+        return rsp.dump();
     }
 };
 
@@ -191,12 +244,12 @@ class DevaceModeInst : private __IfBase {
     bool mode_success = false;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
         if (j.contains("mode")) {
             mode = static_cast<SysMode>(j["mode"]);
             data_forward.type = CmdType::DEV_MODE;
             data_forward.mode_cmd.mode = mode;
-            Log.i("mode_cmd.mode: %u", data_forward.mode_cmd.mode);
+            Log.i("PCinterface: mode_cmd.mode: %u", data_forward.mode_cmd.mode);
 
             mode_success = false;
             if (__IfBase::forward()) {
@@ -205,11 +258,22 @@ class DevaceModeInst : private __IfBase {
             }
 
             if (mode_success) {
-                Log.i("mode success\n");
+                Log.i("PCinterface: mode success\n");
             } else {
-                Log.e("mode failed\n");
+                Log.e("PCinterface: mode failed\n");
             }
         }
+
+        json rsp;
+        if (mode_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_MODE;
+            rsp["result"]["mode"] = mode;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_MODE;
+        }
+        return rsp.dump();
     }
 };
 
@@ -219,12 +283,14 @@ class DeviceResetInst : private __IfBase {
 
    private:
     bool rst_success = false;
+    uint8_t format_id[12];
 
    public:
     std::vector<__devID> rst_false_dev;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        rst_success = false;
         rst_false_dev.clear();
         data_forward.type = CmdType::DEV_RESET;
         if (j.contains("params")) {
@@ -244,13 +310,14 @@ class DeviceResetInst : private __IfBase {
                         static_cast<LockSta>(item["lock"]);
                 }
 
-                Log.i("rst_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                Log.i("PCinterface: rst_cmd.id: %.2X-%.2X-%.2X-%.2X",
                       data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                       data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
-                Log.i("rst_cmd.clip: 0x%.4X", data_forward.rst_cmd.clip);
-                Log.i("rst_cmd.lock: %u", data_forward.rst_cmd.lock);
+                Log.i("PCinterface: rst_cmd.clip: 0x%.4X",
+                      data_forward.rst_cmd.clip);
+                Log.i("PCinterface: rst_cmd.lock: %u",
+                      data_forward.rst_cmd.lock);
 
-                rst_success = false;
                 if (__IfBase::forward()) {
                     if (!(pc_manager_msg.event.get() & RESET_SUCCESS_EVENT)) {
                         rst_success = false;
@@ -259,12 +326,12 @@ class DeviceResetInst : private __IfBase {
 
                 if (rst_success) {
                     Log.i(
-                        "dev %.2X-%.2X-%.2X-%.2X reset success\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X reset success\n",
                         data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                         data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
                 } else {
                     Log.e(
-                        "dev %.2X-%.2X-%.2X-%.2X reset failed\n",
+                        "PCinterface: dev %.2X-%.2X-%.2X-%.2X reset failed\n",
                         data_forward.rst_cmd.id[0], data_forward.rst_cmd.id[1],
                         data_forward.rst_cmd.id[2], data_forward.rst_cmd.id[3]);
 
@@ -274,6 +341,19 @@ class DeviceResetInst : private __IfBase {
                 }
             }
         }
+        json rsp;
+        if (rst_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_RESET;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_RESET;
+            for (const auto& item : rst_false_dev) {
+                formatDevId(format_id, item);
+                rsp["result"]["id"].push_back(std::string((char*)format_id));
+            }
+        }
+        return rsp.dump();
     }
 };
 class DeviceCtrlInst : private __IfBase {
@@ -284,25 +364,36 @@ class DeviceCtrlInst : private __IfBase {
     bool ctrl_success = false;
 
    public:
-    void forward(json& j) {
+    std::string forward(json& j) {
+        ctrl_success = false;
         data_forward.type = CmdType::DEV_CTRL;
         if (j.contains("ctrl")) {
             data_forward.ctrl_cmd.ctrl = (CtrlType)j["ctrl"];
 
-            Log.i("ctrl_cmd.ctrl: %u", data_forward.ctrl_cmd.ctrl);
+            Log.i("PCinterface: ctrl_cmd.ctrl: %u", data_forward.ctrl_cmd.ctrl);
 
-            ctrl_success = false;
             if (__IfBase::forward()) {
                 if ((pc_manager_msg.event.get() & CTRL_SUCCESS_EVENT))
                     ctrl_success = true;
             }
 
             if (ctrl_success) {
-                Log.i("ctrl success\n");
+                Log.i("PCinterface: ctrl success\n");
             } else {
-                Log.e("ctrl failed\n");
+                Log.e("PCinterface: ctrl failed\n");
             }
         }
+
+        json rsp;
+        if (ctrl_success) {
+            rsp["status"] = STATUS_OK;
+            rsp["result"]["inst"] = DEV_CTRL;
+            rsp["result"]["ctrl"] = data_forward.ctrl_cmd.ctrl;
+        } else {
+            rsp["status"] = STATUS_ERROR;
+            rsp["result"]["inst"] = DEV_CTRL;
+        }
+        return rsp.dump();
     }
 };
 class DeviceQueryInst : private __IfBase {
@@ -333,10 +424,11 @@ class DeviceQueryInst : private __IfBase {
                 }
 
                 Log.i(
-                    "query_cmd.id: %.2X-%.2X-%.2X-%.2X",
+                    "PCinterface: query_cmd.id: %.2X-%.2X-%.2X-%.2X",
                     data_forward.query_cmd.id[0], data_forward.query_cmd.id[1],
                     data_forward.query_cmd.id[2], data_forward.query_cmd.id[3]);
-                Log.i("query_cmd.clip: %u", data_forward.query_cmd.clip);
+                Log.i("PCinterface: query_cmd.clip: %u",
+                      data_forward.query_cmd.clip);
 
                 query_success = false;
 
@@ -345,15 +437,14 @@ class DeviceQueryInst : private __IfBase {
                         query_success = true;
                 }
                 if (query_success) {
-                    Log.i("query success\n");
+                    Log.i("PCinterface: query success\n");
                 } else {
-                    Log.e("query failed\n");
+                    Log.e("PCinterface: query failed\n");
                 }
             }
         }
     }
 };
-
 class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
    public:
     PCdataTransfer(PCdataTransferMsg& msg)
@@ -362,18 +453,37 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
           __msg(msg) {}
     void task() override {
         Log.i("PCdataTransfer_Task: Boot");
+
+        taskENTER_CRITICAL();
+        UartConfig pc_com_cfg(pc_com_info,true);
+        Uart pc_com(pc_com_cfg);
+        taskEXIT_CRITICAL();
+        
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
         std::vector<uint8_t> rx_data;
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart1_info.dmaRxDoneSema, portMAX_DELAY) ==
+            if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) ==
                 pdPASS) {
-                rx_data = usart1.getReceivedData();
+                rx_data = pc_com.getReceivedData();
                 for (auto it : rx_data) {
-                    __msg.data_queue.add(it);
+                    __msg.rx_data_queue.add(it);
                 }
                 __msg.rx_done_sem.give();
             };
+            if (__msg.tx_request_sem.take(0)) {
+
+                __msg.tx_share_mem.lock();
+                const uint8_t* ptr = __msg.tx_share_mem.get();
+                size_t size = __msg.tx_share_mem.size();
+
+                pc_com.send(ptr, size);
+
+                __msg.tx_share_mem.unlock();
+                __msg.tx_done_sem.give();
+
+            }
+            TaskBase::delay(5);
         }
     }
 
@@ -381,28 +491,29 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
     PCdataTransferMsg& __msg;
 };
 
-class PCinterface : public TaskClassS<1024> {
+class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
    public:
     using INST = CmdType;
 
     PCinterface(PCmanagerMsg& pc_manager_msg,
                 PCdataTransferMsg& pc_data_transfer_msg)
-        : TaskClassS<1024>("PCinterface_Task", TaskPrio_High),
+        : TaskClassS<PCinterface_STACK_SIZE>("PCinterface_Task", TaskPrio_Mid),
           cfg_inst(pc_manager_msg),
           mode_inst(pc_manager_msg),
           reset_inst(pc_manager_msg),
           ctrl_inst(pc_manager_msg),
           query_inst(pc_manager_msg),
-          __transfer_msg(pc_data_transfer_msg) {}
+          transfer_msg(pc_data_transfer_msg) {}
 
     void task() override {
-        Log.i("PCinterface_Task: Boot\r\n");
+        Log.i("PCinterface_Task: Boot");
 
         uint8_t buffer[PCdataTransferMsg_DATA_QUEUE_SIZE];
         uint16_t rx_cnt = 0;
         while (1) {
-            __transfer_msg.rx_done_sem.take();
-            while (__transfer_msg.data_queue.pop(buffer[rx_cnt], 0) == pdPASS) {
+            transfer_msg.rx_done_sem.take();
+            while (transfer_msg.rx_data_queue.pop(buffer[rx_cnt], 0) ==
+                   pdPASS) {
                 rx_cnt++;
             }
 
@@ -417,33 +528,46 @@ class PCinterface : public TaskClassS<1024> {
     DeviceResetInst reset_inst;
     DeviceCtrlInst ctrl_inst;
     DeviceQueryInst query_inst;
-    PCdataTransferMsg& __transfer_msg;
+    PCdataTransferMsg& transfer_msg;
 
    private:
+    // 直接序列化到数组的函数
+
     void jsonSorting(uint8_t* ch, uint16_t len) {
-        json j = json::parse((uint8_t*)ch, ch + len);
-        if (j.is_discarded()) {
-            Log.e("jsonSorting: json parse failed\r\n");
+        // 先检查JSON字符串是否有效
+        if (!json::accept(ch, ch + len)) {
+            Log.e("PCinterface: Invalid JSON format");
             return;
         }
+
+        json j = json::parse((uint8_t*)ch, ch + len, nullptr, false);
+        if (j.is_discarded()) {
+            Log.e("PCinterface: json parse failed");
+            return;
+        }
+
         if (j.contains("inst")) {
             uint8_t inst = j["inst"];
+            std::string rsp;
             switch (inst) {
-                case DEV_CONF:
+                case DEV_CONF: {
                     // 设备配置解析
-                    cfg_inst.forward(j);
+                    rsp = cfg_inst.forward(j);
                     break;
-                case DEV_MODE:
+                }
+
+                case DEV_MODE: {
                     // 设备模式解析
-                    mode_inst.forward(j);
+                    rsp = mode_inst.forward(j);
                     break;
+                }
                 case DEV_RESET:
                     // 设备复位解析
-                    reset_inst.forward(j);
+                    rsp = reset_inst.forward(j);
                     break;
                 case DEV_CTRL:
                     // 设备控制解析
-                    ctrl_inst.forward(j);
+                    rsp = ctrl_inst.forward(j);
                     break;
                 case DEV_QUERY:
                     // 设备查询解析
@@ -452,6 +576,25 @@ class PCinterface : public TaskClassS<1024> {
                 default:
                     break;
             }
+
+            // 获取共享内存写访问权限，避免在数据发送前共享内存内的数据被复写
+            if (transfer_msg.tx_share_mem.get_write_access(
+                    PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
+                transfer_msg.tx_share_mem.write((uint8_t*)rsp.c_str(),
+                                                rsp.size());
+                transfer_msg.tx_request_sem.give();
+                if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
+                    Log.e(
+                        "PCinterface: json respond failed. tx_done_sem.take "
+                        "failed");
+                }
+                // 释放写访问权限
+                transfer_msg.tx_share_mem.release_write_access();
+            }
+            else{
+                Log.e("PCinterface: tx_share_mem.get_write_access failed");
+            }
+
         }
     }
 };
