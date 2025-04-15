@@ -2,7 +2,7 @@
 #define MASTER_CFG_HPP
 
 // system
-// #define SLAVE_USE_UWB
+#define SLAVE_USE_UWB
 
 #define CONDUCTION_TEST_INTERVAL           5      // 导通检测时间间隔
 #define CLIP_TEST_INTERVAL                 20     // 卡钉检测时间间隔

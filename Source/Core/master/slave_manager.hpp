@@ -10,11 +10,12 @@
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
 #include "com_list.hpp"
+#include "hw_interface.hpp"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 #include "pc_protocol.hpp"
 #include "protocol.hpp"
-#include "uci.hpp"
+#include "uwb.hpp"
 
 using namespace ComList;
 extern Logger Log;
@@ -299,43 +300,59 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
     void task() override {
         Log.i("SlaveDataTransfer_Task: Boot");
 
+#ifdef SLAVE_USE_UWB
+        UWB<UwbUartInterface> uwb;
+        std::vector<uint8_t> tx;
+        tx.reserve(122);
+        for (uint16_t i = 0; i < 122; i++) {
+            tx.push_back(i % 256);
+        }
+        std::vector<uint8_t> rx;
+        uwb.set_recv_mode();
+        for (;;) {
+            // uwb.update();
+            // uwb.data_transmit(tx);
+            // uwb.set_recv_mode();
+            uwb.get_recv_data(rx);
+            if (rx.size() > 0) {
+                Log.r(rx.data(), rx.size());
+                rx.clear();
+            }
+            
+            uwb.update();
+            // Log.d("heap: %d", xPortGetFreeHeapSize());
+            TaskBase::delay(5);
+        }
+
+#else
+        /* -------------------------<使用串口替代UWB调试>-------------------------
+         */
         taskENTER_CRITICAL();
         UartConfig slave_com_cfg(slave_com_info, true);
         Uart slave_com(slave_com_cfg);
         taskEXIT_CRITICAL();
-
-#ifdef SLAVE_USE_UWB
-        
-#endif
-
         std::vector<uint8_t> rx_data;
         uint8_t data;
         for (;;) {
             if (transfer_msg.tx_request_sem.take(0)) {
-#ifdef SLAVE_USE_UWB
-                
-#else
-                // 使用串口直接调试
                 while (transfer_msg.tx_data_queue.pop(data, 0)) {
                     slave_com.send(&data, 1);
                 }
-#endif
+
                 transfer_msg.tx_done_sem.give();
             }
             if (xSemaphoreTake(slave_com_info.dmaRxDoneSema, 0) == pdPASS) {
                 rx_data = slave_com.getReceivedData();
 
-#ifdef SLAVE_USE_UWB
-                
-#else
                 for (auto it = rx_data.begin(); it != rx_data.end(); it++) {
                     transfer_msg.rx_data_queue.add(*it);
                 }
-#endif
                 transfer_msg.rx_done_sem.give();
             }
+
             TaskBase::delay(10);
         }
+#endif
     }
 };
 
@@ -465,7 +482,8 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                             }
                         } else {
                             Log.e(
-                                "SlaveManager: Device is running, discard mode "
+                                "SlaveManager: Device is running, discard "
+                                "mode "
                                 "data");
                         }
 
