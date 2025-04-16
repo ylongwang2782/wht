@@ -5,7 +5,6 @@
 #include <cstring>
 #include <vector>
 
-#include "bsp_log.hpp"
 #include "cx_uci_def.hpp"
 
 // extern Logger Log;
