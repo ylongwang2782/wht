@@ -1,5 +1,5 @@
-#ifndef MASTER_DEF_HPP
-#define MASTER_DEF_HPP
+#ifndef __MASTER_DEF_HPP
+#define __MASTER_DEF_HPP
 #include <cstddef>
 #include <cstdint>
 #include <iterator>

@@ -9,15 +9,12 @@
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
-#include "com_list.hpp"
 #include "hw_interface.hpp"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
-#include "pc_protocol.hpp"
 #include "protocol.hpp"
 #include "uwb.hpp"
 
-using namespace ComList;
 extern Logger Log;
 extern UasrtInfo& slave_com_info;
 class __ProcessBase {
@@ -28,7 +25,7 @@ class __ProcessBase {
    public:
     ManagerDataTransferMsg& transfer_msg;
     static bool rsp_parsed;
-    static Slave2MasterMessageID expected_rsp_msg_id;
+    static uint8_t expected_rsp_msg_id;
 
    private:
     uint8_t send_cnd = 0;
@@ -137,9 +134,9 @@ class DeviceConfigProcessor : private __ProcessBase {
           write_res_info_msg() {}
 
    private:
-    WriteCondInfoMsg wirte_cond_info_msg;
-    WriteClipInfoMsg write_clip_info_msg;
-    WriteResInfoMsg write_res_info_msg;
+    Master2Slave::CondCfgMsg wirte_cond_info_msg;
+    Master2Slave::ClipCfgMsg write_clip_info_msg;
+    Master2Slave::ResCfgMsg write_res_info_msg;
 
     uint16_t __totalConductionNum;    // 总检测线数
 
@@ -191,7 +188,7 @@ class DeviceConfigProcessor : private __ProcessBase {
         auto cond_frame = FramePacker::pack(cond_packet);
 
         // 设置预期回复消息ID
-        expected_rsp_msg_id = Slave2MasterMessageID::COND_INFO_MSG;
+        expected_rsp_msg_id = (uint8_t)(Slave2MasterMessageID::COND_CFG_MSG);
 
         // 发送数据
         return send_frame(cond_frame);
@@ -210,7 +207,7 @@ class DeviceConfigProcessor : private __ProcessBase {
         auto clip_frame = FramePacker::pack(clip_packet);
 
         // 设置预期回复消息ID
-        expected_rsp_msg_id = Slave2MasterMessageID::CLIP_INFO_MSG;
+        expected_rsp_msg_id = (uint8_t)(Slave2MasterMessageID::CLIP_CFG_MSG);
 
         // 发送数据
         return send_frame(clip_frame);
@@ -247,7 +244,7 @@ class DeviceCtrlProcessor : private __ProcessBase {
     bool send_sync_frame() { return send_frame(sync_frame, false); }
 
    private:
-    SyncMsg sync_msg;
+    Master2Slave::SyncMsg sync_msg;
     CtrlType ctrl = DEV_DISABLE;
     std::vector<uint8_t> sync_frame;
 
@@ -271,8 +268,7 @@ class ReadCondProcessor : private __ProcessBase {
         : __ProcessBase(__transfer_msg) {}
 
    private:
-    ReadCondDataMsg read_cond_data_msg;
-    CondDataMsg data_msg;
+    Master2Slave::ReadCondDataMsg read_cond_data_msg;
 
    public:
     bool process() {
@@ -280,11 +276,9 @@ class ReadCondProcessor : private __ProcessBase {
         // 打包数据
         auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, 0);
         auto cond_frame = FramePacker::pack(cond_packet);
-        expected_rsp_msg_id = Slave2MasterMessageID::COND_DATA_MSG;
+        expected_rsp_msg_id = (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG);
         return send_frame(cond_frame);
     }
-
-    CondDataMsg& get_data_msg() { return data_msg; }
 };
 
 class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
@@ -318,7 +312,7 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
                 Log.r(rx.data(), rx.size());
                 rx.clear();
             }
-            
+
             uwb.update();
             // Log.d("heap: %d", xPortGetFreeHeapSize());
             TaskBase::delay(5);
@@ -396,7 +390,6 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
 
     FreeRTOScpp::TimerMember<SlaveManager> sync_timer;
     BinarySemaphore sync_sem;
-    UploadCondDataFrame upload_cond_data_frame;
 
    private:
     uint16_t get_timer_period() {
@@ -541,10 +534,11 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                                         PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
                                     // 共享资源上锁，禁止外部读写
                                     pc_manager_msg.upload_data.lock();
-                                    upload_cond_data_frame.pack(
-                                        pc_manager_msg.upload_data.get(),
-                                        read_cond_processor.get_data_msg(),
-                                        it->id);
+                                    /* ---------------------<上报数据>---------------------*/
+                                    // upload_cond_data_frame.pack(
+                                    //     pc_manager_msg.upload_data.get(),
+                                    //     read_cond_processor.get_data_msg(),
+                                    //     it->id);
                                     // 共享资源解锁，允许读取数据
                                     pc_manager_msg.upload_data.unlock();
 

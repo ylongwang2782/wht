@@ -8,5 +8,5 @@ if(SLAVE)
 else()
   target_sources(${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES}
                                             ./master/master_mode.cpp)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC ./master)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master)
 endif()

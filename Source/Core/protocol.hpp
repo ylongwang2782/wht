@@ -19,6 +19,8 @@
  * @copyright Copyright (c) 2025
  *
  */
+#ifndef __PROTOCOL_HPP
+#define __PROTOCOL_HPP
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -616,7 +618,7 @@ class ClipCfgMsg : public Message {
             interval, mode, clipPin);
     }
 
-    void process() override { Log.d("ClipCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::CLIP_CFG_MSG);
@@ -770,7 +772,7 @@ class CondCfgMsg : public Message {
             status, timeSlot, interval, totalConductionNum, startConductionNum,
             conductionNum);
     }
-    void process() override { Log.d("CondCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::COND_CFG_MSG);
@@ -817,7 +819,7 @@ class ResCfgMsg : public Message {
             resistanceNum);
     }
 
-    void process() override { Log.d("ResCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RES_CFG_MSG);
@@ -855,7 +857,7 @@ class ClipCfgMsg : public Message {
             status, interval, mode, clipPin);
     }
 
-    void process() override { Log.d("ClipCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_CFG_MSG);
@@ -1368,7 +1370,7 @@ class CondDataMsg : public Message {
               conductionData.size());
     }
 
-    void process() override { Log.d("CondDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2BackendMessageID::COND_DATA_MSG);
@@ -1840,3 +1842,4 @@ class FrameParser {
         }
     }
 };
+#endif
