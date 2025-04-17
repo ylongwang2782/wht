@@ -7,6 +7,6 @@ if(SLAVE)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave)
 else()
   target_sources(${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES}
-                                            ./master/master_mode.cpp)
+                                            ./master/master_mode.cpp ./master/pc_message.cpp)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master)
 endif()
