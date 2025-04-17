@@ -90,8 +90,8 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
             while (transfer_msg.rx_data_queue.pop(recv_data, 0) == pdPASS) {
                 buffer.push_back(recv_data);
             }
-
-            jsonSorting(buffer.data(), buffer.size());
+            pmf.forward(buffer);
+            // jsonSorting(buffer.data(), buffer.size());
             buffer.clear();
         }
     }
@@ -113,13 +113,13 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
     void jsonSorting(uint8_t* ch, uint16_t len) {
         // 先检查JSON字符串是否有效
         if (!json::accept(ch, ch + len)) {
-            Log.e("PCinterface: Invalid JSON format");
+            Log.e("[PCinterface]: Invalid JSON format");
             return;
         }
 
         json j = json::parse((uint8_t*)ch, ch + len, nullptr, false);
         if (j.is_discarded()) {
-            Log.e("PCinterface: json parse failed");
+            Log.e("[PCinterface]: json parse failed");
             return;
         }
 
@@ -162,18 +162,35 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
                 transfer_msg.tx_request_sem.give();
                 if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
                     Log.e(
-                        "PCinterface: json respond failed. tx_done_sem.take "
+                        "[PCinterface]: json respond failed. tx_done_sem.take "
                         "failed");
                 }
                 // 释放写访问权限
                 transfer_msg.tx_share_mem.release_write_access();
             } else {
-                Log.e("PCinterface: tx_share_mem.get_write_access failed");
+                Log.e("[PCinterface]: tx_share_mem.get_write_access failed");
             }
         }
     }
 
-    void hexSorting(uint8_t* ch, uint16_t len) {}
+    void rsp(uint8_t* ch, uint16_t len) {
+        if (transfer_msg.tx_share_mem.get_write_access(
+                PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
+            transfer_msg.tx_share_mem.write(ch, len);
+            transfer_msg.tx_request_sem.give();
+            if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
+                Log.e(
+                    "[PCinterface]: respond to PC failed: tx_done_sem.take "
+                    "failed");
+            }
+            // 释放写访问权限
+            transfer_msg.tx_share_mem.release_write_access();
+        } else {
+            Log.e(
+                "[PCinterface]: respond to PC failed: "
+                "tx_share_mem.get_write_access failed");
+        }
+    }
 };
 
 #endif    // _MASTER_MODE_HPP_
