@@ -77,12 +77,13 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
           ctrl_inst(pc_manager_msg),
           query_inst(pc_manager_msg),
           transfer_msg(pc_data_transfer_msg),
-          pmf(pc_manager_msg, pc_data_transfer_msg) {}
+          pmf(pc_manager_msg) {}
 
     void task() override {
         Log.i("PCinterface_Task: Boot");
 
         std::vector<uint8_t> buffer;
+        std::vector<uint8_t> rsp_data;
         buffer.reserve(PCdataTransferMsg_DATA_QUEUE_SIZE);
         uint8_t recv_data;
         while (1) {
@@ -90,7 +91,8 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
             while (transfer_msg.rx_data_queue.pop(recv_data, 0) == pdPASS) {
                 buffer.push_back(recv_data);
             }
-            pmf.forward(buffer);
+            rsp_data = pmf.forward(buffer);
+            rsp(rsp_data.data(), rsp_data.size());
             // jsonSorting(buffer.data(), buffer.size());
             buffer.clear();
         }
