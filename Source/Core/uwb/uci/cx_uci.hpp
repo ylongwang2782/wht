@@ -114,6 +114,9 @@ class UciCtrlPacket : public UciCtrlPcketBase {
                 mt = (data >> 5) & 0x07;
                 pbf = (data >> 4) & 0x01;
                 gid = data & 0x0F;
+                if ((mt != MT_CMD) && (mt != MT_RSP) && (mt != MT_NTF)) {
+                    break;
+                }
                 if (pbf == PBF_COMPLETE) {
                     is_last_packet = true;
                 } else {
@@ -315,11 +318,11 @@ class UciCMD : private UciCtrlPacket {
         if (rsp.gid != GID0x03) {
             return false;
         }
-        if (rsp.oid!= CX_APP_DATA_STOP_RX_CMD) {
-            return false; 
+        if (rsp.oid != CX_APP_DATA_STOP_RX_CMD) {
+            return false;
         }
-        if(rsp.packet[0]!= STATUS_OK) {
-            return false; 
+        if (rsp.packet[0] != STATUS_OK) {
+            return false;
         }
         return true;
     }
@@ -333,6 +336,9 @@ class UciNTF : private UciCtrlPacket {
         return payload[0];
     }
 
+    uint8_t parse_cx_app_data_tx_ntf(std::vector<uint8_t>& payload) {
+      return  payload[0];
+    }
     bool parse_cx_app_data_rx_ntf(std::vector<uint8_t>& payload) {
         uint16_t data_len = payload[0] | (payload[1] << 8);
         if (data_len != payload.size() - 2) {

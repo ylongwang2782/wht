@@ -7,9 +7,15 @@
 #include <functional>
 #include <queue>
 #include <vector>
-
 #include "cx_uci.hpp"
-#define DEBUG_IN               interface.log("in");
+
+// #include "bsp_log.hpp"
+// #define DEBUG_IN                                  \
+//     if (ds) {                                     \
+//         ds = false;                               \
+//         log_com.data_send((uint8_t*)"in\r\n", 5); \
+//     }
+// extern Uart log_com;
 #define UWB_GENERAL_TIMEOUT_MS 1000
 
 class CxUwbInterface {
@@ -86,9 +92,13 @@ class UWB {
 
     std::function<bool(const UciCtrlPacket&)> check_rsp = nullptr;
     std::function<bool()> cmd_packer = nullptr;
+    // bool ds = false;
 
+    /**
+     * @brief 初始化
+     */
    public:
-   /**
+    /**
      * @brief 初始化
      * @return 初始化成功返回true，失败返回false
      */
@@ -328,16 +338,29 @@ class UWB {
         if (recv_packet.gid == GID0x03) {
             switch (recv_packet.oid) {
                 case CX_APP_DATA_TX_NTF: {
+                    if (uci_ntf.parse_cx_app_data_tx_ntf(rx_payload) !=
+                        STATUS_OK) {
+                        interface.log("[UWB]: error: parse data tx ntf fail");
+                    } else {
+                        // interface.log("[UWB]: data transmit");
+                    }
+                    break;
                 }
                 case CX_APP_DATA_RX_NTF: {
                     if (!uci_ntf.parse_cx_app_data_rx_ntf(rx_payload)) {
                         interface.log("[UWB]: error: parse data rx ntf fail");
                     }
 
+                    if (rx_payload.size() < 2) {
+                        interface.log(
+                            "[UWB]: error: rx payload size is too small");
+                        break;
+                    }
                     for (auto it = rx_payload.begin() + 2;
                          it != rx_payload.end(); it++) {
                         transparent_data.push(*it);
                     }
+                    interface.log("[UWB]: data receive, size=%u",rx_payload.size() - 2);
                     break;
                 }
                 default: {
