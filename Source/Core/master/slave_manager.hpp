@@ -311,6 +311,13 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
                 transfer_msg.tx_done_sem.give();
                 uwb.set_recv_mode();
             }
+
+            if(uwb.get_recv_data(buffer)){
+                for(auto it = buffer.begin(); it!= buffer.end(); it++){
+                    transfer_msg.rx_data_queue.add(*it);
+                    } 
+                transfer_msg.rx_done_sem.give();
+            }
             
             uwb.update();
             TaskBase::delay(5);
