@@ -113,7 +113,7 @@ class ModeConfig : private __PcMessageBase {
         data_forward.mode_cmd = mode_cmd;
         Log.i("[ModeConfig]: mode = %u", mode_cmd.mode);
         if (__PcMessageBase::forward()) {
-            if ((pc_manager_msg.event.get() & CONFIG_SUCCESS_EVENT)) {
+            if ((pc_manager_msg.event.get() & MODE_SUCCESS_EVENT)) {
                 Log.i("[ModeConfig]: config success\n");
             } else {
                 Log.e("[ModeConfig]: config failed\n");
@@ -159,7 +159,7 @@ class ResetConfig : private __PcMessageBase {
 
             Log.i("[ResetConfig]: 0x%.8X  reseting... ", rst_cmd.id);
             if (__PcMessageBase::forward()) {
-                if ((pc_manager_msg.event.get() & CONFIG_SUCCESS_EVENT)) {
+                if ((pc_manager_msg.event.get() & RESET_SUCCESS_EVENT)) {
                     Log.i("[ResetConfig]:  0x%.8X reset success\n", rst_cmd.id);
                 } else {
                     Log.e("[ResetConfig]:  0x%.8X reset failed\n", rst_cmd.id);
@@ -174,10 +174,44 @@ class ResetConfig : private __PcMessageBase {
     }
 };
 
+class ControlConfig : private __PcMessageBase {
+   public:
+    ControlConfig(PCmanagerMsg& msg) : __PcMessageBase(msg) {};
+
+   private:
+    CtrlCmd ctrl_cmd;
+    bool is_success;
+    Master2Backend::CtrlMsg rsp_msg;
+
+   public:
+    std::vector<uint8_t> forward() {
+        is_success = true;
+        data_forward.type = DEV_CTRL;
+        ctrl_cmd.ctrl = (CtrlType)Backend2Master::CtrlMsg::runningStatus;
+        data_forward.ctrl_cmd = ctrl_cmd;
+        Log.i("[ControlConfig]: runningStatus = %u", ctrl_cmd.ctrl);
+        if (__PcMessageBase::forward()) {
+            if ((pc_manager_msg.event.get() & CTRL_SUCCESS_EVENT)) {
+                Log.i("[ControlConfig]: config success\n");
+            } else {
+                Log.e("[ControlConfig]: config failed\n");
+                is_success = false;
+            }
+        }
+        rsp_msg.runningStatus = ctrl_cmd.ctrl;
+        rsp_msg.status = is_success;
+        auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
+        return FramePacker::pack(rsp_packet);
+    }
+};
+
 class ProtocolMessageForward {
    public:
     ProtocolMessageForward(PCmanagerMsg& _msg)
-        : slave_config(_msg), mode_config(_msg) {};
+        : slave_config(_msg),
+          mode_config(_msg),
+          reset_config(_msg),
+          control_config(_msg) {};
     ~ProtocolMessageForward() {};
 
    public:
@@ -186,6 +220,8 @@ class ProtocolMessageForward {
    private:
     SlaveConfig slave_config;
     ModeConfig mode_config;
+    ResetConfig reset_config;
+    ControlConfig control_config;
     FrameParser frame_parser;
     std::vector<uint8_t> rsp_packet;
 
@@ -207,9 +243,11 @@ class ProtocolMessageForward {
                     break;
                 }
                 case Backend2MasterMessageID::RST_MSG: {
+                    rsp_packet = reset_config.forward();
                     break;
                 }
                 case Backend2MasterMessageID::CTRL_MSG: {
+                    rsp_packet = control_config.forward();
                     break;
                 }
             }
