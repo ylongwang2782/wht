@@ -1,16 +1,14 @@
-#ifndef HW_INTERFACE_HPP
-#define HW_INTERFACE_HPP
+#ifndef UWB_INTERFACE_HPP
+#define UWB_INTERFACE_HPP
 #include <cstdint>
 #include <cstdio>
 #include <vector>
 
 #include "FreeRTOScpp.h"
-#include "QueueCPP.h"
 #include "TaskCPP.h"
 #include "bsp_gpio.hpp"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
-#include "projdefs.h"
 #include "uwb.hpp"
 
 extern Logger Log;
@@ -54,7 +52,7 @@ class UwbUartInterface : public CxUwbInterface {
         uwb_com = new Uart(uwb_com_cfg);
     }
     void chip_en_init() override {
-        en_pin = new GPIO(GPIO::Port::E, GPIO::Pin::PIN_2, GPIO::Mode::OUTPUT);
+        en_pin = new GPIO(GPIO::Port::F, GPIO::Pin::PIN_12, GPIO::Mode::OUTPUT);
     }
     void chip_enable() override { en_pin->bit_set(); }
     void chip_disable() override { en_pin->bit_reset(); }
@@ -73,8 +71,6 @@ class UwbUartInterface : public CxUwbInterface {
         va_end(args);
         Log.d(buffer);
     }
-
-    // GPIO en_pin(GPIO::Port::F, GPIO::Pin::PIN_0);
 };
 
 #endif
