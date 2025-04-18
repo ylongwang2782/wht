@@ -45,7 +45,7 @@
 
 // < ManagerDataTransfer 从机数据传输任务 >------------------------------
 // 从机数据转发任务 栈大小
-#define ManagerDataTransfer_STACK_SIZE 3 * 512
+#define ManagerDataTransfer_STACK_SIZE 4 * 512
 
 //==========================================================================================================
 
