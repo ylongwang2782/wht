@@ -6,7 +6,7 @@
 
 #define CONDUCTION_TEST_INTERVAL           5      // 导通检测时间间隔
 #define CLIP_TEST_INTERVAL                 20     // 卡钉检测时间间隔
-#define SYNC_TIMER_PERIOD_REDUNDANCY_TICKS 500    // 同步定时器冗余时间
+#define SYNC_TIMER_PERIOD_REDUNDANCY_TICKS 0    // 同步定时器冗余时间
 #define PC_TX_SHARE_MEM_ACCESS_TIMEOUT \
     1000    // 获取上位机数据传输共享内存写权限超时
 #define PC_TX_TIMEOUT 1000    // 向上位机发送数据超时

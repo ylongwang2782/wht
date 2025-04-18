@@ -1084,7 +1084,7 @@ class RstMsg : public Message {
 
 class CtrlMsg : public Message {
    public:
-    uint8_t runningStatus;    // 运行状态控制
+    static uint8_t runningStatus;    // 运行状态控制
 
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(runningStatus);    // 序列化运行状态

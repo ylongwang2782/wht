@@ -50,6 +50,7 @@ static void Master_Task(void* pvParameters) {
     // printf("Master_Task: Boot\n");
     Log.i("Master_Task: Boot");
 
+    Log.i("[Master_Task]: Cond packet:");
     Backend2Master::SlaveCfgMsg slave_cfg_msg;
     Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
     cfg.id = 0x12345678;
@@ -69,6 +70,27 @@ static void Master_Task(void* pvParameters) {
     auto msg = PacketPacker::backendPack(slave_cfg_msg);
     std::vector<uint8_t> data = FramePacker::pack(msg);
     Log.r(data.data(), data.size());
+
+    Log.i("[Master_Task]: Mode packet:");
+    Backend2Master::ModeCfgMsg mode_msg;
+    mode_msg.mode = 0x00;
+    msg = PacketPacker::backendPack(mode_msg);
+    data = FramePacker::pack(msg);
+    Log.r(data.data(), data.size());
+
+    Log.i("[Master_Task]: Control start packet:");
+    Backend2Master::CtrlMsg ctrl_msg;
+    ctrl_msg.runningStatus = 0x01;
+    msg = PacketPacker::backendPack(ctrl_msg);
+    data = FramePacker::pack(msg);
+    Log.r(data.data(), data.size());
+    
+    Log.i("[Master_Task]: Control stop packet:");
+    ctrl_msg.runningStatus = 0x00;
+    msg = PacketPacker::backendPack(ctrl_msg);
+    data = FramePacker::pack(msg);
+    Log.r(data.data(), data.size());
+
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -91,39 +113,8 @@ static void Master_Task(void* pvParameters) {
 
     DataForward tmp;
     while (1) {
-        // 主节点的操作
-
-        // if (pc_manger_msg.data_forward_queue.pop(tmp, 0)) {
-        //     switch (tmp.type) {
-        //         case CmdType::DEV_CONF:
-        //         printf("Master_Task: Config data received\n");
-        //         pc_manger_msg.event.set(CONFIG_SUCCESS_EVENT);
-        //             break;
-        //         case CmdType::DEV_MODE:
-        //         pc_manger_msg.event.set(MODE_SUCCESS_EVENT);
-        //             break;
-        //         case CmdType::DEV_RESET:
-        //         pc_manger_msg.event.set(RESET_SUCCESS_EVENT);
-        //             break;
-        //         case CmdType::DEV_CTRL:
-        //         pc_manger_msg.event.set(CTRL_SUCCESS_EVENT);
-        //             break;
-        //         case CmdType::DEV_QUERY:
-        //         pc_manger_msg.event.set(QUERY_SUCCESS_EVENT);
-        //             break;
-        //         default:
-        //             break;
-        //     }
-        //     pc_manger_msg.event.set(FORWARD_SUCCESS_EVENT);
-        // }
-        // printf("Master_Task running\n");
-        // char taskListBuffer[10 * 100];
-        // vTaskList(taskListBuffer);
-        // printf("\nname          state   priority   stack   task number\n");
-        // printf("%s", taskListBuffer);
+       
         Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
-        // rs232_db9.send((uint8_t *)"Master_Task running\n", 20);
-        // uart7.send((uint8_t *)"Master_Task running\n", 20);
         led.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
     }

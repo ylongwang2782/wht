@@ -58,6 +58,8 @@ uint8_t Backend2Master::RstMsg::slaveNum = 0;
 std::vector<Backend2Master::RstMsg::SlaveResetConfig>
     Backend2Master::RstMsg::slaves;
 
+uint8_t Backend2Master::CtrlMsg::runningStatus = 0;
+
 // Master2Backend 命名空间静态变量初始化
 uint8_t Master2Backend::SlaveCfgMsg::status = 0;
 uint8_t Master2Backend::SlaveCfgMsg::slaveNum = 0;
