@@ -9,11 +9,12 @@
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
-#include "uwb_interface.hpp"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 #include "protocol.hpp"
 #include "uwb.hpp"
+#include "uwb_interface.hpp"
+
 extern Logger Log;
 extern UasrtInfo& slave_com_info;
 class __ProcessBase {
@@ -295,8 +296,8 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
 
 #ifdef SLAVE_USE_UWB
         UWB<UwbUartInterface> uwb;
-        Log.i("SlaveDataTransfer_Task: uwb.size=%d",sizeof(uwb));
-        std::vector<uint8_t> buffer={1,2,3,4,5};
+        Log.i("SlaveDataTransfer_Task: uwb.size=%d", sizeof(uwb));
+        std::vector<uint8_t> buffer = {1, 2, 3, 4, 5};
         uint8_t data = 0;
         std::vector<uint8_t> rx;
         uwb.set_recv_mode();
@@ -312,13 +313,13 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
                 uwb.set_recv_mode();
             }
 
-            if(uwb.get_recv_data(buffer)){
-                for(auto it = buffer.begin(); it!= buffer.end(); it++){
+            if (uwb.get_recv_data(buffer)) {
+                for (auto it = buffer.begin(); it != buffer.end(); it++) {
                     transfer_msg.rx_data_queue.add(*it);
-                    } 
+                }
                 transfer_msg.rx_done_sem.give();
             }
-            
+
             uwb.update();
             TaskBase::delay(5);
         }

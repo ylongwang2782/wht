@@ -5,7 +5,8 @@
 #include "FreeRTOS.h"
 #include "bsp_led.hpp"
 #include "bsp_spi.hpp"
-#include "interface.hpp"
+#include "pc_interface.hpp"
+#include "protocol.hpp"
 #include "slave_manager.hpp"
 #include "task.h"
 
@@ -48,6 +49,26 @@ static void Master_Task(void* pvParameters) {
     logTask.give();
     // printf("Master_Task: Boot\n");
     Log.i("Master_Task: Boot");
+
+    Backend2Master::SlaveCfgMsg slave_cfg_msg;
+    Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
+    cfg.id = 0x12345678;
+    cfg.clipMode = 0x01;
+    cfg.clipStatus = 0x00;
+    cfg.conductionNum = 16;
+    cfg.resistanceNum = 0;
+    slave_cfg_msg.slaves.push_back(cfg);
+
+    cfg.id = 0x11ABCDEF;
+    cfg.clipMode = 0x00;
+    cfg.clipStatus = 0x00;
+    cfg.conductionNum = 20;
+    cfg.resistanceNum = 0;
+    slave_cfg_msg.slaves.push_back(cfg);
+    slave_cfg_msg.slaveNum = 2;
+    auto msg = PacketPacker::backendPack(slave_cfg_msg);
+    std::vector<uint8_t> data = FramePacker::pack(msg);
+    Log.r(data.data(), data.size());
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -100,7 +121,7 @@ static void Master_Task(void* pvParameters) {
         // vTaskList(taskListBuffer);
         // printf("\nname          state   priority   stack   task number\n");
         // printf("%s", taskListBuffer);
-        // printf("heap minimum: %d\n", xPortGetMinimumEverFreeHeapSize());
+        Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
         // rs232_db9.send((uint8_t *)"Master_Task running\n", 20);
         // uart7.send((uint8_t *)"Master_Task running\n", 20);
         led.toggle();
