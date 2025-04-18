@@ -19,6 +19,8 @@
  * @copyright Copyright (c) 2025
  *
  */
+#ifndef __PROTOCOL_HPP
+#define __PROTOCOL_HPP
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -345,8 +347,7 @@ class PacketPacker {
         return packet;
     }
 
-    static Master2BackendPacket master2BackendPack(const Message& msg,
-                                                   uint32_t slave_id) {
+    static Master2BackendPacket master2BackendPack(const Message& msg) {
         Master2BackendPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         msg.serialize(packet.payload);
@@ -616,7 +617,7 @@ class ClipCfgMsg : public Message {
             interval, mode, clipPin);
     }
 
-    void process() override { Log.d("ClipCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::CLIP_CFG_MSG);
@@ -770,7 +771,7 @@ class CondCfgMsg : public Message {
             status, timeSlot, interval, totalConductionNum, startConductionNum,
             conductionNum);
     }
-    void process() override { Log.d("CondCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::COND_CFG_MSG);
@@ -817,7 +818,7 @@ class ResCfgMsg : public Message {
             resistanceNum);
     }
 
-    void process() override { Log.d("ResCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RES_CFG_MSG);
@@ -855,7 +856,7 @@ class ClipCfgMsg : public Message {
             status, interval, mode, clipPin);
     }
 
-    void process() override { Log.d("ClipCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::CLIP_CFG_MSG);
@@ -973,7 +974,7 @@ class SlaveCfgMsg : public Message {
         }
     }
 
-    void process() override { Log.d("SlaveCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(
@@ -998,7 +999,7 @@ class ModeCfgMsg : public Message {
         Log.d("ModeCfgMsg: mode = 0x%02X", mode);
     }
 
-    void process() override { Log.d("ModeCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Backend2MasterMessageID::MODE_CFG_MSG);
@@ -1074,7 +1075,7 @@ class RstMsg : public Message {
         }
     }
 
-    void process() override { Log.d("RstMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Backend2MasterMessageID::RST_MSG);
@@ -1098,7 +1099,7 @@ class CtrlMsg : public Message {
         Log.d("CtrlMsg: runningStatus = 0x%02X", runningStatus);
     }
 
-    void process() override { Log.d("CtrlMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Backend2MasterMessageID::CTRL_MSG);
@@ -1188,7 +1189,7 @@ class SlaveCfgMsg : public Message {
         }
     }
 
-    void process() override { Log.d("SlaveCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2BackendMessageID::SLAVE_CFG_MSG);
@@ -1215,7 +1216,7 @@ class ModeCfgMsg : public Message {
         Log.d("ModeCfgMsg: status=0x%02X, mode=0x%02X", status, mode);
     }
 
-    void process() override { Log.d("ModeCfgMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2BackendMessageID::MODE_CFG_MSG);
@@ -1295,7 +1296,7 @@ class RstMsg : public Message {
         }
     }
 
-    void process() override { Log.d("RstMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2BackendMessageID::RST_MSG);
@@ -1323,7 +1324,7 @@ class CtrlMsg : public Message {
               runningStatus);
     }
 
-    void process() override { Log.d("CtrlMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2BackendMessageID::CTRL_MSG);
@@ -1368,7 +1369,7 @@ class CondDataMsg : public Message {
               conductionData.size());
     }
 
-    void process() override { Log.d("CondDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2BackendMessageID::COND_DATA_MSG);
@@ -1840,3 +1841,4 @@ class FrameParser {
         }
     }
 };
+#endif
