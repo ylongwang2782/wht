@@ -391,6 +391,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
     uint8_t timeSlot = 0;
     bool running = false;
     uint16_t slave_dev_index;
+    uint16_t slave_num = 0;
     CfgState cfg_state = CONGIG_START;
     bool wait_for_data = false;
 
@@ -415,6 +416,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                 Log.i("[SlaveManager]: config process start");
                 timeSlot = 0;
                 slave_dev_index = 0;
+                slave_num = forward_data.cfg_cmd.slave_dev_num;
                 slave_dev.clear();
                 slave_dev.reserve(forward_data.cfg_cmd.slave_dev_num);
                 ret = cfg_processor.process(forward_data.cfg_cmd, timeSlot);
@@ -447,6 +449,41 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
         } else {
             // 配置失败
             pc_manager_msg.event.clear(CONFIG_SUCCESS_EVENT);
+        }
+    }
+    void ctrl_process() {
+        if (ctrl_processor.process(forward_data.ctrl_cmd,
+                                   mode_processor.mode)) {
+            pc_manager_msg.event.set(CTRL_SUCCESS_EVENT);
+        } else {
+            pc_manager_msg.event.clear(CTRL_SUCCESS_EVENT);
+        }
+        if (ctrl_processor.state() == DEV_ENABLE) {
+            // 启动检测
+            if (slave_num > 0) {
+                if (running == false) {
+                    running = true;
+                    TickType_t period = get_timer_period();
+                    Log.i("[SlaveManager]: total cond num: %u",
+                          cfg_processor.totalConductionNum());
+                    Log.i("[SlaveManager]: interval: %u", CONDUCTION_TEST_INTERVAL);
+                    Log.i("[SlaveManager]: sync timer period: %u", period);
+                    slave_dev_index = 0;
+                    wait_for_data = false;
+                    sync_sem.give();
+                    sync_timer.period(period);
+                }
+            } else {
+                Log.e(
+                    "[SlaveManager]: have not config. slave "
+                    "num is 0, discard "
+                    "ctrl data");
+            }
+
+        } else {
+            // 停止检测
+            running = false;
+            sync_timer.stop();
         }
     }
     void task() override {
@@ -492,28 +529,9 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                         break;
                     }
                     case (uint8_t)CmdType::DEV_CTRL: {
+                        ctrl_process();
                         // Log.i("[SlaveManager]: Ctrl data received");
-                        if (ctrl_processor.process(forward_data.ctrl_cmd,
-                                                   mode_processor.mode)) {
-                            pc_manager_msg.event.set(CTRL_SUCCESS_EVENT);
-                        } else {
-                            pc_manager_msg.event.clear(CTRL_SUCCESS_EVENT);
-                        }
-                        if (ctrl_processor.state() == DEV_ENABLE) {
-                            if (running == false) {
-                                running = true;
-                                TickType_t period = get_timer_period();
-                                Log.i("[SlaveManager]: sync timer period: %u",
-                                      period);
-                                slave_dev_index = 0;
-                                wait_for_data = false;
-                                sync_sem.give();
-                                sync_timer.period(period);
-                            }
-                        } else {
-                            running = false;
-                            sync_timer.stop();
-                        }
+
                         break;
                     }
                     case (uint8_t)CmdType::DEV_QUERY: {
