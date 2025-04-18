@@ -9,12 +9,11 @@
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
-#include "hw_interface.hpp"
+#include "uwb_interface.hpp"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 #include "protocol.hpp"
 #include "uwb.hpp"
-
 extern Logger Log;
 extern UasrtInfo& slave_com_info;
 class __ProcessBase {
@@ -53,17 +52,17 @@ class __ProcessBase {
                 if (transfer_msg.rx_done_sem.take(SlaveManager_RSP_TIMEOUT) ==
                     false) {
                     Log.i(
-                        "SlaveManager: rx_done_sem.take failed, slave no "
+                        "[SlaveManager]: rx_done_sem.take failed, slave no "
                         "response");
 
                 } else if (__rsp_process()) {
-                    Log.i("SlaveManager: slave response process success");
+                    Log.i("[SlaveManager]: slave response process success");
                     return true;
                 }
 
                 send_cnd++;
                 if (send_cnd < SlaveManager_TX_RETRY_TIMES + 1) {
-                    Log.i("SlaveManager: send retry %d", send_cnd);
+                    Log.i("[SlaveManager]: send retry %d", send_cnd);
                 }
 
             } else {
@@ -81,7 +80,7 @@ class __ProcessBase {
         for (auto it = frame.begin(); it != frame.end(); it++) {
             if (transfer_msg.tx_data_queue.add(
                     *it, SlaveManager_TX_QUEUE_TIMEOUT) == false) {
-                Log.e("SlaveManager: tx_data_queue.add failed");
+                Log.e("[SlaveManager]: tx_data_queue.add failed");
                 return false;
             }
         }
@@ -91,7 +90,7 @@ class __ProcessBase {
 
         // 等待数据发送完成
         if (transfer_msg.tx_done_sem.take(SlaveManager_TX_TIMEOUT) == false) {
-            Log.e("SlaveManager: tx_done_sem.take failed, timeout");
+            Log.e("[SlaveManager]: tx_done_sem.take failed, timeout");
             return false;
         }
         return true;
@@ -111,7 +110,7 @@ class __ProcessBase {
             rsp_data.push_back(data);
         }
         for (auto it : rsp_data) {
-            Log.d("SlaveManager: rx_data: 0x%02X", it);
+            Log.d("[SlaveManager]: rx_data: 0x%02X", it);
         }
         // 解析数据
         auto msg = frame_parser.parse(rsp_data);
@@ -119,7 +118,7 @@ class __ProcessBase {
             // 处理解析后的数据
             msg->process();
         } else {
-            Log.e("SlaveManager: parse failed");
+            Log.e("[SlaveManager]: parse failed");
         }
         return rsp_parsed;
     }
@@ -146,26 +145,26 @@ class DeviceConfigProcessor : private __ProcessBase {
     bool process(CfgCmd& cfg_cmd, uint8_t timeSlot) {
         bool ret = true;
         if (!__cond_config(cfg_cmd, timeSlot)) {
-            Log.e("SlaveManager: cond config failed");
+            Log.e("[SlaveManager]: cond config failed");
             ret = false;
         } else {
-            Log.i("SlaveManager: cond config success");
+            Log.i("[SlaveManager]: cond config success");
         }
 
         if (cfg_cmd.clip_exist) {
             if (!__clip_config(cfg_cmd)) {
-                Log.e("SlaveManager: clip config failed");
+                Log.e("[SlaveManager]: clip config failed");
                 ret = false;
             }
         } else {
-            Log.i("SlaveManager: clip config success");
+            Log.i("[SlaveManager]: clip config success");
         }
         return ret;
     }
 
    private:
     bool __cond_config(CfgCmd& cfg_cmd, uint8_t timeSlot) {
-        Log.i("SlaveManager: cond config start");
+        Log.i("[SlaveManager]: cond config start");
         wirte_cond_info_msg.timeSlot = timeSlot;
 
         // 配置设备检测线数
@@ -195,7 +194,7 @@ class DeviceConfigProcessor : private __ProcessBase {
     }
 
     bool __clip_config(CfgCmd& cfg_cmd) {
-        Log.i("SlaveManager: clip config start");
+        Log.i("[SlaveManager]: clip config start");
 
         write_clip_info_msg.clipPin = cfg_cmd.clip_pin;
         write_clip_info_msg.mode = cfg_cmd.clip_mode;
@@ -228,7 +227,7 @@ class DeviceModeProcessor : private __ProcessBase {
    public:
     bool process(ModeCmd mode_cmd) {
         mode = mode_cmd.mode;
-        Log.i("SlaveManager: mode config : %u", mode);
+        Log.i("[SlaveManager]: mode config : %u", mode);
         return true;
     }
 };
@@ -250,7 +249,7 @@ class DeviceCtrlProcessor : private __ProcessBase {
 
    public:
     bool process(CtrlCmd& ctrl_cmd, SysMode mode) {
-        Log.i("SlaveManager: ctrl config start");
+        Log.i("[SlaveManager]: ctrl config start");
         sync_msg.mode = mode;
         sync_msg.timestamp = 0;
         ctrl = ctrl_cmd.ctrl;
@@ -272,7 +271,7 @@ class ReadCondProcessor : private __ProcessBase {
 
    public:
     bool process() {
-        Log.i("SlaveManager: read cond data start");
+        Log.i("[SlaveManager]: read cond data start");
         // 打包数据
         auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, 0);
         auto cond_frame = FramePacker::pack(cond_packet);
@@ -296,25 +295,24 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
 
 #ifdef SLAVE_USE_UWB
         UWB<UwbUartInterface> uwb;
-        std::vector<uint8_t> tx;
-        tx.reserve(122);
-        for (uint16_t i = 0; i < 122; i++) {
-            tx.push_back(i % 256);
-        }
+        Log.i("SlaveDataTransfer_Task: uwb.size=%d",sizeof(uwb));
+        std::vector<uint8_t> buffer={1,2,3,4,5};
+        uint8_t data = 0;
         std::vector<uint8_t> rx;
         uwb.set_recv_mode();
         for (;;) {
-            // uwb.update();
-            // uwb.data_transmit(tx);
-            // uwb.set_recv_mode();
-            uwb.get_recv_data(rx);
-            if (rx.size() > 0) {
-                Log.r(rx.data(), rx.size());
-                rx.clear();
+            if (transfer_msg.tx_request_sem.take(0)) {
+                buffer.reserve(transfer_msg.tx_data_queue.waiting());
+                buffer.clear();
+                while (transfer_msg.tx_data_queue.pop(data, 0)) {
+                    buffer.push_back(data);
+                }
+                uwb.data_transmit(buffer);
+                transfer_msg.tx_done_sem.give();
+                uwb.set_recv_mode();
             }
-
+            
             uwb.update();
-            // Log.d("heap: %d", xPortGetFreeHeapSize());
             TaskBase::delay(5);
         }
 
@@ -358,7 +356,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
     };
     SlaveManager(PCmanagerMsg& _pc_manager_msg,
                  ManagerDataTransferMsg& __manager_transfer_msg)
-        : TaskClassS("SlaveManager", TaskPrio_Mid),
+        : TaskClassS("[SlaveManager]", TaskPrio_Mid),
           pc_manager_msg(_pc_manager_msg),
           cfg_processor(__manager_transfer_msg),
           mode_processor(__manager_transfer_msg),
@@ -406,7 +404,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
         SlaveDev dev;
         switch (cfg_state) {
             case CONGIG_START: {
-                Log.i("SlaveManager: config process start");
+                Log.i("[SlaveManager]: config process start");
                 timeSlot = 0;
                 slave_dev_index = 0;
                 slave_dev.clear();
@@ -429,7 +427,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
         if (slave_dev_index >= forward_data.cfg_cmd.slave_dev_num) {
             // 所有从机配置完成
             cfg_state = CONGIG_START;
-            Log.i("SlaveManager: config process done, device num: %u",
+            Log.i("[SlaveManager]: config process done, device num: %u",
                   forward_data.cfg_cmd.slave_dev_num);
         } else {
             cfg_state = CONFIG_PROCESSING;
@@ -451,22 +449,21 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
             // 从pc_manager_msg中获取数据
             while (pc_manager_msg.data_forward_queue.pop(forward_data, 0) ==
                    pdPASS) {
-                Log.i("SlaveManager: Forward data received");
                 switch ((uint8_t)forward_data.type) {
                     case CmdType::DEV_CONF: {
-                        Log.i("SlaveManager: Config data received");
+                        // Log.i("[SlaveManager]: Config data received");
                         if (!running) {
                             config_process();
                         } else {
                             Log.e(
-                                "SlaveManager: Device is running, discard "
+                                "[SlaveManager]: Device is running, discard "
                                 "config data");
                         }
 
                         break;
                     }
                     case (uint8_t)CmdType::DEV_MODE: {
-                        Log.i("SlaveManager: Mode data received");
+                        // Log.i("[SlaveManager]: Mode data received");
                         if (!running) {
                             if (mode_processor.process(forward_data.mode_cmd)) {
                                 pc_manager_msg.event.set(MODE_SUCCESS_EVENT);
@@ -475,7 +472,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                             }
                         } else {
                             Log.e(
-                                "SlaveManager: Device is running, discard "
+                                "[SlaveManager]: Device is running, discard "
                                 "mode "
                                 "data");
                         }
@@ -483,11 +480,11 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                         break;
                     }
                     case (uint8_t)CmdType::DEV_RESET: {
-                        Log.i("SlaveManager: Reset data received");
+                        // Log.i("[SlaveManager]: Reset data received");
                         break;
                     }
                     case (uint8_t)CmdType::DEV_CTRL: {
-                        Log.i("SlaveManager: Ctrl data received");
+                        // Log.i("[SlaveManager]: Ctrl data received");
                         if (ctrl_processor.process(forward_data.ctrl_cmd,
                                                    mode_processor.mode)) {
                             pc_manager_msg.event.set(CTRL_SUCCESS_EVENT);
@@ -498,7 +495,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                             if (running == false) {
                                 running = true;
                                 TickType_t period = get_timer_period();
-                                Log.i("SlaveManager: sync timer period: %u",
+                                Log.i("[SlaveManager]: sync timer period: %u",
                                       period);
                                 slave_dev_index = 0;
                                 wait_for_data = false;
@@ -512,7 +509,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                         break;
                     }
                     case (uint8_t)CmdType::DEV_QUERY: {
-                        Log.i("SlaveManager: Query data received");
+                        // Log.i("[SlaveManager]: Query data received");
                         break;
                     }
                     default:
@@ -529,7 +526,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                         for (auto it = slave_dev.begin(); it != slave_dev.end();
                              it++) {
                             if (read_cond_processor.process()) {
-                                Log.i("SlaveManager: read cond data success");
+                                Log.i("[SlaveManager]: read cond data success");
                                 if (pc_manager_msg.upload_data.get_write_access(
                                         PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
                                     // 共享资源上锁，禁止外部读写
@@ -549,7 +546,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                                     if (!pc_manager_msg.upload_done_sem.take(
                                             SlaveManager_UPLOAD_TIMEOUT)) {
                                         Log.e(
-                                            "SlaveManager: "
+                                            "[SlaveManager]: "
                                             "upload_done_sem.take "
                                             "failed");
                                     }
