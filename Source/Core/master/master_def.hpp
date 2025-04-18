@@ -84,7 +84,7 @@ class ShareMem {
 
     // 释放共享内存的写访问权限，等待数据转发完成后在释放写访问权限
     void release_write_access() { __write_access.unlock(); }
-    
+
     bool write(const uint8_t* data, size_t size,
                TickType_t wait = portMAX_DELAY) {
         __size = 0;
@@ -99,7 +99,7 @@ class ShareMem {
         }
 
         // 当前无写访问权限
-        if(!__write_access.lock()) {
+        if (!__write_access.lock()) {
             return false;
         }
 
@@ -139,12 +139,12 @@ class ShareMem {
 // 配置指令-------------------------------------------------
 struct CfgCmd {
     uint8_t id[4];
-    uint16_t cond;
-    uint16_t Z;
+    uint16_t cond;    // 导通检测线数
+    uint16_t Z;       // 阻抗检测线数
 
-    bool clip_exist;
-    uint8_t clip_mode;
-    uint16_t clip_pin;
+    bool clip_exist;      // 是否存在卡丁信息
+    uint8_t clip_mode;    // 卡丁模式
+    uint16_t clip_pin;    // 卡丁初始化信息
 
     uint16_t totalHarnessNum;
     uint16_t startHarnessNum;
