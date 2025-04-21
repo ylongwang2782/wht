@@ -41,6 +41,8 @@ class __ProcessBase {
         return target_id;
     }
 
+    virtual void process_rsp_data() {};
+
     bool send_frame(std::vector<uint8_t>& frame, bool rsp = true) {
         send_cnd = 0;
         while (send_cnd < SlaveManager_TX_RETRY_TIMES + 1) {
@@ -118,6 +120,7 @@ class __ProcessBase {
         if (msg != nullptr) {
             // 处理解析后的数据
             msg->process();
+            process_rsp_data();
         } else {
             Log.e("[SlaveManager]: parse failed");
         }
@@ -269,12 +272,20 @@ class ReadCondProcessor : private __ProcessBase {
 
    private:
     Master2Slave::ReadCondDataMsg read_cond_data_msg;
+    Slave2Backend::CondDataMsg upload_cond_data_msg;
+    std::vector<uint8_t> upload_frame;
 
    public:
-    bool process() {
+    const std::vector<uint8_t>& get_upload_frame() { return upload_frame; }
+    void process_rsp_data() override {
+        auto upload_msg =
+            PacketPacker::master2BackendPack(upload_cond_data_msg);
+        upload_frame = FramePacker::pack(upload_msg);
+    }
+    bool process(uint32_t id) {
         Log.i("[SlaveManager]: read cond data start");
         // 打包数据
-        auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, 0);
+        auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, id);
         auto cond_frame = FramePacker::pack(cond_packet);
         expected_rsp_msg_id = (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG);
         return send_frame(cond_frame);
@@ -359,7 +370,11 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
 class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
    public:
     struct SlaveDev {
-        uint8_t id[4];
+        union {
+            uint8_t id[4];
+            uint32_t id32;
+        } _ID;
+        // _ID id;
         uint8_t timeSlot;
     };
     SlaveManager(PCmanagerMsg& _pc_manager_msg,
@@ -429,7 +444,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                 break;
         }
         // 注册从机设备
-        memcpy(dev.id, forward_data.cfg_cmd.id, 4);
+        memcpy(dev._ID.id, forward_data.cfg_cmd.id, 4);
         dev.timeSlot = timeSlot;
         slave_dev.push_back(dev);
         timeSlot++;
@@ -466,7 +481,8 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                     TickType_t period = get_timer_period();
                     Log.i("[SlaveManager]: total cond num: %u",
                           cfg_processor.totalConductionNum());
-                    Log.i("[SlaveManager]: interval: %u", CONDUCTION_TEST_INTERVAL);
+                    Log.i("[SlaveManager]: interval: %u",
+                          CONDUCTION_TEST_INTERVAL);
                     Log.i("[SlaveManager]: sync timer period: %u", period);
                     slave_dev_index = 0;
                     wait_for_data = false;
@@ -484,6 +500,43 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
             // 停止检测
             running = false;
             sync_timer.stop();
+        }
+    }
+    void read_cond_data_process() {
+        for (auto it = slave_dev.begin(); it != slave_dev.end(); it++) {
+            if (read_cond_processor.process(it->_ID.id32)) {
+                Log.i("[SlaveManager]: read cond data success");
+                if (pc_manager_msg.upload_data.get_write_access(
+                        PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
+                    // 共享资源上锁，禁止外部读写
+                    // pc_manager_msg.upload_data.lock();
+                    /* ---------------------<上报数据>---------------------*/
+                    // upload_cond_data_frame.pack(
+                    //     pc_manager_msg.upload_data.get(),
+                    //     read_cond_processor.get_data_msg(),
+                    //     it->id);
+                    pc_manager_msg.upload_data.write(
+                        read_cond_processor.get_upload_frame().data(),
+                        read_cond_processor.get_upload_frame().size(),
+                        PC_TX_TIMEOUT);
+                    // 共享资源解锁，允许读取数据
+                    // pc_manager_msg.upload_data.unlock();
+
+                    // 发送数据给上位机，释放发送请求信号量
+                    pc_manager_msg.upload_request_sem.give();
+
+                    // 等待发送完成
+                    if (!pc_manager_msg.upload_done_sem.take(
+                            SlaveManager_UPLOAD_TIMEOUT)) {
+                        Log.e(
+                            "[SlaveManager]: "
+                            "upload_done_sem.take "
+                            "failed");
+                    }
+                    // 释放写访问权限
+                    pc_manager_msg.upload_data.release_write_access();
+                }
+            }
         }
     }
     void task() override {
@@ -548,41 +601,23 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
                 if (sync_sem.take(0)) {
                     if (wait_for_data == true) {
                         sync_timer.stop();
-
-                        for (auto it = slave_dev.begin(); it != slave_dev.end();
-                             it++) {
-                            if (read_cond_processor.process()) {
-                                Log.i("[SlaveManager]: read cond data success");
-                                if (pc_manager_msg.upload_data.get_write_access(
-                                        PC_TX_SHARE_MEM_ACCESS_TIMEOUT)) {
-                                    // 共享资源上锁，禁止外部读写
-                                    pc_manager_msg.upload_data.lock();
-                                    /* ---------------------<上报数据>---------------------*/
-                                    // upload_cond_data_frame.pack(
-                                    //     pc_manager_msg.upload_data.get(),
-                                    //     read_cond_processor.get_data_msg(),
-                                    //     it->id);
-                                    // 共享资源解锁，允许读取数据
-                                    pc_manager_msg.upload_data.unlock();
-
-                                    // 发送数据给上位机，释放发送请求信号量
-                                    pc_manager_msg.upload_request_sem.give();
-
-                                    // 等待发送完成
-                                    if (!pc_manager_msg.upload_done_sem.take(
-                                            SlaveManager_UPLOAD_TIMEOUT)) {
-                                        Log.e(
-                                            "[SlaveManager]: "
-                                            "upload_done_sem.take "
-                                            "failed");
-                                    }
-
-                                    // 释放写访问权限
-                                    pc_manager_msg.upload_data
-                                        .release_write_access();
-                                }
+                        switch (mode_processor.mode) {
+                            case CONDUCTION_TEST: {
+                                Log.i("[SlaveManager]: cond data read start");
+                                read_cond_data_process();
+                                break;
+                            }
+                            case CLIP_TEST: {
+                                Log.i("[SlaveManager]: clip data read start");
+                                break;
+                            }
+                            case IMPEDANCE_TEST: {
+                                Log.i(
+                                    "[SlaveManager]: impedance data read "
+                                    "start");
                             }
                         }
+
                         wait_for_data = false;
                         sync_timer.start();
                     }
