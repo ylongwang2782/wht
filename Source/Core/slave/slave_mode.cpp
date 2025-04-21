@@ -44,11 +44,11 @@ Uart usart0(usart0Conf);
 Uart uart3(uart3Conf);
 // Uart uart6(uart6Conf);
 
-Logger Log(usart0);
+Logger Log(uart3);
 
 Harness harness;
 LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
-CX310Class CX310(usart0);
+CX310Class CX310(uart3);
 
 class MyTimer {
    public:
@@ -91,12 +91,12 @@ class UsartDMATask : public TaskClassS<1024> {
 
         for (;;) {
             // 等待 DMA 完成信号
-            if (xSemaphoreTake(usart0_info.dmaRxDoneSema, portMAX_DELAY) ==
+            if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
                 pdPASS) {
                 // Log.d("Uart: recv.");
                 sysLed.toggle();
 
-                rx_data = usart0.getReceivedData();
+                rx_data = uart3.getReceivedData();
 
                 // uci_data = CX310.parse_received_data(rx_data);
                 // Log.d("Uart: uci_data.size(): %d", uci_data.size());
