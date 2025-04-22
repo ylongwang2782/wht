@@ -1,5 +1,6 @@
 set(COMMON_SOURCES ./gd32f4xx_it.c ./main.cpp ./protocal.cpp)
 add_subdirectory(uwb)
+add_subdirectory(test)
 if(SLAVE)
   target_sources(
     ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./slave/slave_mode.cpp

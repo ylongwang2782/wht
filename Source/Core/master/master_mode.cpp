@@ -9,6 +9,7 @@
 #include "protocol.hpp"
 #include "slave_manager.hpp"
 #include "task.h"
+#include "uwbtest.hpp"
 
 #ifdef MASTER
 
@@ -106,12 +107,13 @@ static void Master_Task(void* pvParameters) {
     SlaveManager slave_manager(pc_manger_msg, manager_transfer_msg);
     ManagerDataTransfer manager_data_transfer(manager_transfer_msg);
 
-    pc_interface.give();
-    pc_data_transfer.give();
-    slave_manager.give();
-    manager_data_transfer.give();
+    // pc_interface.give();
+    // pc_data_transfer.give();
+    // slave_manager.give();
+    // manager_data_transfer.give();
 
-    DataForward tmp;
+    TransparentTransmissionTest tt_test;
+    tt_test.give();
     while (1) {
        
         Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
