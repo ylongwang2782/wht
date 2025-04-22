@@ -87,14 +87,13 @@ class FrameBase {
 
 // 通用帧头定义
 struct FrameHeader {
-    static constexpr uint8_t FRAME_DELIMITER[2] = {
-        0xAB, 0xCD};    // 使用常量表示帧分隔符
-    static constexpr size_t HEADER_SIZE = 8;
-    uint8_t slot;
-    uint8_t packet_id;
-    uint8_t fragment_sequence;
-    uint8_t more_fragments_flag;
-    uint16_t data_length;
+    static constexpr uint8_t FRAME_DELIMITER[2] = {0xAB, 0xCD};    // 帧分隔符
+    static constexpr size_t HEADER_SIZE = 7;    // 2+1+1+1+2=7字节
+
+    uint8_t packet_id;              // 数据包类型
+    uint8_t fragment_sequence;      // 帧分片序号
+    uint8_t more_fragments_flag;    // 更多分片标志(0:无,1:有)
+    uint16_t data_length;           // 数据负载长度
 
     // 序列化为字节流
     std::vector<uint8_t> serialize() const {
@@ -102,7 +101,6 @@ struct FrameHeader {
         data.reserve(HEADER_SIZE);
         data.push_back(FRAME_DELIMITER[0]);
         data.push_back(FRAME_DELIMITER[1]);
-        data.push_back(slot);
         data.push_back(packet_id);
         data.push_back(fragment_sequence);
         data.push_back(more_fragments_flag);
@@ -112,7 +110,7 @@ struct FrameHeader {
     }
 
     bool deserialize(const std::vector<uint8_t>& data) {
-        if (data.size() < 8) {
+        if (data.size() < HEADER_SIZE) {
             Log.e("Invalid frame header data size");
             return false;
         }
@@ -123,11 +121,10 @@ struct FrameHeader {
             return false;
         }
 
-        slot = data[2];
-        packet_id = data[3];
-        fragment_sequence = data[4];
-        more_fragments_flag = data[5];
-        data_length = (data[7] << 8) | data[6];
+        packet_id = data[2];
+        fragment_sequence = data[3];
+        more_fragments_flag = data[4];
+        data_length = data[5] | (data[6] << 8);    // 小端模式
         return true;
     }
 };
@@ -374,7 +371,6 @@ class FramePacker {
 
         // 构建帧头
         FrameHeader header;
-        header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Master2Slave);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
@@ -395,7 +391,6 @@ class FramePacker {
 
         // 构建帧头
         FrameHeader header;
-        header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Slave2Master);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
@@ -414,7 +409,6 @@ class FramePacker {
 
         // 构建帧头
         FrameHeader header;
-        header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Backend2Master);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
@@ -433,7 +427,6 @@ class FramePacker {
 
         // 构建帧头
         FrameHeader header;
-        header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Master2Backend);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
@@ -452,7 +445,6 @@ class FramePacker {
 
         // 构建帧头
         FrameHeader header;
-        header.slot = slot;
         header.packet_id = static_cast<uint8_t>(PacketType::Slave2Backend);
         header.fragment_sequence = fragment_seq;
         header.more_fragments_flag = more_fragments;
@@ -669,7 +661,7 @@ class ReadResDataMsg : public Message {
         Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
     }
 
-    void process() override { Log.d("ReadResDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_RES_DATA_MSG);
@@ -693,7 +685,7 @@ class ReadClipDataMsg : public Message {
         reserve = data[0];    // 反序列化保留字段
         Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
     }
-    void process() override { "ReadClipDataMsg process"; };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_DATA_MSG);
@@ -722,7 +714,7 @@ class RstMsg : public Message {
         Log.d("RstMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
 
-    void process() override { Log.d("RstMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::RST_MSG);
@@ -889,7 +881,7 @@ class RstMsg : public Message {
               status, lockStatus, clipLed);
     }
 
-    void process() override { Log.d("RstMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2MasterMessageID::RST_MSG);
@@ -1238,18 +1230,17 @@ class RstMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(status);      // 序列化响应状态
         data.push_back(slaveNum);    // 序列化从机数量
-        // 序列化每个从机配置
         for (const auto& slave : slaves) {
             // 序列化从机ID (4字节)
             data.push_back(static_cast<uint8_t>(slave.id >> 24));
             data.push_back(static_cast<uint8_t>(slave.id >> 16));
             data.push_back(static_cast<uint8_t>(slave.id >> 8));
             data.push_back(static_cast<uint8_t>(slave.id));
+            // 序列化锁状态
+            data.push_back(slave.lock);
             // 序列化卡钉状态 (2字节)
             data.push_back(static_cast<uint8_t>(slave.clipStatus));
             data.push_back(static_cast<uint8_t>(slave.clipStatus >> 8));
-            // 序列化锁状态
-            data.push_back(slave.lock);
         }
     }
 
@@ -1277,12 +1268,12 @@ class RstMsg : public Message {
                        static_cast<uint32_t>(data[offset + 3]);
             offset += 4;
 
+            // 反序列化锁状态
+            slave.lock = data[offset++];
+
             // 反序列化卡钉状态 (2字节)
             slave.clipStatus = data[offset] | (data[offset + 1] << 8);
             offset += 2;
-
-            // 反序列化锁状态
-            slave.lock = data[offset++];
 
             slaves.push_back(slave);
         }
@@ -1411,7 +1402,7 @@ class ResDataMsg : public Message {
               resistanceData.size());
     }
 
-    void process() override { Log.d("ResDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2BackendMessageID::RES_DATA_MSG);
@@ -1440,7 +1431,7 @@ class ClipDataMsg : public Message {
         Log.d("ClipDataMsg: clipData=0x%04X", clipData);
     }
 
-    void process() override { Log.d("ClipDataMsg process"); };
+    void process() override;
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Slave2BackendMessageID::CLIP_DATA_MSG);
