@@ -48,10 +48,10 @@ enum class Master2SlaveMessageID : uint8_t {
 };
 
 enum class Slave2MasterMessageID : uint8_t {
-    COND_CFG_MSG = 0x00,    // 导通信息
-    RES_CFG_MSG = 0x01,     // 阻值信息
-    CLIP_CFG_MSG = 0x02,    // 卡钉信息
-    RST_MSG = 0x03,
+    COND_CFG_MSG = 0x10,    // 导通信息
+    RES_CFG_MSG = 0x11,     // 阻值信息
+    CLIP_CFG_MSG = 0x12,    // 卡钉信息
+    RST_MSG = 0x30,
 };
 
 enum class Backend2MasterMessageID : uint8_t {
