@@ -319,7 +319,7 @@ struct Slave2BackendPacket {
 class PacketPacker {
    public:
     // 将消息打包为 Master2SlavePacket
-    static Master2SlavePacket masterPack(const Message& msg,
+    static Master2SlavePacket master2SlavePack(const Message& msg,
                                          uint32_t destination_id) {
         Master2SlavePacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
@@ -328,7 +328,7 @@ class PacketPacker {
         return packet;
     }
 
-    static Slave2MasterPacket slavePack(const Message& msg,
+    static Slave2MasterPacket slave2MasterPack(const Message& msg,
                                         uint32_t source_id) {
         Slave2MasterPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
@@ -337,7 +337,7 @@ class PacketPacker {
         return packet;
     }
 
-    static Backend2MasterPacket backendPack(const Message& msg) {
+    static Backend2MasterPacket backend2MasterPack(const Message& msg) {
         Backend2MasterPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         msg.serialize(packet.payload);
