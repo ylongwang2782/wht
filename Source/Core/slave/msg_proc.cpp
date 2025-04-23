@@ -1,10 +1,12 @@
 #include "msg_proc.hpp"
+
 #include "TimerCPP.h"
-#include "harness.h"
+#include "bsp_log.hpp"
+
+extern Uart uart3;
+extern MsgProc msgProc;
 
 Harness harness;
-extern Uart uart3;
-
 class MyTimer {
    public:
     MyTimer()
@@ -36,13 +38,14 @@ class MyTimer {
     int maxTriggerCount;    // 最大触发次数
 };
 
-void Master2Slave::SyncMsg::process() {
+MyTimer myTimer;
+namespace Master2Slave {
+void SyncMsg::process() {
     Log.d("SyncMsg process");
-    MyTimer myTimer;
-    myTimer.startWithCount(4);
+    myTimer.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
-void Master2Slave::CondCfgMsg::process() {
+void CondCfgMsg::process() {
     Log.d("CondCfgMsg process");
 
     // 1. REPLY
@@ -56,40 +59,34 @@ void Master2Slave::CondCfgMsg::process() {
 
     // 初始化 Harness
     harness.init(conductionNum, totalConductionNum, startConductionNum);
-
     // 1.2 打包为 Packet
     auto condInfoPacket =
         PacketPacker::slave2MasterPack(condInfoMsg, 0x3732485B);
     // 1.3 打包为帧
     auto condInfoFrame = FramePacker::pack(condInfoPacket);
     // 1.4 发送
-    uart3.data_send(condInfoFrame.data(), condInfoFrame.size());
+    msgProc.send(condInfoFrame);
 }
 
-void Master2Slave::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
-void Master2Slave::ClipCfgMsg::process() { Log.d("ClipCfgMsg process"); }
-void Master2Slave::ReadCondDataMsg::process() {
+void ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
+void ClipCfgMsg::process() { Log.d("ClipCfgMsg process"); }
+void ReadCondDataMsg::process() {
     Log.d("ReadCondDataMsg process");
     Slave2Backend::CondDataMsg condDataMsg;
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
-
     // 2. 打包为 Packet
     auto condDataPacket =
         PacketPacker::slave2BackendPack(condDataMsg, 0x3732485B);
-
     // 3. 打包为帧
     auto master_data = FramePacker::pack(condDataPacket);
-
-    uart3.send(master_data.data(), master_data.size());
+    // 1.4 发送
+    msgProc.send(master_data);
 }
-void Master2Slave::ReadResDataMsg::process() {
-    Log.d("ReadResDataMsg process");
-}
-void Master2Slave::ReadClipDataMsg::process() {
-    Log.d("ReadClipDataMsg process");
-}
-void Master2Slave::RstMsg::process() { Log.d("RstMsg process"); }
+void ReadResDataMsg::process() { Log.d("ReadResDataMsg process"); }
+void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg process"); }
+void RstMsg::process() { Log.d("RstMsg process"); }
+};    // namespace Master2Slave
 
 void Slave2Master::CondCfgMsg::process() { Log.d("CondCfgMsg process"); }
 void Slave2Master::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }

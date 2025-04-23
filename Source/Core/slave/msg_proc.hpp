@@ -7,9 +7,15 @@
 #include "bsp_log.hpp"
 #include "protocol.hpp"
 #include "uwb_interface.hpp"
+#include "harness.h"
 
 #define SLAVE_USE_UWB
 #define ManagerDataTransferMsg_RXDATA_QUEUE_SIZE 2048
+// 发送数据入队超时
+#define MsgProc_TX_QUEUE_TIMEOUT 1000
+// 发送超时
+#define MsgProc_TX_TIMEOUT 1000
+
 class ManagerDataTransferMsg {
    public:
     ManagerDataTransferMsg()
@@ -101,4 +107,27 @@ class MsgProc {
             recv_data.clear();
         }
     }
+
+    bool send(std::vector<uint8_t>& frame) {
+        // 将发送数据写入队列
+        for (auto it = frame.begin(); it != frame.end(); it++) {
+            if (transfer_msg.tx_data_queue.add(*it, MsgProc_TX_QUEUE_TIMEOUT) ==
+                false) {
+                Log.e("[SlaveManager]: tx_data_queue.add failed");
+                return false;
+            }
+        }
+
+        // 请求数据发送
+        transfer_msg.tx_request_sem.give();
+
+        // 等待数据发送完成
+        if (transfer_msg.tx_done_sem.take(MsgProc_TX_TIMEOUT) == false) {
+            Log.e("[SlaveManager]: tx_done_sem.take failed, timeout");
+            return false;
+        }
+        return true;
+    }
+
+   private:
 };
