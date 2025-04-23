@@ -35,7 +35,7 @@
 #define SlaveManager_RSP_TIMEOUT 1000
 
 // 从机回复超时后重发次数
-#define SlaveManager_TX_RETRY_TIMES 1
+#define SlaveManager_TX_RETRY_TIMES 3
 
 // 从机回复超时
 #define SlaveManager_SlaveRSP_TIMEOUT 1000

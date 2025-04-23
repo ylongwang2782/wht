@@ -265,6 +265,19 @@ class DeviceCtrlProcessor : private __ProcessBase {
     }
 };
 
+class DeviceResetProcessor : private __ProcessBase {
+   public:
+    DeviceResetProcessor(ManagerDataTransferMsg& __transfer_msg)
+        : __ProcessBase(__transfer_msg) {}
+
+   private:
+   Master2Backend::RstMsg rst_msg;
+   public:
+    bool process(ResetCmd& rst_cmd) { 
+        
+        return true; }
+};
+
 class ReadCondProcessor : private __ProcessBase {
    public:
     ReadCondProcessor(ManagerDataTransferMsg& __transfer_msg)
