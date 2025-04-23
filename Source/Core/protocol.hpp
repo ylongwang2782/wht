@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "bsp_log.hpp"
+#include "bsp_uid.hpp"
 
 enum class PacketType : uint8_t {
     Master2Slave = 0x00,      // 对应协议中Master2Slave
@@ -1490,6 +1491,14 @@ class FrameParser {
                 "FrameParser: packet parsed, type=%s (0x%02X), "
                 "destination_id=0x%08X",
                 msgTypeStr, packet.message_id, packet.destination_id);
+
+            // Compare packet.destination_id with UIDReader::get()
+            if (packet.destination_id != UIDReader::get()) {
+                Log.e("FrameParser: id compare fail");
+                return nullptr;
+            } else {
+                Log.d("FrameParser: id compare success");
+            }
 
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG: {

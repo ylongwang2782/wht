@@ -4,8 +4,6 @@
 
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
-#include "bsp_uid.hpp"
-
 
 extern Uart uart3;
 extern MsgProc msgProc;
