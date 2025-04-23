@@ -48,10 +48,10 @@ enum class Master2SlaveMessageID : uint8_t {
 };
 
 enum class Slave2MasterMessageID : uint8_t {
-    COND_CFG_MSG = 0x00,    // 导通信息
-    RES_CFG_MSG = 0x01,     // 阻值信息
-    CLIP_CFG_MSG = 0x02,    // 卡钉信息
-    RST_MSG = 0x03,
+    COND_CFG_MSG = 0x10,    // 导通信息
+    RES_CFG_MSG = 0x11,     // 阻值信息
+    CLIP_CFG_MSG = 0x12,    // 卡钉信息
+    RST_MSG = 0x30,
 };
 
 enum class Backend2MasterMessageID : uint8_t {
@@ -275,16 +275,23 @@ struct DeviceStatus {
 };
 struct Slave2BackendPacket {
     uint8_t message_id;              // 消息类型标识
+    uint32_t slave_id;               // 新增: 本机ID (4字节)
     DeviceStatus device_status;      // 设备状态(2字节)
     std::vector<uint8_t> payload;    // 消息的序列化数据
 
     // 序列化 Slave2BackendPacket
     std::vector<uint8_t> serialize() const {
         std::vector<uint8_t> data;
-        data.reserve(3 + payload.size());    // 1 + 2 + payload size
+        data.reserve(7 + payload.size());    // 1 + 4 + 2 + payload size
 
         // 序列化消息ID
         data.push_back(message_id);
+
+        // 序列化本机ID (4字节)
+        data.push_back(static_cast<uint8_t>(slave_id >> 24));
+        data.push_back(static_cast<uint8_t>(slave_id >> 16));
+        data.push_back(static_cast<uint8_t>(slave_id >> 8));
+        data.push_back(static_cast<uint8_t>(slave_id));
 
         // 序列化设备状态
         uint16_t status = *reinterpret_cast<const uint16_t*>(&device_status);
@@ -298,7 +305,7 @@ struct Slave2BackendPacket {
 
     // 反序列化 Slave2BackendPacket
     bool deserialize(const std::vector<uint8_t>& data) {
-        if (data.size() < 3) {
+        if (data.size() < 7) {
             Log.e("Slave2BackendPacket data too short");
             return false;
         }
@@ -306,12 +313,18 @@ struct Slave2BackendPacket {
         // 反序列化消息ID
         message_id = data[0];
 
+        // 反序列化本机ID (4字节)
+        slave_id = (static_cast<uint32_t>(data[1]) << 24) |
+                   (static_cast<uint32_t>(data[2]) << 16) |
+                   (static_cast<uint32_t>(data[3]) << 8) |
+                   static_cast<uint32_t>(data[4]);
+
         // 反序列化设备状态
-        uint16_t status = data[1] | (data[2] << 8);
+        uint16_t status = data[5] | (data[6] << 8);
         device_status = *reinterpret_cast<DeviceStatus*>(&status);
 
         // 反序列化payload
-        payload.assign(data.begin() + 3, data.end());
+        payload.assign(data.begin() + 7, data.end());
         return true;
     }
 };
@@ -319,8 +332,8 @@ struct Slave2BackendPacket {
 class PacketPacker {
    public:
     // 将消息打包为 Master2SlavePacket
-    static Master2SlavePacket masterPack(const Message& msg,
-                                         uint32_t destination_id) {
+    static Master2SlavePacket master2SlavePack(const Message& msg,
+                                               uint32_t destination_id) {
         Master2SlavePacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         packet.destination_id = destination_id;    // 设置目标 ID
@@ -328,8 +341,8 @@ class PacketPacker {
         return packet;
     }
 
-    static Slave2MasterPacket slavePack(const Message& msg,
-                                        uint32_t source_id) {
+    static Slave2MasterPacket slave2MasterPack(const Message& msg,
+                                               uint32_t source_id) {
         Slave2MasterPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         packet.source_id = source_id;              // 设置目标 ID
@@ -337,7 +350,7 @@ class PacketPacker {
         return packet;
     }
 
-    static Backend2MasterPacket backendPack(const Message& msg) {
+    static Backend2MasterPacket backend2MasterPack(const Message& msg) {
         Backend2MasterPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
         msg.serialize(packet.payload);
@@ -355,6 +368,7 @@ class PacketPacker {
                                                  uint32_t slave_id) {
         Slave2BackendPacket packet;
         packet.message_id = msg.message_type();    // 获取消息类型
+        packet.slave_id = slave_id;                // 设置本机ID
         msg.serialize(packet.payload);
         return packet;
     }
