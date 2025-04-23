@@ -127,8 +127,9 @@ LogTask logTask;
 MsgProcTask msgProcTask;
 
 int Slave_Init(void) {
-    UIDReader& uid = UIDReader::getInstance();
-    Log.d("Slave_Init: %02X", uid.value);
+    uint32_t myUid = UIDReader::get();
+    Log.d("Slave_Init: %02X", myUid);
+
     return 0;
 }
 

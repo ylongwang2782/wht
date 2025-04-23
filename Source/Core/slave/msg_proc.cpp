@@ -1,7 +1,11 @@
 #include "msg_proc.hpp"
 
+#include <cstdint>
+
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
+#include "bsp_uid.hpp"
+
 
 extern Uart uart3;
 extern MsgProc msgProc;
@@ -60,8 +64,8 @@ void CondCfgMsg::process() {
     // 初始化 Harness
     harness.init(conductionNum, totalConductionNum, startConductionNum);
     // 1.2 打包为 Packet
-    auto condInfoPacket =
-        PacketPacker::slave2MasterPack(condInfoMsg, 0x3732485B);
+    uint32_t uid = UIDReader::get();
+    auto condInfoPacket = PacketPacker::slave2MasterPack(condInfoMsg, uid);
     // 1.3 打包为帧
     auto condInfoFrame = FramePacker::pack(condInfoPacket);
     // 1.4 发送
@@ -76,8 +80,8 @@ void ReadCondDataMsg::process() {
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
     // 2. 打包为 Packet
-    auto condDataPacket =
-        PacketPacker::slave2BackendPack(condDataMsg, 0x3732485B);
+    uint32_t uid = UIDReader::get();
+    auto condDataPacket = PacketPacker::slave2BackendPack(condDataMsg, uid);
     // 3. 打包为帧
     auto master_data = FramePacker::pack(condDataPacket);
     // 1.4 发送
