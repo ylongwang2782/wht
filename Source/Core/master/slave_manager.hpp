@@ -307,7 +307,6 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
 
 #ifdef SLAVE_USE_UWB
         UWB<UwbUartInterface> uwb;
-        Log.i("SlaveDataTransfer_Task: uwb.size=%d", sizeof(uwb));
         std::vector<uint8_t> buffer = {1, 2, 3, 4, 5};
         uint8_t data = 0;
         std::vector<uint8_t> rx;
