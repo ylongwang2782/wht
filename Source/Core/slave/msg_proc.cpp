@@ -88,21 +88,29 @@ void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg process"); }
 void RstMsg::process() { Log.d("RstMsg process"); }
 };    // namespace Master2Slave
 
+namespace Slave2Master {
 void Slave2Master::CondCfgMsg::process() { Log.d("CondCfgMsg process"); }
 void Slave2Master::ResCfgMsg::process() { Log.d("ResCfgMsg process"); }
 void Slave2Master::ClipCfgMsg::process() { Log.d("ClipCfgMsg process"); }
 void Slave2Master::RstMsg::process() { Log.d("RstMsg process"); }
+}    // namespace Slave2Master
 
+namespace Backend2Master {
 void Backend2Master::SlaveCfgMsg::process() { Log.d("SlaveCfgMsg process"); }
 void Backend2Master::ModeCfgMsg::process() { Log.d("ModeCfgMsg process"); }
 void Backend2Master::RstMsg::process() { Log.d("RstMsg process"); }
 void Backend2Master::CtrlMsg::process() { Log.d("CtrlMsg process"); }
+}    // namespace Backend2Master
 
+namespace Master2Backend {
 void Master2Backend::SlaveCfgMsg::process() { Log.d("SlaveCfgMsg process"); }
 void Master2Backend::ModeCfgMsg::process() { Log.d("ModeCfgMsg process"); }
 void Master2Backend::RstMsg::process() { Log.d("RstMsg process"); }
 void Master2Backend::CtrlMsg::process() { Log.d("CtrlMsg process"); }
+}    // namespace Master2Backend
 
+namespace Slave2Backend {
 void Slave2Backend::CondDataMsg::process() { Log.d("CondDataMsg process"); }
 void Slave2Backend::ResDataMsg::process() { Log.d("ResDataMsg process"); }
 void Slave2Backend::ClipDataMsg::process() { Log.d("ClipDataMsg process"); }
+}    // namespace Slave2Backend
