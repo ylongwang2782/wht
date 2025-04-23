@@ -204,6 +204,12 @@ class SpiMaster : private SpiDevBase {
                 return false;
             }
         }
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                nss_high(nss_index);
+                return false;
+            }
+        }
         nss_high(nss_index);
         return true;
     }
@@ -229,6 +235,13 @@ class SpiMaster : private SpiDevBase {
                 rxcount++;
                 txallowed = 1;
             }
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                nss_high(nss_index);
+                return false;
+            }
+        }
+
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
                 nss_high(nss_index);
                 return false;
@@ -273,6 +286,12 @@ class SpiMaster : private SpiDevBase {
                 txallowed = 1;
             }
 
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                nss_high(nss_index);
+                return false;
+            }
+        }
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
                 nss_high(nss_index);
                 return false;
