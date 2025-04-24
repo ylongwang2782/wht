@@ -174,29 +174,29 @@ class Harness {
     int rowIndex = 0;
 
     bool isDeviceOutput() {
-        return rowIndex >= startConductionNum &&
-               rowIndex <= startConductionNum + conductionNum;
+        return (rowIndex >= startConductionNum &&
+                rowIndex < startConductionNum + conductionNum);
     }
 
     void run() {
+        // set current pin
         if (isDeviceOutput()) {
             int index = rowIndex - startConductionNum;
-
-            // reset last pin
-            if (int lastIndex = index - 1; lastIndex >= 0) {
-                pins[lastIndex].bit_reset();
-                pins[lastIndex].mode_set(GPIO::Mode::INPUT);
-            }
-
-            // set current pin
             if (index < conductionNum) {
                 pins[index].mode_set(GPIO::Mode::OUTPUT);
                 pins[index].bit_set();
             }
-        }
-
-        for (size_t i = 0; i < data.cols; i++) {
-            data.setValue(rowIndex, i, pins[i].input_bit_get());
+            for (size_t i = 0; i < data.cols; i++) {
+                data.setValue(rowIndex, i, pins[i].input_bit_get());
+            }
+            TaskBase::delay(4);
+            // pins[index].bit_reset();
+            pins[index].mode_set(GPIO::Mode::INPUT);
+        } else {
+            TaskBase::delay(2);
+            for (size_t i = 0; i < data.cols; i++) {
+                data.setValue(rowIndex, i, pins[i].input_bit_get());
+            }
         }
     }
 

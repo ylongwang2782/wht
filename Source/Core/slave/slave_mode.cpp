@@ -95,7 +95,6 @@ class LedBlinkTask : public TaskClassS<256> {
         for (;;) {
             // battery.read();
             // Log.d("Battery: %d", battery.value);
-            sysLed.toggle();
             TaskBase::delay(500);
         }
     }

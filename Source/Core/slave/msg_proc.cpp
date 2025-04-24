@@ -4,16 +4,18 @@
 
 #include "TimerCPP.h"
 #include "bsp_log.hpp"
+#include "bsp_led.hpp"
 
 extern Uart uart3;
 extern MsgProc msgProc;
+extern LED sysLed;
 
 Harness harness;
 class MyTimer {
    public:
     MyTimer()
         : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
-                  pdMS_TO_TICKS(100), pdTRUE) {}
+                  pdMS_TO_TICKS(20), pdTRUE) {}
 
     void startWithCount(int count) {
         if (count > 0) {
@@ -24,12 +26,13 @@ class MyTimer {
     }
 
     void myTimerCallback() {
-        // printf("Timer triggered!\n");
         if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
             myTimer.stop();
             harness.reload();
+            sysLed.on();
             return;
         }
+        sysLed.toggle();
         harness.run();
         harness.rowIndex++;
     }
@@ -44,6 +47,7 @@ MyTimer myTimer;
 namespace Master2Slave {
 void SyncMsg::process() {
     Log.d("SyncMsg process");
+    sysLed.off();
     myTimer.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
