@@ -214,6 +214,19 @@ class SpiMaster : private SpiDevBase {
         return true;
     }
 
+    bool send_open_loop(std::vector<uint8_t> tx_data)
+    {
+        uint32_t txcount = 0;
+        nss_low();
+        while(txcount < tx_data.size()){
+            while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, tx_data[txcount++]); 
+        }
+        while(SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        nss_high();
+        return true;
+    }
+
     bool recv(uint32_t rx_len, uint16_t timeout_ms = 1000,
               uint8_t nss_index = 0) {
         uint32_t timeout_tick = pdMS_TO_TICKS(timeout_ms);
