@@ -204,7 +204,7 @@ class SpiMaster : private SpiDevBase {
                 return false;
             }
         }
-        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
                 nss_high(nss_index);
                 return false;
@@ -254,7 +254,7 @@ class SpiMaster : private SpiDevBase {
             }
         }
 
-        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
                 nss_high(nss_index);
                 return false;
@@ -295,7 +295,7 @@ class SpiMaster : private SpiDevBase {
                 txallowed = 1;
             }
             if (rxcount >= rx_len &&
-                SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TBE)) {
+                SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
                 txallowed = 1;
             }
 
@@ -304,7 +304,7 @@ class SpiMaster : private SpiDevBase {
                 return false;
             }
         }
-        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
+        while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
                 nss_high(nss_index);
                 return false;
