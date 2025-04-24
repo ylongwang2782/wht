@@ -1492,13 +1492,12 @@ class FrameParser {
                 "destination_id=0x%08X",
                 msgTypeStr, packet.message_id, packet.destination_id);
 
-            // Compare packet.destination_id with UIDReader::get()
-            if (packet.destination_id != UIDReader::get()) {
+            if (packet.destination_id != 0xFFFFFFFF &&
+                packet.destination_id != UIDReader::get()) {
                 Log.e("FrameParser: id compare fail");
                 return nullptr;
-            } else {
-                Log.d("FrameParser: id compare success");
             }
+            Log.d("FrameParser: id compare success");
 
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG: {

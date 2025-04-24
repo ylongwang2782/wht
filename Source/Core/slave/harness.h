@@ -212,7 +212,13 @@ class Harness {
         }
     }
 
-    void reload() { rowIndex = 0; }
+    void reload() {
+        // 将最后一个被设置为输出的引脚重置为输入
+        int lastIndex = rowIndex - startConductionNum - 1;
+        pins[lastIndex].mode_set(GPIO::Mode::INPUT);
+        // 复位行索引
+        rowIndex = 0;
+    }
 
     void deinit() { pins.clear(); }
 
