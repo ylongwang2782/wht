@@ -11,3 +11,5 @@ class LED {
    private:
     GPIO gpio;
 };
+
+extern LED sysLed;
