@@ -5,18 +5,10 @@
 #include <vector>
 
 #include "TaskCPP.h"
+#include "TimerCPP.h"
 #include "bsp_gpio.hpp"
+#include "bsp_led.hpp"
 #include "bsp_log.hpp"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "gd32f4xx.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 class BinaryMatrix {
    private:
@@ -168,6 +160,43 @@ const std::pair<GPIO::Port, GPIO::Pin> condPinInfo[] = {
 };
 
 class Harness {
+   public:
+    Harness()
+        : harnessTimer("Harness", this, &Harness::myTimerCallback,
+                       pdMS_TO_TICKS(20), pdTRUE) {}
+
+    void startWithCount(int count) {
+        if (count > 0) {
+            triggerCount = 0;
+            maxTriggerCount = count;
+            harnessTimer.start();
+        }
+    }
+
+    void myTimerCallback() {
+        if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
+            harnessTimer.stop();
+            reload();
+            sysLed.on();
+            return;
+        }
+        sysLed.toggle();
+        run();
+        rowIndex++;
+    }
+
+    void setPeriod(int interval) {
+        if (interval > 0) {
+            harnessTimer.period(pdMS_TO_TICKS(interval));
+            harnessTimer.stop();
+        }
+    }
+
+   private:
+    FreeRTOScpp::TimerMember<Harness> harnessTimer;
+    int triggerCount;       // 当前触发次数
+    int maxTriggerCount;    // 最大触发次数
+
    public:
     BinaryMatrix data;
     std::vector<GPIO> pins;

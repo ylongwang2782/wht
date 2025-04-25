@@ -2,8 +2,6 @@
 #include "slave_mode.hpp"
 #ifdef SLAVE
 
-LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
-
 class UsartDMATask : public TaskClassS<1024> {
    public:
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
@@ -52,7 +50,7 @@ MsgProc msgProc(manager_transfer_msg);
 
 class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
    public:
-    MsgProcTask() : TaskClassS<1024>("MsgProcTask", MsgProcTask_PRIORITY) {}
+    MsgProcTask() : TaskClassS<MsgProcTask_SIZE>("MsgProcTask", MsgProcTask_PRIORITY) {}
 
     void task() override {
         Log.d("MsgProcTask: Boot");
