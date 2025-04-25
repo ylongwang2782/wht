@@ -16,7 +16,6 @@ extern "C" {
 #include "task.h"
 }
 
-#define USART_LOG      USART1
 #define LOG_QUEUE_SIZE 128
 
 // 定义日志消息的最大长度
@@ -139,25 +138,6 @@ class Logger {
         // 将日志消息放入队列
         if (!logQueue.add(logMsg, portMAX_DELAY)) {
             printf("Failed to add log message to queue!\n");
-        }
-    }
-};
-
-extern Logger Log;
-class LogTask : public TaskClassS<LogTask_SIZE> {
-   public:
-    LogTask() : TaskClassS<LogTask_SIZE>("LogTask", LogTask_PRIORITY) {}
-
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        for (;;) {
-            LogMessage logMsg;
-            // 从队列中获取日志消息
-            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.send(
-                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
-                    strlen(logMsg.message.data()));
-            }
         }
     }
 };

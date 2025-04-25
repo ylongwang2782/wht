@@ -1,5 +1,4 @@
-#ifndef UWB_INTERFACE_HPP
-#define UWB_INTERFACE_HPP
+#pragma once
 #include <cstdint>
 #include <cstdio>
 #include <vector>
@@ -10,8 +9,8 @@
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
 #include "uwb.hpp"
+#include "peripherals.hpp"
 
-extern Logger Log;
 class UwbUartInterface : public CxUwbInterface {
    public:
     UwbUartInterface()
@@ -72,5 +71,3 @@ class UwbUartInterface : public CxUwbInterface {
         Log.d(buffer);
     }
 };
-
-#endif

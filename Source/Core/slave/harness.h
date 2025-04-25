@@ -7,8 +7,8 @@
 #include "TaskCPP.h"
 #include "TimerCPP.h"
 #include "bsp_gpio.hpp"
-#include "bsp_led.hpp"
 #include "bsp_log.hpp"
+#include "peripherals.hpp"
 
 class BinaryMatrix {
    private:

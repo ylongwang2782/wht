@@ -1,9 +1,5 @@
 #include "bsp_log.hpp"
 
-UartConfig uart3Conf(uart3_info);
-Uart uart3(uart3Conf);
-Logger Log(uart3);
-
 void vAssertCalled(const char *file, int line) {
     taskDISABLE_INTERRUPTS();
     printf("Assert failed in file %s at line %d\n", file, line);
