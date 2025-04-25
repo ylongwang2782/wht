@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "bsp_log.hpp"
+#include "bsp_uid.hpp"
 
 enum class PacketType : uint8_t {
     Master2Slave = 0x00,      // 对应协议中Master2Slave
@@ -76,6 +77,24 @@ enum class Slave2BackendMessageID : uint8_t {
     RES_DATA_MSG = 0x01,
     CLIP_DATA_MSG = 0x02,
 };
+
+namespace ProtocolUtils {
+
+inline void serializeUint32(std::vector<uint8_t>& data, uint32_t value) {
+    data.push_back(static_cast<uint8_t>(value));
+    data.push_back(static_cast<uint8_t>(value >> 8));
+    data.push_back(static_cast<uint8_t>(value >> 16));
+    data.push_back(static_cast<uint8_t>(value >> 24));
+}
+
+inline uint32_t deserializeUint32(const std::vector<uint8_t>& data,
+                                  size_t offset = 0) {
+    return static_cast<uint32_t>(data[offset]) |
+           (static_cast<uint32_t>(data[offset + 1]) << 8) |
+           (static_cast<uint32_t>(data[offset + 2]) << 16) |
+           (static_cast<uint32_t>(data[offset + 3]) << 24);
+}
+}    // namespace ProtocolUtils
 
 class FrameBase {
    public:
@@ -150,10 +169,7 @@ struct Master2SlavePacket {
         std::vector<uint8_t> data;
         data.reserve(5 + payload.size());    // 1 + 4 + payload size
         data.push_back(message_id);
-        data.push_back(static_cast<uint8_t>(destination_id >> 24));
-        data.push_back(static_cast<uint8_t>(destination_id >> 16));
-        data.push_back(static_cast<uint8_t>(destination_id >> 8));
-        data.push_back(static_cast<uint8_t>(destination_id));
+        ProtocolUtils::serializeUint32(data, destination_id);
         data.insert(data.end(), payload.begin(), payload.end());
         return data;
     }
@@ -165,10 +181,7 @@ struct Master2SlavePacket {
             return false;
         }
         message_id = data[0];
-        destination_id = (static_cast<uint32_t>(data[1]) << 24) |
-                         (static_cast<uint32_t>(data[2]) << 16) |
-                         (static_cast<uint32_t>(data[3]) << 8) |
-                         static_cast<uint32_t>(data[4]);
+        destination_id = ProtocolUtils::deserializeUint32(data, 1);
         payload.assign(data.begin() + 5, data.end());
         return true;
     }
@@ -184,10 +197,7 @@ struct Slave2MasterPacket {
         std::vector<uint8_t> data;
         data.reserve(5 + payload.size());    // 1 + 4 + payload size
         data.push_back(message_id);
-        data.push_back(static_cast<uint8_t>(source_id >> 24));
-        data.push_back(static_cast<uint8_t>(source_id >> 16));
-        data.push_back(static_cast<uint8_t>(source_id >> 8));
-        data.push_back(static_cast<uint8_t>(source_id));
+        ProtocolUtils::serializeUint32(data, source_id);
         data.insert(data.end(), payload.begin(), payload.end());
         return data;
     }
@@ -199,10 +209,7 @@ struct Slave2MasterPacket {
             return false;
         }
         message_id = data[0];
-        source_id = (static_cast<uint32_t>(data[1]) << 24) |
-                    (static_cast<uint32_t>(data[2]) << 16) |
-                    (static_cast<uint32_t>(data[3]) << 8) |
-                    static_cast<uint32_t>(data[4]);
+        source_id = ProtocolUtils::deserializeUint32(data, 1);
         payload.assign(data.begin() + 5, data.end());
         return true;
     }
@@ -288,10 +295,7 @@ struct Slave2BackendPacket {
         data.push_back(message_id);
 
         // 序列化本机ID (4字节)
-        data.push_back(static_cast<uint8_t>(slave_id >> 24));
-        data.push_back(static_cast<uint8_t>(slave_id >> 16));
-        data.push_back(static_cast<uint8_t>(slave_id >> 8));
-        data.push_back(static_cast<uint8_t>(slave_id));
+        ProtocolUtils::serializeUint32(data, slave_id);
 
         // 序列化设备状态
         uint16_t status = *reinterpret_cast<const uint16_t*>(&device_status);
@@ -314,10 +318,7 @@ struct Slave2BackendPacket {
         message_id = data[0];
 
         // 反序列化本机ID (4字节)
-        slave_id = (static_cast<uint32_t>(data[1]) << 24) |
-                   (static_cast<uint32_t>(data[2]) << 16) |
-                   (static_cast<uint32_t>(data[3]) << 8) |
-                   static_cast<uint32_t>(data[4]);
+        slave_id = ProtocolUtils::deserializeUint32(data, 1);
 
         // 反序列化设备状态
         uint16_t status = data[5] | (data[6] << 8);
@@ -485,10 +486,7 @@ class SyncMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.clear();    // 清空传入的vector
         data.push_back(mode);
-        data.push_back(static_cast<uint8_t>(timestamp >> 24));
-        data.push_back(static_cast<uint8_t>(timestamp >> 16));
-        data.push_back(static_cast<uint8_t>(timestamp >> 8));
-        data.push_back(static_cast<uint8_t>(timestamp));
+        ProtocolUtils::serializeUint32(data, timestamp);
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
@@ -496,8 +494,7 @@ class SyncMsg : public Message {
             Log.e("SyncMsg: Invalid SyncMsg data size");
         }
         mode = data[0];
-        timestamp =
-            (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4];
+        timestamp = ProtocolUtils::deserializeUint32(data, 1);
         Log.d("SyncMsg: mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
     }
 
@@ -922,10 +919,7 @@ class SlaveCfgMsg : public Message {
         // 序列化每个从机配置
         for (const auto& slave : slaves) {
             // 序列化从机ID (4字节)
-            data.push_back(static_cast<uint8_t>(slave.id >> 24));
-            data.push_back(static_cast<uint8_t>(slave.id >> 16));
-            data.push_back(static_cast<uint8_t>(slave.id >> 8));
-            data.push_back(static_cast<uint8_t>(slave.id));
+            ProtocolUtils::serializeUint32(data, slave.id);
             // 序列化其他配置
             data.push_back(slave.conductionNum);
             data.push_back(slave.resistanceNum);
@@ -952,10 +946,7 @@ class SlaveCfgMsg : public Message {
 
             SlaveConfig slave;
             // 反序列化从机ID (4字节)
-            slave.id = (static_cast<uint32_t>(data[offset]) << 24) |
-                       (static_cast<uint32_t>(data[offset + 1]) << 16) |
-                       (static_cast<uint32_t>(data[offset + 2]) << 8) |
-                       static_cast<uint32_t>(data[offset + 3]);
+            slave.id = ProtocolUtils::deserializeUint32(data, offset);
             offset += 4;
 
             // 反序列化其他配置
@@ -1028,10 +1019,7 @@ class RstMsg : public Message {
         // 序列化每个从机配置
         for (const auto& slave : slaves) {
             // 序列化从机ID (4字节)
-            data.push_back(static_cast<uint8_t>(slave.id >> 24));
-            data.push_back(static_cast<uint8_t>(slave.id >> 16));
-            data.push_back(static_cast<uint8_t>(slave.id >> 8));
-            data.push_back(static_cast<uint8_t>(slave.id));
+            ProtocolUtils::serializeUint32(data, slave.id);
             // 序列化锁状态
             data.push_back(slave.lock);
             // 序列化卡钉状态 (2字节)
@@ -1056,10 +1044,7 @@ class RstMsg : public Message {
 
             SlaveResetConfig slave;
             // 反序列化从机ID (4字节)
-            slave.id = (static_cast<uint32_t>(data[offset]) << 24) |
-                       (static_cast<uint32_t>(data[offset + 1]) << 16) |
-                       (static_cast<uint32_t>(data[offset + 2]) << 8) |
-                       static_cast<uint32_t>(data[offset + 3]);
+            slave.id = ProtocolUtils::deserializeUint32(data, offset);
             offset += 4;
 
             // 反序列化锁状态
@@ -1135,10 +1120,7 @@ class SlaveCfgMsg : public Message {
         // 序列化每个从机配置
         for (const auto& slave : slaves) {
             // 序列化从机ID (4字节)
-            data.push_back(static_cast<uint8_t>(slave.id >> 24));
-            data.push_back(static_cast<uint8_t>(slave.id >> 16));
-            data.push_back(static_cast<uint8_t>(slave.id >> 8));
-            data.push_back(static_cast<uint8_t>(slave.id));
+            ProtocolUtils::serializeUint32(data, slave.id);
             // 序列化其他配置
             data.push_back(slave.conductionNum);
             data.push_back(slave.resistanceNum);
@@ -1167,10 +1149,7 @@ class SlaveCfgMsg : public Message {
 
             SlaveConfig slave;
             // 反序列化从机ID (4字节)
-            slave.id = (static_cast<uint32_t>(data[offset]) << 24) |
-                       (static_cast<uint32_t>(data[offset + 1]) << 16) |
-                       (static_cast<uint32_t>(data[offset + 2]) << 8) |
-                       static_cast<uint32_t>(data[offset + 3]);
+            slave.id = ProtocolUtils::deserializeUint32(data, offset);
             offset += 4;
 
             // 反序列化其他配置
@@ -1246,10 +1225,7 @@ class RstMsg : public Message {
         data.push_back(slaveNum);    // 序列化从机数量
         for (const auto& slave : slaves) {
             // 序列化从机ID (4字节)
-            data.push_back(static_cast<uint8_t>(slave.id >> 24));
-            data.push_back(static_cast<uint8_t>(slave.id >> 16));
-            data.push_back(static_cast<uint8_t>(slave.id >> 8));
-            data.push_back(static_cast<uint8_t>(slave.id));
+            ProtocolUtils::serializeUint32(data, slave.id);
             // 序列化锁状态
             data.push_back(slave.lock);
             // 序列化卡钉状态 (2字节)
@@ -1276,10 +1252,7 @@ class RstMsg : public Message {
 
             SlaveResetConfig slave;
             // 反序列化从机ID (4字节)
-            slave.id = (static_cast<uint32_t>(data[offset]) << 24) |
-                       (static_cast<uint32_t>(data[offset + 1]) << 16) |
-                       (static_cast<uint32_t>(data[offset + 2]) << 8) |
-                       static_cast<uint32_t>(data[offset + 3]);
+            slave.id = ProtocolUtils::deserializeUint32(data, offset);
             offset += 4;
 
             // 反序列化锁状态
@@ -1518,6 +1491,13 @@ class FrameParser {
                 "FrameParser: packet parsed, type=%s (0x%02X), "
                 "destination_id=0x%08X",
                 msgTypeStr, packet.message_id, packet.destination_id);
+
+            if (packet.destination_id != 0xFFFFFFFF &&
+                packet.destination_id != UIDReader::get()) {
+                Log.e("FrameParser: id compare fail");
+                return nullptr;
+            }
+            Log.d("FrameParser: id compare success");
 
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG: {

@@ -5,9 +5,10 @@
 #include "SemaphoreCPP.h"
 #include "TaskCPP.h"
 #include "bsp_log.hpp"
+#include "harness.h"
 #include "protocol.hpp"
 #include "uwb_interface.hpp"
-#include "harness.h"
+
 
 #define SLAVE_USE_UWB
 #define ManagerDataTransferMsg_RXDATA_QUEUE_SIZE 2048
@@ -35,9 +36,9 @@ class ManagerDataTransferMsg {
     Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> rx_data_queue;
 };
 
-class ManagerDataTransfer : public TaskClassS<1024> {
+class ManagerDataTransferTask : public TaskClassS<1024> {
    public:
-    ManagerDataTransfer(ManagerDataTransferMsg& __manager_transfer_msg)
+    ManagerDataTransferTask(ManagerDataTransferMsg& __manager_transfer_msg)
         : TaskClassS("SlaveDataTransfer", TaskPrio_High),
           transfer_msg(__manager_transfer_msg) {}
 

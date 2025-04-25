@@ -3,50 +3,60 @@
 #include <cstdint>
 
 #include "TimerCPP.h"
+#include "bsp_led.hpp"
 #include "bsp_log.hpp"
-#include "bsp_uid.hpp"
 
 
 extern Uart uart3;
 extern MsgProc msgProc;
+extern LED sysLed;
 
 Harness harness;
-class MyTimer {
+class HarnessTimer {
    public:
-    MyTimer()
-        : myTimer("MyTimer", this, &MyTimer::myTimerCallback,
-                  pdMS_TO_TICKS(100), pdTRUE) {}
+    HarnessTimer()
+        : harnessTimer("HarnessTimer", this, &HarnessTimer::myTimerCallback,
+                       pdMS_TO_TICKS(20), pdTRUE) {}
 
     void startWithCount(int count) {
         if (count > 0) {
             triggerCount = 0;
             maxTriggerCount = count;
-            myTimer.start();
+            harnessTimer.start();
         }
     }
 
     void myTimerCallback() {
-        // printf("Timer triggered!\n");
         if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
-            myTimer.stop();
+            harnessTimer.stop();
             harness.reload();
+            sysLed.on();
             return;
         }
+        sysLed.toggle();
         harness.run();
         harness.rowIndex++;
     }
+    
+    void setPeriod(int interval) {
+        if (interval > 0) {
+            harnessTimer.period(pdMS_TO_TICKS(interval));
+            harnessTimer.stop();
+        }
+    }
 
    private:
-    FreeRTOScpp::TimerMember<MyTimer> myTimer;
+    FreeRTOScpp::TimerMember<HarnessTimer> harnessTimer;
     int triggerCount;       // 当前触发次数
     int maxTriggerCount;    // 最大触发次数
 };
 
-MyTimer myTimer;
+HarnessTimer harnessTimer;
 namespace Master2Slave {
 void SyncMsg::process() {
     Log.d("SyncMsg process");
-    myTimer.startWithCount(CondCfgMsg::totalConductionNum);
+    sysLed.off();
+    harnessTimer.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
 void CondCfgMsg::process() {
@@ -61,6 +71,7 @@ void CondCfgMsg::process() {
     condInfoMsg.startConductionNum = startConductionNum;
     condInfoMsg.conductionNum = conductionNum;
 
+    harnessTimer.setPeriod(interval);
     // 初始化 Harness
     harness.init(conductionNum, totalConductionNum, startConductionNum);
     // 1.2 打包为 Packet

@@ -14,7 +14,6 @@
 #include "bsp_gpio.hpp"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
-#include "bsp_uid.hpp"
 #include "mode_entry.h"
 #include "msg_proc.hpp"
 #include "protocol.hpp"
@@ -34,9 +33,7 @@ extern "C" {
 
 #ifdef SLAVE
 
-UartConfig usart0Conf(usart0_info);
 UartConfig uart3Conf(uart3_info);
-Uart usart0(usart0Conf);
 Uart uart3(uart3Conf);
 
 Logger Log(uart3);
@@ -98,14 +95,12 @@ class LedBlinkTask : public TaskClassS<256> {
         for (;;) {
             // battery.read();
             // Log.d("Battery: %d", battery.value);
-            sysLed.toggle();
             TaskBase::delay(500);
         }
     }
 };
 
 ManagerDataTransferMsg manager_transfer_msg;
-ManagerDataTransfer manager_data_transfer(manager_transfer_msg);
 MsgProc msgProc(manager_transfer_msg);
 
 class MsgProcTask : public TaskClassS<1024> {
@@ -124,11 +119,12 @@ class MsgProcTask : public TaskClassS<1024> {
 // UsartDMATask usartDMATask;
 LedBlinkTask ledBlinkTask;
 LogTask logTask;
+ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
 MsgProcTask msgProcTask;
 
 int Slave_Init(void) {
     uint32_t myUid = UIDReader::get();
-    Log.d("Slave_Init: %02X", myUid);
+    Log.d("Slave Boot: %02X", myUid);
 
     return 0;
 }
