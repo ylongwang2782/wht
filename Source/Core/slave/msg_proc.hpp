@@ -9,13 +9,15 @@
 #include "protocol.hpp"
 #include "uwb_interface.hpp"
 
-
 #define SLAVE_USE_UWB
 #define ManagerDataTransferMsg_RXDATA_QUEUE_SIZE 2048
 // 发送数据入队超时
 #define MsgProc_TX_QUEUE_TIMEOUT 1000
 // 发送超时
 #define MsgProc_TX_TIMEOUT 1000
+
+#define ManagerDataTransferTask_SIZE     1024
+#define ManagerDataTransferTask_PRIORITY TaskPrio_High
 
 class ManagerDataTransferMsg {
    public:
@@ -36,10 +38,11 @@ class ManagerDataTransferMsg {
     Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> rx_data_queue;
 };
 
-class ManagerDataTransferTask : public TaskClassS<1024> {
+class ManagerDataTransferTask
+    : public TaskClassS<ManagerDataTransferTask_SIZE> {
    public:
     ManagerDataTransferTask(ManagerDataTransferMsg& __manager_transfer_msg)
-        : TaskClassS("SlaveDataTransfer", TaskPrio_High),
+        : TaskClassS("SlaveDataTransfer", ManagerDataTransferTask_PRIORITY),
           transfer_msg(__manager_transfer_msg) {}
 
    private:

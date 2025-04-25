@@ -25,6 +25,10 @@ extern "C" {
 // 定义日志队列的长度
 #define LOG_QUEUE_LENGTH 20
 
+// 定义日志任务的堆栈大小和优先级
+#define LogTask_SIZE     1024
+#define LogTask_PRIORITY TaskPrio_High
+
 // 日志消息结构体
 struct LogMessage {
     std::array<char, LOG_MESSAGE_MAX_LENGTH> message;
@@ -140,9 +144,9 @@ class Logger {
 };
 
 extern Logger Log;
-class LogTask : public TaskClassS<1024> {
+class LogTask : public TaskClassS<LogTask_SIZE> {
    public:
-    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
+    LogTask() : TaskClassS<LogTask_SIZE>("LogTask", LogTask_PRIORITY) {}
 
     void task() override {
         char buffer[LOG_QUEUE_SIZE + 8];
