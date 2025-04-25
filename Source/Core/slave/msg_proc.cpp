@@ -2,61 +2,18 @@
 
 #include <cstdint>
 
-#include "TimerCPP.h"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
 
-
 extern Uart uart3;
 extern MsgProc msgProc;
-extern LED sysLed;
 
 Harness harness;
-class HarnessTimer {
-   public:
-    HarnessTimer()
-        : harnessTimer("HarnessTimer", this, &HarnessTimer::myTimerCallback,
-                       pdMS_TO_TICKS(20), pdTRUE) {}
-
-    void startWithCount(int count) {
-        if (count > 0) {
-            triggerCount = 0;
-            maxTriggerCount = count;
-            harnessTimer.start();
-        }
-    }
-
-    void myTimerCallback() {
-        if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
-            harnessTimer.stop();
-            harness.reload();
-            sysLed.on();
-            return;
-        }
-        sysLed.toggle();
-        harness.run();
-        harness.rowIndex++;
-    }
-    
-    void setPeriod(int interval) {
-        if (interval > 0) {
-            harnessTimer.period(pdMS_TO_TICKS(interval));
-            harnessTimer.stop();
-        }
-    }
-
-   private:
-    FreeRTOScpp::TimerMember<HarnessTimer> harnessTimer;
-    int triggerCount;       // 当前触发次数
-    int maxTriggerCount;    // 最大触发次数
-};
-
-HarnessTimer harnessTimer;
 namespace Master2Slave {
 void SyncMsg::process() {
     Log.d("SyncMsg process");
     sysLed.off();
-    harnessTimer.startWithCount(CondCfgMsg::totalConductionNum);
+    harness.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
 void CondCfgMsg::process() {
@@ -71,7 +28,7 @@ void CondCfgMsg::process() {
     condInfoMsg.startConductionNum = startConductionNum;
     condInfoMsg.conductionNum = conductionNum;
 
-    harnessTimer.setPeriod(interval);
+    harness.setPeriod(interval);
     // 初始化 Harness
     harness.init(conductionNum, totalConductionNum, startConductionNum);
     // 1.2 打包为 Packet

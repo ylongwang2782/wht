@@ -1,43 +1,6 @@
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
 
-#include "CX310.hpp"
-#include "FreeRTOS.h"
-#include "QueueCPP.h"
-#include "SemaphoreCPP.h"
-#include "TaskCPP.h"
-#include "battery.hpp"
-#include "bsp_gpio.hpp"
-#include "bsp_led.hpp"
-#include "bsp_log.hpp"
-#include "mode_entry.h"
-#include "msg_proc.hpp"
-#include "protocol.hpp"
-#include "uwb_interface.hpp"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "semphr.h"
-#include "task.h"
-#include "timers.h"
-#ifdef __cplusplus
-}
-#endif
-
+#include "slave_mode.hpp"
 #ifdef SLAVE
-
-UartConfig uart3Conf(uart3_info);
-Uart uart3(uart3Conf);
-
-Logger Log(uart3);
-LED sysLed(GPIO::Port::C, GPIO::Pin::PIN_13);
 
 class UsartDMATask : public TaskClassS<1024> {
    public:
@@ -53,31 +16,13 @@ class UsartDMATask : public TaskClassS<1024> {
                 pdPASS) {
                 // Log.d("Uart: recv.");
                 sysLed.toggle();
-                rx_data = uart3.getReceivedData();
+                // rx_data = uart3.getReceivedData();
                 auto msg = parser.parse(rx_data);
                 if (msg != nullptr) {
                     msg->process();
                 } else {
                     Log.d("Uart: parse fail.");
                 }
-            }
-        }
-    }
-};
-
-class LogTask : public TaskClassS<1024> {
-   public:
-    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
-
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        for (;;) {
-            LogMessage logMsg;
-            // 从队列中获取日志消息
-            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.send(
-                    reinterpret_cast<const uint8_t*>(logMsg.message.data()),
-                    strlen(logMsg.message.data()));
             }
         }
     }
@@ -103,28 +48,40 @@ class LedBlinkTask : public TaskClassS<256> {
 ManagerDataTransferMsg manager_transfer_msg;
 MsgProc msgProc(manager_transfer_msg);
 
-class MsgProcTask : public TaskClassS<1024> {
+class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
    public:
-    MsgProcTask() : TaskClassS<1024>("MsgProcTask", TaskPrio_High) {}
+    MsgProcTask() : TaskClassS<MsgProcTask_SIZE>("MsgProcTask", MsgProcTask_PRIORITY) {}
 
     void task() override {
         Log.d("MsgProcTask: Boot");
         for (;;) {
             msgProc.proc();
-            TaskBase::delay(5);
+            TaskBase::delay(1);
         }
     }
 };
 
-// UsartDMATask usartDMATask;
-LedBlinkTask ledBlinkTask;
-LogTask logTask;
-ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
-MsgProcTask msgProcTask;
-
-int Slave_Init(void) {
+static void Slave_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
     Log.d("Slave Boot: %02X", myUid);
+
+    LogTask logTask;
+    logTask.give();
+
+    ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
+    MsgProcTask msgProcTask;
+
+    manageDataTransferTask.give();
+    msgProcTask.give();
+
+    while (1) {
+        // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+int Slave_Init(void) {
+    xTaskCreate(Slave_Task, "MasterTask", 4 * 1024, NULL, 2, NULL);
 
     return 0;
 }

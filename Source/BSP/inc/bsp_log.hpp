@@ -6,7 +6,9 @@
 #include <array>
 
 #include "QueueCPP.h"
+#include "TaskCPP.h"
 #include "bsp_uart.hpp"
+
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -14,7 +16,6 @@ extern "C" {
 #include "task.h"
 }
 
-#define USART_LOG      USART1
 #define LOG_QUEUE_SIZE 128
 
 // 定义日志消息的最大长度
@@ -22,6 +23,10 @@ extern "C" {
 
 // 定义日志队列的长度
 #define LOG_QUEUE_LENGTH 20
+
+// 定义日志任务的堆栈大小和优先级
+#define LogTask_SIZE     1024
+#define LogTask_PRIORITY TaskPrio_High
 
 // 日志消息结构体
 struct LogMessage {
@@ -136,7 +141,5 @@ class Logger {
         }
     }
 };
-
-extern Logger Log;
 
 #endif
