@@ -3,9 +3,10 @@ add_subdirectory(uwb)
 if(SLAVE)
   target_sources(
     ${EXECUTABLE_NAME}
-    PRIVATE ${COMMON_SOURCES} ./slave/slave_mode.cpp ./slave/harness.cpp
-            ./slave/msg_proc.cpp ./slave/peripherals.cpp)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave)
+    PRIVATE ${COMMON_SOURCES} ./slave/src/slave_mode.cpp
+            ./slave/src/harness.cpp ./slave/src/msg_proc.cpp
+            ./slave/src/peripherals.cpp)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave/inc)
 else()
   target_sources(
     ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./master/master_mode.cpp
