@@ -6,7 +6,9 @@
 #include <array>
 
 #include "QueueCPP.h"
+#include "TaskCPP.h"
 #include "bsp_uart.hpp"
+
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -138,5 +140,22 @@ class Logger {
 };
 
 extern Logger Log;
+class LogTask : public TaskClassS<1024> {
+   public:
+    LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Mid) {}
+
+    void task() override {
+        char buffer[LOG_QUEUE_SIZE + 8];
+        for (;;) {
+            LogMessage logMsg;
+            // 从队列中获取日志消息
+            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
+                Log.uart.send(
+                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
+                    strlen(logMsg.message.data()));
+            }
+        }
+    }
+};
 
 #endif
