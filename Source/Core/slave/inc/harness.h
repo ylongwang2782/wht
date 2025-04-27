@@ -209,24 +209,30 @@ class Harness {
 
     void run() {
         // set current pin
+        int lastIndex = rowIndex - startConductionNum - 1;
+        if (lastIndex >= 0 && lastIndex < conductionNum) {
+            pins[lastIndex].bit_reset();
+            pins[lastIndex].mode_set(GPIO::Mode::INPUT);
+        }
+
         if (isDeviceOutput()) {
             int index = rowIndex - startConductionNum;
             if (index < conductionNum) {
+                TaskBase::delay(1);
                 pins[index].mode_set(GPIO::Mode::OUTPUT);
                 pins[index].bit_set();
             }
+            TaskBase::delay(4);
             for (size_t i = 0; i < data.cols; i++) {
                 data.setValue(rowIndex, i, pins[i].input_bit_get());
             }
-            TaskBase::delay(4);
-            // pins[index].bit_reset();
-            pins[index].mode_set(GPIO::Mode::INPUT);
         } else {
-            TaskBase::delay(2);
+            TaskBase::delay(4);
             for (size_t i = 0; i < data.cols; i++) {
                 data.setValue(rowIndex, i, pins[i].input_bit_get());
             }
         }
+
     }
 
     void init(uint8_t conductionNum, uint16_t totalConductionNum,
@@ -244,6 +250,7 @@ class Harness {
     void reload() {
         // 将最后一个被设置为输出的引脚重置为输入
         int lastIndex = rowIndex - startConductionNum - 1;
+        pins[lastIndex].bit_reset();
         pins[lastIndex].mode_set(GPIO::Mode::INPUT);
         // 复位行索引
         rowIndex = 0;
