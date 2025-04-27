@@ -26,7 +26,7 @@ extern "C" {
 
 // 定义日志任务的堆栈大小和优先级
 #define LogTask_SIZE     1024
-#define LogTask_PRIORITY TaskPrio_High
+#define LogTask_PRIORITY TaskPrio_Low
 
 // 日志消息结构体
 struct LogMessage {

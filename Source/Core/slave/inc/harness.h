@@ -218,21 +218,15 @@ class Harness {
         if (isDeviceOutput()) {
             int index = rowIndex - startConductionNum;
             if (index < conductionNum) {
-                TaskBase::delay(1);
+                TaskBase::delay(2);
                 pins[index].mode_set(GPIO::Mode::OUTPUT);
                 pins[index].bit_set();
             }
-            TaskBase::delay(4);
-            for (size_t i = 0; i < data.cols; i++) {
-                data.setValue(rowIndex, i, pins[i].input_bit_get());
-            }
-        } else {
-            TaskBase::delay(4);
-            for (size_t i = 0; i < data.cols; i++) {
-                data.setValue(rowIndex, i, pins[i].input_bit_get());
-            }
         }
-
+        TaskBase::delay(4);
+        for (size_t i = 0; i < data.cols; i++) {
+            data.setValue(rowIndex, i, pins[i].input_bit_get());
+        }
     }
 
     void init(uint8_t conductionNum, uint16_t totalConductionNum,
