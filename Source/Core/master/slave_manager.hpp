@@ -112,9 +112,9 @@ class __ProcessBase {
             // 处理接收到的数据
             rsp_data.push_back(data);
         }
-        for (auto it : rsp_data) {
-            Log.d("[SlaveManager]: rx_data: 0x%02X", it);
-        }
+        // for (auto it : rsp_data) {
+        //     Log.d("[SlaveManager]: rx_data: 0x%02X", it);
+        // }
         // 解析数据
         auto msg = frame_parser.parse(rsp_data);
         if (msg != nullptr) {
@@ -155,14 +155,14 @@ class DeviceConfigProcessor : private __ProcessBase {
             Log.i("[SlaveManager]: cond config success");
         }
 
-        if (cfg_cmd.clip_exist) {
-            if (!__clip_config(cfg_cmd)) {
-                Log.e("[SlaveManager]: clip config failed");
-                ret = false;
-            }
-        } else {
-            Log.i("[SlaveManager]: clip config success");
-        }
+        // if (cfg_cmd.clip_exist) {
+        //     if (!__clip_config(cfg_cmd)) {
+        //         Log.e("[SlaveManager]: clip config failed");
+        //         ret = false;
+        //     }
+        // } else {
+        //     Log.i("[SlaveManager]: clip config success");
+        // }
         return ret;
     }
 
@@ -258,7 +258,7 @@ class DeviceCtrlProcessor : private __ProcessBase {
         sync_msg.timestamp = 0;
         ctrl = ctrl_cmd.ctrl;
         // 打包数据
-        auto sync_packet = PacketPacker::master2SlavePack(sync_msg, 0);
+        auto sync_packet = PacketPacker::master2SlavePack(sync_msg, 0xFFFFFFFF);
         sync_frame = FramePacker::pack(sync_packet);
 
         return true;
