@@ -16,10 +16,10 @@ extern "C" {
 #include "task.h"
 }
 
-#define LOG_QUEUE_SIZE 128
+// #define LOG_QUEUE_SIZE 128
 
 // 定义日志消息的最大长度
-#define LOG_MESSAGE_MAX_LENGTH 128
+#define LOG_QUEUE_SIZE 256
 
 // 定义日志队列的长度
 #define LOG_QUEUE_LENGTH 20
@@ -30,7 +30,7 @@ extern "C" {
 
 // 日志消息结构体
 struct LogMessage {
-    std::array<char, LOG_MESSAGE_MAX_LENGTH> message;
+    std::array<char, LOG_QUEUE_SIZE> message;
 };
 
 // 日志级别枚举
@@ -132,8 +132,8 @@ class Logger {
     void output(Level level, const char *message) {
         LogMessage logMsg;
         std::strncpy(logMsg.message.data(), message,
-                     LOG_MESSAGE_MAX_LENGTH - 1);
-        logMsg.message[LOG_MESSAGE_MAX_LENGTH - 1] = '\0';
+                     LOG_QUEUE_SIZE - 1);
+        logMsg.message[LOG_QUEUE_SIZE - 1] = '\0';
 
         // 将日志消息放入队列
         if (!logQueue.add(logMsg, portMAX_DELAY)) {
