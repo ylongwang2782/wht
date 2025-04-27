@@ -51,45 +51,45 @@ static void Master_Task(void* pvParameters) {
     Log.i("Master_Task: Boot");
 
     Log.i("[Master_Task]: Cond packet:");
-    Backend2Master::SlaveCfgMsg slave_cfg_msg;
-    Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
-    cfg.id = 0x12345678;
-    cfg.clipMode = 0x01;
-    cfg.clipStatus = 0x00;
-    cfg.conductionNum = 16;
-    cfg.resistanceNum = 0;
-    slave_cfg_msg.slaves.push_back(cfg);
+    // Backend2Master::SlaveCfgMsg slave_cfg_msg;
+    // Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
+    // cfg.id = 0x12345678;
+    // cfg.clipMode = 0x01;
+    // cfg.clipStatus = 0x00;
+    // cfg.conductionNum = 16;
+    // cfg.resistanceNum = 0;
+    // slave_cfg_msg.slaves.push_back(cfg);
 
-    cfg.id = 0x11ABCDEF;
-    cfg.clipMode = 0x00;
-    cfg.clipStatus = 0x00;
-    cfg.conductionNum = 20;
-    cfg.resistanceNum = 0;
-    slave_cfg_msg.slaves.push_back(cfg);
-    slave_cfg_msg.slaveNum = 2;
-    auto msg = PacketPacker::backendPack(slave_cfg_msg);
-    std::vector<uint8_t> data = FramePacker::pack(msg);
-    Log.r(data.data(), data.size());
+    // cfg.id = 0x11ABCDEF;
+    // cfg.clipMode = 0x00;
+    // cfg.clipStatus = 0x00;
+    // cfg.conductionNum = 20;
+    // cfg.resistanceNum = 0;
+    // slave_cfg_msg.slaves.push_back(cfg);
+    // slave_cfg_msg.slaveNum = 2;
+    // auto msg = PacketPacker::backend2MasterPack(slave_cfg_msg);
+    // std::vector<uint8_t> data = FramePacker::pack(msg);
+    // Log.r(data.data(), data.size());
 
-    Log.i("[Master_Task]: Mode packet:");
-    Backend2Master::ModeCfgMsg mode_msg;
-    mode_msg.mode = 0x00;
-    msg = PacketPacker::backendPack(mode_msg);
-    data = FramePacker::pack(msg);
-    Log.r(data.data(), data.size());
+    // Log.i("[Master_Task]: Mode packet:");
+    // Backend2Master::ModeCfgMsg mode_msg;
+    // mode_msg.mode = 0x00;
+    // msg = PacketPacker::backend2MasterPack(mode_msg);
+    // data = FramePacker::pack(msg);
+    // Log.r(data.data(), data.size());
 
-    Log.i("[Master_Task]: Control start packet:");
-    Backend2Master::CtrlMsg ctrl_msg;
-    ctrl_msg.runningStatus = 0x01;
-    msg = PacketPacker::backendPack(ctrl_msg);
-    data = FramePacker::pack(msg);
-    Log.r(data.data(), data.size());
+    // Log.i("[Master_Task]: Control start packet:");
+    // Backend2Master::CtrlMsg ctrl_msg;
+    // ctrl_msg.runningStatus = 0x01;
+    // msg = PacketPacker::backend2MasterPack(ctrl_msg);
+    // data = FramePacker::pack(msg);
+    // Log.r(data.data(), data.size());
     
-    Log.i("[Master_Task]: Control stop packet:");
-    ctrl_msg.runningStatus = 0x00;
-    msg = PacketPacker::backendPack(ctrl_msg);
-    data = FramePacker::pack(msg);
-    Log.r(data.data(), data.size());
+    // Log.i("[Master_Task]: Control stop packet:");
+    // ctrl_msg.runningStatus = 0x00;
+    // msg = PacketPacker::backend2MasterPack(ctrl_msg);
+    // data = FramePacker::pack(msg);
+    // Log.r(data.data(), data.size());
 
 
     // 上位机数据传输任务 json解析任务 初始化

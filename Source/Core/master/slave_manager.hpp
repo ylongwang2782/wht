@@ -112,9 +112,9 @@ class __ProcessBase {
             // 处理接收到的数据
             rsp_data.push_back(data);
         }
-        for (auto it : rsp_data) {
-            Log.d("[SlaveManager]: rx_data: 0x%02X", it);
-        }
+        // for (auto it : rsp_data) {
+        //     Log.d("[SlaveManager]: rx_data: 0x%02X", it);
+        // }
         // 解析数据
         auto msg = frame_parser.parse(rsp_data);
         if (msg != nullptr) {
@@ -155,14 +155,14 @@ class DeviceConfigProcessor : private __ProcessBase {
             Log.i("[SlaveManager]: cond config success");
         }
 
-        if (cfg_cmd.clip_exist) {
-            if (!__clip_config(cfg_cmd)) {
-                Log.e("[SlaveManager]: clip config failed");
-                ret = false;
-            }
-        } else {
-            Log.i("[SlaveManager]: clip config success");
-        }
+        // if (cfg_cmd.clip_exist) {
+        //     if (!__clip_config(cfg_cmd)) {
+        //         Log.e("[SlaveManager]: clip config failed");
+        //         ret = false;
+        //     }
+        // } else {
+        //     Log.i("[SlaveManager]: clip config success");
+        // }
         return ret;
     }
 
@@ -187,7 +187,7 @@ class DeviceConfigProcessor : private __ProcessBase {
         // 打包数据
         uint32_t target_id = get_id(cfg_cmd.id);
         auto cond_packet =
-            PacketPacker::masterPack(wirte_cond_info_msg, target_id);
+            PacketPacker::master2SlavePack(wirte_cond_info_msg, target_id);
         auto cond_frame = FramePacker::pack(cond_packet);
 
         // 设置预期回复消息ID
@@ -206,7 +206,7 @@ class DeviceConfigProcessor : private __ProcessBase {
         // 打包数据
         uint32_t target_id = get_id(cfg_cmd.id);
         auto clip_packet =
-            PacketPacker::masterPack(write_clip_info_msg, target_id);
+            PacketPacker::master2SlavePack(write_clip_info_msg, target_id);
         auto clip_frame = FramePacker::pack(clip_packet);
 
         // 设置预期回复消息ID
@@ -258,7 +258,7 @@ class DeviceCtrlProcessor : private __ProcessBase {
         sync_msg.timestamp = 0;
         ctrl = ctrl_cmd.ctrl;
         // 打包数据
-        auto sync_packet = PacketPacker::masterPack(sync_msg, 0);
+        auto sync_packet = PacketPacker::master2SlavePack(sync_msg, 0xFFFFFFFF);
         sync_frame = FramePacker::pack(sync_packet);
 
         return true;
@@ -298,7 +298,7 @@ class ReadCondProcessor : private __ProcessBase {
     bool process(uint32_t id) {
         Log.i("[SlaveManager]: read cond data start");
         // 打包数据
-        auto cond_packet = PacketPacker::masterPack(read_cond_data_msg, id);
+        auto cond_packet = PacketPacker::master2SlavePack(read_cond_data_msg, id);
         auto cond_frame = FramePacker::pack(cond_packet);
         expected_rsp_msg_id = (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG);
         return send_frame(cond_frame);
