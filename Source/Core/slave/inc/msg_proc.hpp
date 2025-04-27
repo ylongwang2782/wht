@@ -78,7 +78,7 @@ class ManagerDataTransferTask
             }
 
             uwb.update();
-            TaskBase::delay(5);
+            TaskBase::delay(1);
         }
     }
 };
