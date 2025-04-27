@@ -115,6 +115,7 @@ class UciCtrlPacket : public UciCtrlPcketBase {
                 pbf = (data >> 4) & 0x01;
                 gid = data & 0x0F;
                 if ((mt != MT_CMD) && (mt != MT_RSP) && (mt != MT_NTF)) {
+                    parser_sta = PARSE_START;
                     break;
                 }
                 if (pbf == PBF_COMPLETE) {
@@ -337,7 +338,7 @@ class UciNTF : private UciCtrlPacket {
     }
 
     uint8_t parse_cx_app_data_tx_ntf(std::vector<uint8_t>& payload) {
-      return  payload[0];
+        return payload[0];
     }
     bool parse_cx_app_data_rx_ntf(std::vector<uint8_t>& payload) {
         uint16_t data_len = payload[0] | (payload[1] << 8);
