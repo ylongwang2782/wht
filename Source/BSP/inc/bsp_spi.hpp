@@ -227,6 +227,24 @@ class SpiMaster : private SpiDevBase {
         return true;
     }
 
+    bool recv_open_loop(uint32_t rx_len)
+    {
+        uint32_t rxcount = 0;
+        rx_buffer.clear(); 
+        if(rx_len > rx_buffer.capacity()){
+            rx_buffer.reserve(rx_len); 
+        }
+        while(rxcount < rx_len){
+            // while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, 0xFF);
+            while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_RBNE));
+            rx_buffer.push_back(spi_i2s_data_receive(__cfg.spi_periph));
+            rxcount++; 
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        return true;
+    }
+
     bool recv(uint32_t rx_len, uint16_t timeout_ms = 1000,
               uint8_t nss_index = 0) {
         uint32_t timeout_tick = pdMS_TO_TICKS(timeout_ms);
