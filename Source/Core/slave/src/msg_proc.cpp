@@ -59,7 +59,19 @@ void ReadCondDataMsg::process() {
 void ReadResDataMsg::process() { Log.d("ReadResDataMsg process"); }
 void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg process"); }
 void RstMsg::process() { Log.d("RstMsg process"); }
-void PingReqMsg::process() { Log.d("PingReqMsg process"); }
+void PingReqMsg::process() {
+    Log.d("PingReqMsg process");
+    // 1. 构造 PingRspMsg
+    Slave2Master::PingRspMsg pingRspMsg;
+    pingRspMsg.timestamp = xTaskGetTickCount();
+    // 2. 打包为 Packet
+    uint32_t uid = UIDReader::get();
+    auto pingRspPacket = PacketPacker::slave2MasterPack(pingRspMsg, uid);
+    // 3. 打包为帧
+    auto pingRspFrame = FramePacker::pack(pingRspPacket);
+    // 1.4 发送
+    msgProc.send(pingRspFrame);
+}
 };    // namespace Master2Slave
 
 namespace Slave2Master {
