@@ -4,6 +4,7 @@
 
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
+#include "protocol.hpp"
 
 extern Uart uart3;
 extern MsgProc msgProc;
@@ -58,6 +59,7 @@ void ReadCondDataMsg::process() {
 void ReadResDataMsg::process() { Log.d("ReadResDataMsg process"); }
 void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg process"); }
 void RstMsg::process() { Log.d("RstMsg process"); }
+void PingReqMsg::process() { Log.d("PingReqMsg process"); }
 };    // namespace Master2Slave
 
 namespace Slave2Master {
