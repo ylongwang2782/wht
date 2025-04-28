@@ -47,7 +47,8 @@ enum class Master2SlaveMessageID : uint8_t {
     READ_COND_DATA_MSG = 0x20,    // 读取
     READ_RES_DATA_MSG = 0x21,     // 读取
     READ_CLIP_DATA_MSG = 0x22,    // 读取
-    RST_MSG = 0x30
+    RST_MSG = 0x30,
+    PING_REQ_MSG = 0x40,
 };
 
 enum class Slave2MasterMessageID : uint8_t {
@@ -55,13 +56,15 @@ enum class Slave2MasterMessageID : uint8_t {
     RES_CFG_MSG = 0x11,     // 阻值信息
     CLIP_CFG_MSG = 0x12,    // 卡钉信息
     RST_MSG = 0x30,
+    PING_RSP_MSG = 0x41,
 };
 
 enum class Backend2MasterMessageID : uint8_t {
     SLAVE_CFG_MSG = 0x00,
     MODE_CFG_MSG = 0x01,
     RST_MSG = 0x02,
-    CTRL_MSG = 0x03
+    CTRL_MSG = 0x03,
+    PING_CTRL_MSG = 0X10,
 };
 
 enum class Master2BackendMessageID : uint8_t {
@@ -69,9 +72,7 @@ enum class Master2BackendMessageID : uint8_t {
     MODE_CFG_MSG = 0x01,
     RST_MSG = 0x02,
     CTRL_MSG = 0x03,
-    CONDUCTION_DATA_MSG = 0x10,    // 导通数据
-    RESISTANCE_DATA_MSG = 0x11,    // 阻值数据
-    CLIPPING_DATA_MSG = 0x12       // 卡钉数据
+    PING_RESULT_MSG = 0X10,
 };
 
 enum class Slave2BackendMessageID : uint8_t {
@@ -629,80 +630,55 @@ class ClipCfgMsg : public Message {
     }
 };
 
-class ReadCondDataMsg : public Message {
+class ReadDataMsgBase : public Message {
    public:
     uint8_t reserve;    // 保留字段，固定为0
 
-    ReadCondDataMsg() : reserve(0) {}
+    ReadDataMsgBase() : reserve(0) {}
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(reserve);    // 序列化保留字段
+        data.push_back(reserve);
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ReadCondDataMsg: Invalid ReadCondDataMsg data size");
+            Log.e("ReadDataMsgBase: Invalid data size");
             return;
         }
-        reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadCondDataMsg: reserve = 0x%02X", reserve);
+        reserve = data[0];
+        Log.d("ReadDataMsgBase: reserve = 0x%02X", reserve);
     }
 
-    void process() override;
+    // 留空，让子类实现
+    virtual uint8_t message_type() const override = 0;
+    virtual void process() override = 0;
+};
 
+class ReadCondDataMsg : public ReadDataMsgBase {
+   public:
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_COND_DATA_MSG);
     }
-};
-
-class ReadResDataMsg : public Message {
-   public:
-    uint8_t reserve;    // 保留字段，固定为0
-
-    ReadResDataMsg() : reserve(0) {}
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(reserve);    // 序列化保留字段
-    }
-
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 1) {
-            Log.e("ReadResDataMsg: Invalid ReadResDataMsg data size");
-            return;
-        }
-        reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
-    }
 
     void process() override;
+};
 
+class ReadResDataMsg : public ReadDataMsgBase {
+   public:
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_RES_DATA_MSG);
     }
+
+    void process() override;
 };
 
-class ReadClipDataMsg : public Message {
+class ReadClipDataMsg : public ReadDataMsgBase {
    public:
-    uint8_t reserve;    // 保留字段，固定为0
-
-    ReadClipDataMsg() : reserve(0) {}
-
-    void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(reserve);    // 序列化保留字段
-    }
-    void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 1) {
-            Log.e("ReadClipDataMsg: Invalid ReadClipDataMsg data size");
-            return;
-        }
-        reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
-    }
-    void process() override;
-
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::READ_CLIP_DATA_MSG);
     }
+
+    void process() override;
 };
 
 class RstMsg : public Message {
@@ -731,6 +707,47 @@ class RstMsg : public Message {
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Master2SlaveMessageID::RST_MSG);
+    }
+};
+
+class PingReqMsg : public Message {
+   public:
+    static uint16_t sequenceNumber;    // 序列号
+    static uint32_t timestamp;         // 时间戳(ms)
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // 序列化序列号(2字节，小端)
+        data.push_back(static_cast<uint8_t>(sequenceNumber));    // 低字节
+        data.push_back(static_cast<uint8_t>(sequenceNumber >> 8));    // 高字节
+
+        // 序列化时间戳(4字节，小端)
+        data.push_back(static_cast<uint8_t>(timestamp));          // 字节0
+        data.push_back(static_cast<uint8_t>(timestamp >> 8));     // 字节1
+        data.push_back(static_cast<uint8_t>(timestamp >> 16));    // 字节2
+        data.push_back(static_cast<uint8_t>(timestamp >> 24));    // 字节3
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 6) {    // 2+4=6字节
+            Log.e("PingReqMsg: Invalid data size");
+            return;
+        }
+
+        // 反序列化序列号
+        sequenceNumber = data[0] | (data[1] << 8);
+
+        // 反序列化时间戳
+        timestamp =
+            data[2] | (data[3] << 8) | (data[4] << 16) | (data[5] << 24);
+
+        Log.d("PingReqMsg: seqNum=0x%04X, timestamp=0x%08X", sequenceNumber,
+              timestamp);
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::PING_REQ_MSG);
     }
 };
 }    // namespace Master2Slave
@@ -1429,6 +1446,16 @@ class ClipDataMsg : public Message {
 
 }    // namespace Slave2Backend
 
+template <typename MsgType>
+std::unique_ptr<Message> processMessage(const Master2SlavePacket& packet,
+                                        const char* msgName) {
+    Log.d("FrameParser: processing %s message", msgName);
+    auto msg = std::make_unique<MsgType>();
+    msg->deserialize(packet.payload);
+    Log.d("FrameParser: %s message deserialized", msgName);
+    return msg;
+}
+
 class FrameParser {
    public:
     std::unique_ptr<Message> parse(const std::vector<uint8_t>& raw_data) {
@@ -1502,84 +1529,36 @@ class FrameParser {
             Log.d("FrameParser: id compare success");
 
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
-                case Master2SlaveMessageID::SYNC_MSG: {
-                    Log.d("FrameParser: processing SYNC_MSG message");
-                    auto msg = std::make_unique<Master2Slave::SyncMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d("FrameParser: SYNC_MSG message deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::COND_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing COND_CFG_MSG "
-                        "message");
-                    auto msg = std::make_unique<Master2Slave::CondCfgMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: COND_CFG_MSG message "
-                        "deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::RES_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing RES_CFG_MSG "
-                        "message");
-                    auto msg = std::make_unique<Master2Slave::ResCfgMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: RES_CFG_MSG message "
-                        "deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::CLIP_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing CLIP_CFG_MSG "
-                        "message");
-                    auto msg = std::make_unique<Master2Slave::ClipCfgMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: CLIP_CFG_MSG message "
-                        "deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::READ_COND_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_COND_DATA_MSG message");
-                    auto msg =
-                        std::make_unique<Master2Slave::ReadCondDataMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_COND_DATA_MSG message deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::READ_RES_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_RES_DATA_MSG message");
-                    auto msg = std::make_unique<Master2Slave::ReadResDataMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_RES_DATA_MSG message deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::READ_CLIP_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_CLIP_DATA_MSG message");
-                    auto msg =
-                        std::make_unique<Master2Slave::ReadClipDataMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_CLIP_DATA_MSG message deserialized");
-                    return msg;
-                }
-                case Master2SlaveMessageID::RST_MSG: {
-                    Log.d("FrameParser: processing RST_MSG message");
-                    auto msg = std::make_unique<Master2Slave::RstMsg>();
-                    msg->deserialize(packet.payload);
-                    Log.d("FrameParser: RST_MSG message deserialized");
-                    return msg;
-                }
+                case Master2SlaveMessageID::SYNC_MSG:
+                    return processMessage<Master2Slave::SyncMsg>(packet,
+                                                                 "SYNC_MSG");
+                case Master2SlaveMessageID::COND_CFG_MSG:
+                    return processMessage<Master2Slave::CondCfgMsg>(
+                        packet, "COND_CFG_MSG");
+                case Master2SlaveMessageID::RES_CFG_MSG:
+                    return processMessage<Master2Slave::ResCfgMsg>(
+                        packet, "RES_CFG_MSG");
+                case Master2SlaveMessageID::CLIP_CFG_MSG:
+                    return processMessage<Master2Slave::ClipCfgMsg>(
+                        packet, "CLIP_CFG_MSG");
+                case Master2SlaveMessageID::READ_COND_DATA_MSG:
+                    return processMessage<Master2Slave::ReadCondDataMsg>(
+                        packet, "READ_COND_DATA_MSG");
+                case Master2SlaveMessageID::READ_RES_DATA_MSG:
+                    return processMessage<Master2Slave::ReadResDataMsg>(
+                        packet, "READ_RES_DATA_MSG");
+                case Master2SlaveMessageID::READ_CLIP_DATA_MSG:
+                    return processMessage<Master2Slave::ReadClipDataMsg>(
+                        packet, "READ_CLIP_DATA_MSG");
+                case Master2SlaveMessageID::RST_MSG:
+                    return processMessage<Master2Slave::RstMsg>(packet,
+                                                                "RST_MSG");
+                case Master2SlaveMessageID::PING_REQ_MSG:
+                    return processMessage<Master2Slave::PingReqMsg>(
+                        packet, "PING_REQ_MSG");
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Master message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser: unsupported Master message type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
         } else if (header.packet_id ==
