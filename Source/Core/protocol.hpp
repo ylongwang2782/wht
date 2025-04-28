@@ -518,12 +518,12 @@ class CondCfgMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(timeSlot);
         data.push_back(interval);    // 序列化采集间隔
-        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(totalConductionNum));
-        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(totalConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(startConductionNum));
-        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
+        data.push_back(static_cast<uint8_t>(startConductionNum >> 8));
         data.push_back(static_cast<uint8_t>(conductionNum));
+        data.push_back(static_cast<uint8_t>(conductionNum >> 8));
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
