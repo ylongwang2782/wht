@@ -917,6 +917,43 @@ class RstMsg : public Message {
         return static_cast<uint8_t>(Slave2MasterMessageID::RST_MSG);
     }
 };
+
+class PingRspMsg : public Message {
+   public:
+    static uint16_t sequenceNumber;    // 序列号
+    static uint32_t timestamp;         // 时间戳(ms)
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // 序列化序列号(2字节，小端)
+        data.push_back(static_cast<uint8_t>(sequenceNumber));    // 低字节
+        data.push_back(static_cast<uint8_t>(sequenceNumber >> 8));    // 高字节
+
+        // 序列化时间戳(4字节，小端)
+        ProtocolUtils::serializeUint32(data, timestamp);
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 6) {    // 2+4=6字节
+            Log.e("PingRespMsg: Invalid data size");
+            return;
+        }
+
+        // 反序列化序列号
+        sequenceNumber = data[0] | (data[1] << 8);
+
+        // 反序列化时间戳
+        timestamp = ProtocolUtils::deserializeUint32(data, 2);
+
+        Log.d("PingRespMsg: seqNum=0x%04X, timestamp=0x%08X", sequenceNumber,
+              timestamp);
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2MasterMessageID::PING_RSP_MSG);
+    }
+};
 }    // namespace Slave2Master
 
 namespace Backend2Master {
@@ -984,9 +1021,11 @@ class SlaveCfgMsg : public Message {
         Log.d("SlaveCfgMsg: slaveNum = %d", slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
-                  i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
-                  s.clipStatus);
+            Log.d(
+                "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, "
+                "clip=0x%04X",
+                i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
+                s.clipStatus);
         }
     }
 
@@ -1113,6 +1152,50 @@ class CtrlMsg : public Message {
 
     uint8_t message_type() const override {
         return static_cast<uint8_t>(Backend2MasterMessageID::CTRL_MSG);
+    }
+};
+
+class PingCtrlMsg : public Message {
+   public:
+    static uint8_t pingMode;          // 0:单次Ping 1:连续Ping
+    static uint16_t pingCount;        // Ping次数
+    static uint16_t interval;         // Ping间隔(ms)
+    static uint32_t destinationId;    // 目标设备ID
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(pingMode);
+        // 序列化pingCount (小端)
+        data.push_back(static_cast<uint8_t>(pingCount));
+        data.push_back(static_cast<uint8_t>(pingCount >> 8));
+        // 序列化interval (小端)
+        data.push_back(static_cast<uint8_t>(interval));
+        data.push_back(static_cast<uint8_t>(interval >> 8));
+        // 序列化destinationId (小端)
+        ProtocolUtils::serializeUint32(data, destinationId);
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 9) {    // 1 + 2 + 2 + 4 = 9字节
+            Log.e("PingCtrlMsg: Invalid data size");
+            return;
+        }
+
+        pingMode = data[0];
+        // 反序列化pingCount
+        pingCount = data[1] | (data[2] << 8);
+        // 反序列化interval
+        interval = data[3] | (data[4] << 8);
+        // 反序列化destinationId
+        destinationId = ProtocolUtils::deserializeUint32(data, 5);
+
+        Log.d("PingCtrlMsg: mode=%d, count=%d, interval=%dms, destId=0x%08X",
+              pingMode, pingCount, interval, destinationId);
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Backend2MasterMessageID::PING_CTRL_MSG);
     }
 };
 
@@ -1327,6 +1410,51 @@ class CtrlMsg : public Message {
         return static_cast<uint8_t>(Master2BackendMessageID::CTRL_MSG);
     }
 };
+
+class PingResMsg : public Message {
+   public:
+    static uint8_t pingMode;          // 0:单次Ping 1:连续Ping
+    static uint16_t totalCount;       // 总发送次数
+    static uint16_t successCount;     // 成功收到次数
+    static uint32_t destinationId;    // 目标设备ID
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(pingMode);
+        // 序列化totalCount (小端)
+        data.push_back(static_cast<uint8_t>(totalCount));
+        data.push_back(static_cast<uint8_t>(totalCount >> 8));
+        // 序列化successCount (小端)
+        data.push_back(static_cast<uint8_t>(successCount));
+        data.push_back(static_cast<uint8_t>(successCount >> 8));
+        // 序列化destinationId (小端)
+        ProtocolUtils::serializeUint32(data, destinationId);
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 9) {    // 1 + 2 + 2 + 4 = 9字节
+            Log.e("PingResMsg: Invalid data size");
+            return;
+        }
+
+        pingMode = data[0];
+        // 反序列化totalCount
+        totalCount = data[1] | (data[2] << 8);
+        // 反序列化successCount
+        successCount = data[3] | (data[4] << 8);
+        // 反序列化destinationId
+        destinationId = ProtocolUtils::deserializeUint32(data, 5);
+
+        Log.d("PingResMsg: mode=%d, total=%d, success=%d, destId=0x%08X",
+              pingMode, totalCount, successCount, destinationId);
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2BackendMessageID::PING_RESULT_MSG);
+    }
+};
+
 }    // namespace Master2Backend
 
 namespace Slave2Backend {
@@ -1512,6 +1640,9 @@ class FrameParser {
                 case Master2SlaveMessageID::RST_MSG:
                     msgTypeStr = "RST_MSG";
                     break;
+                case Master2SlaveMessageID::PING_REQ_MSG:
+                    msgTypeStr = "PING_REQ_MSG";
+                    break;
                 default:
                     break;
             }
@@ -1585,6 +1716,9 @@ class FrameParser {
                 case Slave2MasterMessageID::RST_MSG:
                     msgTypeStr = "RST_MSG";
                     break;
+                case Slave2MasterMessageID::PING_RSP_MSG:
+                    msgTypeStr = "PING_RSP_MSG";
+                    break;
                 default:
                     break;
             }
@@ -1619,6 +1753,12 @@ class FrameParser {
                     msg->deserialize(packet.payload);
                     return msg;
                 }
+                case Slave2MasterMessageID::PING_RSP_MSG: {
+                    Log.d("FrameParser: processing PING_RSP_MSG message");
+                    auto msg = std::make_unique<Slave2Master::PingRspMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
                 default:
                     Log.e(
                         "FrameParser: unsupported Slave message "
@@ -1650,6 +1790,8 @@ class FrameParser {
                 case Backend2MasterMessageID::CTRL_MSG:
                     msgTypeStr = "CTRL_MSG";
                     break;
+                case Backend2MasterMessageID::PING_CTRL_MSG:
+                    msgTypeStr = "PING_CTRL_MSG";
                 default:
                     break;
             }
@@ -1682,6 +1824,12 @@ class FrameParser {
                     msg->deserialize(packet.payload);
                     return msg;
                 }
+                case Backend2MasterMessageID::PING_CTRL_MSG: {
+                    Log.d("FrameParser: processing PING_CTRL_MSG message");
+                    auto msg = std::make_unique<Backend2Master::PingCtrlMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
                 default:
                     Log.e(
                         "FrameParser: unsupported Slave message "
@@ -1711,6 +1859,8 @@ class FrameParser {
                 case Master2BackendMessageID::CTRL_MSG:
                     msgTypeStr = "CTRL_MSG";
                     break;
+                case Master2BackendMessageID::PING_RESULT_MSG:
+                    msgTypeStr = "PING_RESULT_MSG";
                 default:
                     break;
             }
@@ -1739,6 +1889,12 @@ class FrameParser {
                 case Master2BackendMessageID::CTRL_MSG: {
                     Log.d("FrameParser: processing CTRL_MSG message");
                     auto msg = std::make_unique<Master2Backend::CtrlMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                case Master2BackendMessageID::PING_RESULT_MSG: {
+                    Log.d("FrameParser: processing PING_RESULT_MSG message");
+                    auto msg = std::make_unique<Master2Backend::PingResMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }

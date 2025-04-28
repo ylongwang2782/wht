@@ -52,6 +52,9 @@ uint16_t ClipCfgMsg::clipPin = 0;
 uint8_t RstMsg::status = 0;
 uint8_t RstMsg::lockStatus = 0;
 uint16_t RstMsg::clipLed = 0;
+
+uint16_t PingRspMsg::sequenceNumber = 0;
+uint32_t PingRspMsg::timestamp = 0;
 }    // namespace Slave2Master
 
 namespace Backend2Master {
@@ -65,6 +68,11 @@ uint8_t RstMsg::slaveNum = 0;
 std::vector<RstMsg::SlaveResetConfig> RstMsg::slaves;
 
 uint8_t CtrlMsg::runningStatus = 0;
+
+uint8_t PingCtrlMsg::pingMode;          // 0:单次Ping 1:连续Ping
+uint16_t PingCtrlMsg::pingCount;        // Ping次数
+uint16_t PingCtrlMsg::interval;         // Ping间隔(ms)
+uint32_t PingCtrlMsg::destinationId;    // 目标设备ID
 }    // namespace Backend2Master
 
 // Master2Backend 命名空间静态变量初始化
