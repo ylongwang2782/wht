@@ -14,7 +14,7 @@
  *          2. 使用PacketPacker打包为Packet
  *          3. 使用FramePacker打包为完整帧
  * @version 1.7
- * @date 2025-04-11
+ * @date 2025-04-29
  *
  * @copyright Copyright (c) 2025
  *

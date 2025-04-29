@@ -84,13 +84,12 @@ static void Master_Task(void* pvParameters) {
     // msg = PacketPacker::backend2MasterPack(ctrl_msg);
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
-    
+
     // Log.i("[Master_Task]: Control stop packet:");
     // ctrl_msg.runningStatus = 0x00;
     // msg = PacketPacker::backend2MasterPack(ctrl_msg);
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
-
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -113,7 +112,6 @@ static void Master_Task(void* pvParameters) {
 
     DataForward tmp;
     while (1) {
-       
         Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
         led.toggle();
         vTaskDelay(pdMS_TO_TICKS(500));
@@ -131,6 +129,7 @@ void CondCfgMsg::process() {}
 void ClipCfgMsg::process() {}
 void ResCfgMsg::process() {}
 void ReadCondDataMsg::process() {}
+void PingReqMsg::process() { Log.i("PingReqMsg"); }
 }    // namespace Master2Slave
 
 namespace Slave2Master {
@@ -220,18 +219,20 @@ void ResCfgMsg::process() {
     }
 }
 
+void PingRspMsg::process() { Log.i("PingRspMsg process"); }
+
 }    // namespace Slave2Master
 
 namespace Slave2Backend {
-    void CondDataMsg::process() {
-        __ProcessBase::rsp_parsed = true;
-        if (__ProcessBase::expected_rsp_msg_id !=
-            (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG)) {
-            Log.e("CondDataMsg: msg_id not match");
-            __ProcessBase::rsp_parsed = false;
-            return;
-        }
+void CondDataMsg::process() {
+    __ProcessBase::rsp_parsed = true;
+    if (__ProcessBase::expected_rsp_msg_id !=
+        (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG)) {
+        Log.e("CondDataMsg: msg_id not match");
+        __ProcessBase::rsp_parsed = false;
+        return;
     }
 }
+}    // namespace Slave2Backend
 
 #endif
