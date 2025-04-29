@@ -38,8 +38,17 @@ class ExtiBase {
         _EXTI2,
         _EXTI3,
         _EXTI4,
-        _EXTI5_9,
-        _EXTI10_15,
+        _EXTI5,
+        _EXTI6,
+        _EXTI7,
+        _EXTI8,
+        _EXTI9,
+        _EXTI10,
+        _EXTI11,
+        _EXTI12,
+        _EXTI13,
+        _EXTI14,
+        _EXTI15,
 
         _EXTI_NUM
     };
@@ -179,35 +188,35 @@ class ExtiBase {
                 exti_pin = EXTI_SOURCE_PIN5;
                 exti_line = EXTI_5;
                 exti_irq = EXTI5_9_IRQn;
-                exit[_EXTI5_9] = this;  // [_EXTI5_9] = this;
+                exit[_EXTI5] = this;  // [_EXTI5_9] = this;
                 break;
             }
             case GPIO_PIN_6: {
                 exti_pin = EXTI_SOURCE_PIN6;
                 exti_line = EXTI_6;
                 exti_irq = EXTI5_9_IRQn;
-                exit[_EXTI5_9] = this;  // [_EXTI5_9] = this;
+                exit[_EXTI6] = this;  // [_EXTI5_9] = this;
                 break;
             }
             case GPIO_PIN_7: {
                 exti_pin = EXTI_SOURCE_PIN7;
                 exti_line = EXTI_7;
                 exti_irq = EXTI5_9_IRQn;
-                exit[_EXTI5_9] = this;  // [_EXTI5_9] = this;
+                exit[_EXTI7] = this;  // [_EXTI5_9] = this;
                 break;
             }
             case GPIO_PIN_8: {
                 exti_pin = EXTI_SOURCE_PIN8;
                 exti_line = EXTI_8;
                 exti_irq = EXTI5_9_IRQn;
-                exit[_EXTI5_9] = this;  // [_EXTI5_9] = this;
+                exit[_EXTI8] = this;  // [_EXTI5_9] = this;
                 break;
             }
             case GPIO_PIN_9: {
                 exti_pin = EXTI_SOURCE_PIN9;
                 exti_line = EXTI_9;
                 exti_irq = EXTI5_9_IRQn;
-                exit[_EXTI5_9] = this;  // [_EXTI5_9] = this;
+                exit[_EXTI9] = this;  // [_EXTI5_9] = this;
 
                 break;
             }
@@ -215,42 +224,42 @@ class ExtiBase {
                 exti_pin = EXTI_SOURCE_PIN10;
                 exti_line = EXTI_10;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI10] = this;  // [_EXTI10_15] = this;
                 break;
             }
             case GPIO_PIN_11: {
                 exti_pin = EXTI_SOURCE_PIN11;
                 exti_line = EXTI_11;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI11] = this;  // [_EXTI10_15] = this;
                 break;
             }
             case GPIO_PIN_12: {
                 exti_pin = EXTI_SOURCE_PIN12;
                 exti_line = EXTI_12;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI12] = this;  // [_EXTI10_15] = this;
                 break;
             }
             case GPIO_PIN_13: {
                 exti_pin = EXTI_SOURCE_PIN13;
                 exti_line = EXTI_13;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI13] = this;  // [_EXTI10_15] = this;
                 break;
             }
             case GPIO_PIN_14: {
                 exti_pin = EXTI_SOURCE_PIN14;
                 exti_line = EXTI_14;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI14] = this;  // [_EXTI10_15] = this;
                 break;
             }
             case GPIO_PIN_15: {
                 exti_pin = EXTI_SOURCE_PIN15;
                 exti_line = EXTI_15;
                 exti_irq = EXTI10_15_IRQn;
-                exit[_EXTI10_15] = this;  // [_EXTI10_15] = this;
+                exit[_EXTI15] = this;  // [_EXTI10_15] = this;
                 break;
             }
             default: {

@@ -28,13 +28,40 @@ extern "C" {
         } 
     }
     void EXTI5_9_IRQHandler(void){
-        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI5_9]!= nullptr){
-            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI5_9]->irq_handler();
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI5]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI5]->irq_handler();
         } 
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI6]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI6]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI7]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI7]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI8]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI8]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI9]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI9]->irq_handler(); 
+        }
     }
     void EXTI10_15_IRQHandler(void){
-        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI10_15]!= nullptr){
-            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI10_15]->irq_handler(); 
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI10]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI10]->irq_handler(); 
         } 
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI11]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI11]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI12]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI12]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI13]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI13]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI14]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI14]->irq_handler(); 
+        }
+        if(ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI15]!= nullptr){
+            ExtiBase::exit[ExtiBase::EXTI_LINE::_EXTI15]->irq_handler(); 
+        }
     }
 }
