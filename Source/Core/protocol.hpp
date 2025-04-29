@@ -13,7 +13,7 @@
  *          1. 构造具体消息对象并设置字段
  *          2. 使用PacketPacker打包为Packet
  *          3. 使用FramePacker打包为完整帧
- * @version 0.1
+ * @version 1.7
  * @date 2025-04-11
  *
  * @copyright Copyright (c) 2025
