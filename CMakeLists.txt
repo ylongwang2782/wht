@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.19)
 
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
@@ -10,6 +10,19 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
+# 定义可选构建变体
+set(BUILD_VARIANTS
+    "MASTER;SLAVE;DEMO"
+    CACHE STRING "Available build variants: MASTER, SLAVE, DEMO")
+set_property(CACHE BUILD_VARIANTS PROPERTY STRINGS MASTER SLAVE DEMO)
+
+# 设置默认变体
+if(NOT BUILD_VARIANT)
+  set(BUILD_VARIANT
+      "SLAVE"
+      CACHE STRING "Selected build variant")
+endif()
+
 # Include toolchain file
 include("CMake/arm-none-eabi-gcc.cmake")
 
@@ -18,7 +31,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 enable_language(ASM C CXX)
 
 # 设置项目名称和版本号
-project(GD32_Clang_Cmake_template VERSION 0.1.0)
+project(wht VERSION 3.0.0)
 
 add_compile_options(
   -Wno-unused-parameter # 忽略未使用的参数警告

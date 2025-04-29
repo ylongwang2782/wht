@@ -1,0 +1,23 @@
+{
+    "version": 3,
+    "configurePresets": [
+      {
+        "name": "master",
+        "displayName": "Master Edition",
+        "toolchainFile": "${sourceDir}/CMake/arm-none-eabi-gcc.cmake",
+        "generator": "Ninja",
+        "cacheVariables": {
+          "BUILD_VARIANT": "MASTER"
+        }
+      },
+      {
+        "name": "slave",
+        "displayName": "Slave Edition",
+        "toolchainFile": "${sourceDir}/CMake/arm-none-eabi-gcc.cmake",
+        "generator": "Ninja",
+        "cacheVariables": {
+          "BUILD_VARIANT": "SLAVE"
+        }
+      }
+    ]
+  }

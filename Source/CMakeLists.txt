@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.19)
 
 # 使用字符串连接操作生成可执行文件的名称
 set(EXECUTABLE_NAME "${PROJECT_NAME}_${PROJECT_VERSION}")
@@ -16,16 +16,13 @@ add_executable(${EXECUTABLE_NAME})
 include_directories(Config # 配置文件目录
 )
 
-# 定义选项（默认关闭）
-option(SLAVE "Build in slave mode" OFF)
-set(SLAVE ON) # 定义 SLAVE 并设为 ON
-
-if(SLAVE)
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470
-                                                        __cpluscplus)
-else()
+if(BUILD_VARIANT STREQUAL "MASTER")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER GD32F470
                                                         __cpluscplus)
+elseif(BUILD_VARIANT STREQUAL "SLAVE")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470
+                                                        __cpluscplus)
+
 endif()
 
 add_subdirectory(BSP)
