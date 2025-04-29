@@ -63,6 +63,7 @@ void PingReqMsg::process() {
     Log.d("PingReqMsg process");
     // 1. 构造 PingRspMsg
     Slave2Master::PingRspMsg pingRspMsg;
+    pingRspMsg.sequenceNumber = sequenceNumber;
     pingRspMsg.timestamp = xTaskGetTickCount();
     // 2. 打包为 Packet
     uint32_t uid = UIDReader::get();
