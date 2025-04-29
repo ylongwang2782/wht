@@ -220,7 +220,7 @@ void ResCfgMsg::process() {
 }
 
 void PingRspMsg::process() { Log.i("PingRspMsg process"); }
-
+ 
 }    // namespace Slave2Master
 
 namespace Slave2Backend {

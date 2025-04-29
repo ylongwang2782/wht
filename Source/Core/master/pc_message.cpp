@@ -14,7 +14,9 @@ void ModeCfgMsg::process() {
 }
 void RstMsg::process() { ProtocolMessageForward::rx_msg_id = MSGID::RST_MSG; }
 void CtrlMsg::process() { ProtocolMessageForward::rx_msg_id = MSGID::CTRL_MSG; }
-void PingCtrlMsg::process() { Log.i("PingCtrlMsg"); }
+void PingCtrlMsg::process() {
+    ProtocolMessageForward::rx_msg_id = MSGID::PING_CTRL_MSG;
+}
 }    // namespace Backend2Master
 
 namespace Master2Backend {

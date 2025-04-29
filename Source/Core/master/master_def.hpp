@@ -189,6 +189,25 @@ struct QueryCmd {
     uint8_t clip;
 };
 
+// 心跳指令-------------------------------------------------
+/*
+Data	Type	Length	Description
+Ping Mode	u8	1 Byte	0：单次Ping1：连续Ping
+Ping Count	u16	2 Bytes	Ping的次数
+Interval	u16	2 Bytes	Ping间隔，单位 ms
+Destination ID	u32	4 Bytes	目标设备 ID，支持广播
+*/
+enum PingCmdMode : uint8_t {
+    PING_MODE_ONCE = 0,
+    PING_MODE_CONTINUOUS,
+};
+struct PingCmd {
+    PingCmdMode mode;
+    uint16_t count;
+    uint16_t interval;
+    uint32_t id;
+};
+
 // 状态回复-------------------------------------------------
 enum StatusReply : uint8_t {
     STATUS_OK = 0,
@@ -202,6 +221,7 @@ enum CmdType : uint8_t {
     DEV_RESET,
     DEV_CTRL,
     DEV_QUERY,
+    DEV_PING,
 };
 struct DataForward {
     CmdType type;
@@ -210,6 +230,7 @@ struct DataForward {
     ResetCmd rst_cmd;
     CtrlCmd ctrl_cmd;
     QueryCmd query_cmd;
+    PingCmd ping_cmd;
 };
 
 // 上位机数据传输任务 <-> json解析任务

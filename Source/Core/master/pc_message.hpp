@@ -204,6 +204,35 @@ class ControlConfig : private __PcMessageBase {
         return FramePacker::pack(rsp_packet);
     }
 };
+/*
+Data	Type	Length	Description
+Ping Mode	u8	1 Byte	0：单次Ping1：连续Ping
+Ping Count	u16	2 Bytes	Ping的次数
+Interval	u16	2 Bytes	Ping间隔，单位 ms
+Destination ID	u32	4 Bytes	目标设备 ID，支持广播
+*/
+class PingCtrlConfig : private __PcMessageBase {
+   public:
+    PingCtrlConfig(PCmanagerMsg& msg) : __PcMessageBase(msg) {};
+
+   private:
+    // PingCtrlCmd ping_ctrl_cmd;
+    bool is_success;
+    Master2Backend::PingResMsg rsp_msg;
+    PingCmd ping_cmd;
+   public:
+    std::vector<uint8_t> forward() {
+        is_success = true;
+        data_forward.type = DEV_PING;
+        ping_cmd.mode = (PingCmdMode)Backend2Master::PingCtrlMsg::pingMode;
+        ping_cmd.count = Backend2Master::PingCtrlMsg::pingCount;
+        ping_cmd.interval = Backend2Master::PingCtrlMsg::interval;
+        ping_cmd.id = Backend2Master::PingCtrlMsg::destinationId;
+
+        data_forward.ping_cmd = ping_cmd;
+        // Log.i("[PingCtrlConfig]: ping = %u", ping_cmd.ping);
+    }
+};
 
 class ProtocolMessageForward {
    public:
