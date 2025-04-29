@@ -5,27 +5,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-# Define the build type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
-endif()
-
-# 定义可选构建变体
-set(BUILD_VARIANTS
-    "MASTER;SLAVE;DEMO"
-    CACHE STRING "Available build variants: MASTER, SLAVE, DEMO")
-set_property(CACHE BUILD_VARIANTS PROPERTY STRINGS MASTER SLAVE DEMO)
-
-# 设置默认变体
-if(NOT BUILD_VARIANT)
-  set(BUILD_VARIANT
-      "SLAVE"
-      CACHE STRING "Selected build variant")
-endif()
-
-# Include toolchain file
-include("CMake/arm-none-eabi-gcc.cmake")
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 enable_language(ASM C CXX)

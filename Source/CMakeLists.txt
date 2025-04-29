@@ -16,14 +16,26 @@ add_executable(${EXECUTABLE_NAME})
 include_directories(Config # 配置文件目录
 )
 
-if(BUILD_VARIANT STREQUAL "MASTER")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER GD32F470
-                                                        __cpluscplus)
-elseif(BUILD_VARIANT STREQUAL "SLAVE")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE GD32F470
-                                                        __cpluscplus)
+# 定义可选构建变体
+set(BUILD_VARIANT
+    "MASTER;SLAVE;DEMO"
+    CACHE STRING "Available build variants: MASTER, SLAVE, DEMO")
+set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER SLAVE DEMO)
 
+if(BUILD_VARIANT STREQUAL "MASTER")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER
+                                                        BUILD_VARIANT=MASTER)
+elseif(BUILD_VARIANT STREQUAL "SLAVE")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE
+                                                        BUILD_VARIANT=SLAVE)
+elseif(BUILD_VARIANT STREQUAL "DEMO")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE DEMO BUILD_VARIANT=DEMO)
+else()
+  message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
+
+# 添加公共宏
+target_compile_definitions(${EXECUTABLE_NAME} PRIVATE GD32F470)
 
 add_subdirectory(BSP)
 add_subdirectory(Core)
