@@ -13,4 +13,8 @@ elseif(BUILD_VARIANT STREQUAL "SLAVE")
             ./slave/src/harness.cpp ./slave/src/msg_proc.cpp
             ./slave/src/peripherals.cpp)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave/inc)
+
+elseif(BUILD_VARIANT STREQUAL "DEMO")
+  target_sources(${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./demo/demo.cpp ./demo/peripherals.cpp)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./demo)
 endif()
