@@ -2,14 +2,14 @@
 #include "demo.hpp"
 
 #include "TaskCPP.h"
-#include "peripherals.hpp"
 #include "bsp_uid.hpp"
+#include "peripherals.hpp"
 
 #ifdef DEMO
 
-class Rs232Task : public TaskClassS<1024> {
+class ComEchoTask : public TaskClassS<1024> {
    public:
-    Rs232Task() : TaskClassS<1024>("Rs232Task", TaskPrio_High) {}
+    ComEchoTask() : TaskClassS<1024>("ComEchoTask", TaskPrio_High) {}
     void task() override {
         std::vector<uint8_t> rs232_data;
         std::vector<uint8_t> rs485_data;
@@ -32,6 +32,31 @@ class Rs232Task : public TaskClassS<1024> {
     }
 };
 
+class GpioTestTask : public TaskClassS<1024> {
+   public:
+    GpioTestTask() : TaskClassS<1024>("GpioTestTask", TaskPrio_High) {}
+    void task() override {
+        // // PA3 - PA7输出
+        // std::array<GPIO, 5> gpio_outputs = {
+        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_3, GPIO::Mode::OUTPUT),
+        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT),
+        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_5, GPIO::Mode::OUTPUT),
+        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_6, GPIO::Mode::OUTPUT),
+        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_7, GPIO::Mode::OUTPUT),
+        // };
+
+        // for (auto& pin : gpio_outputs) {
+        //     pin.bit_set();
+        // }
+        HarnessGpio harnessGpio;
+        harnessGpio.init();
+        for (;;) {
+            harnessGpio.toggle();
+            TaskBase::delay(1000);
+        }
+    }
+};
+
 static void Demo_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
     Log.d("Slave Boot: %08X", myUid);
@@ -39,8 +64,11 @@ static void Demo_Task(void* pvParameters) {
     LogTask logTask;
     logTask.give();
 
-    Rs232Task rs232Task;
-    rs232Task.give();
+    ComEchoTask ComEchoTask;
+    ComEchoTask.give();
+
+    GpioTestTask GpioTestTask;
+    GpioTestTask.give();
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());

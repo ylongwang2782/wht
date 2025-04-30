@@ -10,3 +10,5 @@ Uart uart6(uart6Conf);
 Rs485 rs485(uart6, GPIO::Port::F, GPIO::Pin::PIN_4);
 
 Logger Log(rs232);
+
+std::vector<GPIO> HarnessGpio::condGpioArray;
