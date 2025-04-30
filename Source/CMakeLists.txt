@@ -50,7 +50,7 @@ target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel
 # ===============================================================================
 
 # 设置可执行文件的生成位置
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}/)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/${BUILD_VARIANT}/${CMAKE_BUILD_TYPE}/)
 
 # 指定map文件生成路径
 target_link_options(
