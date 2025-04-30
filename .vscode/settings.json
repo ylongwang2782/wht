@@ -15,9 +15,4 @@
         "--query-driver=${env:ARM_CXX_PATH}"
     ],
     "todo-tree.tree.showBadges": false,
-    "marscode.chatLanguage": "cn",
-    "marscode.codeCompletionPro": {
-        "enableCodeCompletionPro": false
-    },
-    "marscode.enableInlineCommand": true,
 }
