@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "QueueCPP.h"
+#include "bsp_gpio.hpp"
+
 
 extern "C" {
 #include "FreeRTOS.h"
@@ -134,6 +136,14 @@ class Uart {
             usart_data_transmit(config.usart_periph, data[i]);
             while (RESET == usart_flag_get(config.usart_periph, USART_FLAG_TC));
         }
+    }
+
+    void data_send(const std::string &str) {
+        data_send((const uint8_t *)str.c_str(), str.size());
+    }
+
+    void data_send(std::vector<uint8_t> &data) {
+        data_send(data.data(), data.size());
     }
 
     void send(const uint8_t *data, uint16_t len) {
@@ -335,5 +345,25 @@ class Uart {
             config.dma_periph, config.dma_rx_channel, config.dma_sub_per);
         dma_channel_enable(config.dma_periph, config.dma_rx_channel);
     }
+};
+
+class Rs485 {
+   public:
+    Rs485(Uart &uart, GPIO::Port port, GPIO::Pin pin)
+        : uart(uart), ctrl(port, pin, GPIO::Mode::OUTPUT) {}
+    Uart &uart;
+
+    std::vector<uint8_t> getReceivedData() {
+        ctrl.bit_reset();
+        return uart.getReceivedData();
+    }
+
+    void data_send(std::vector<uint8_t> &data) {
+        ctrl.bit_set();
+        uart.data_send(data);
+    }
+
+   private:
+    GPIO ctrl;
 };
 #endif
