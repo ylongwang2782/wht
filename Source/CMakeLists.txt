@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 # 使用字符串连接操作生成可执行文件的名称
-set(EXECUTABLE_NAME "${PROJECT_NAME}_${PROJECT_VERSION}")
+set(EXECUTABLE_NAME "${PROJECT_NAME}_v${PROJECT_VERSION}")
 
 # 添加编译选项
 add_compile_options(
@@ -18,9 +18,9 @@ include_directories(Config # 配置文件目录
 
 # 定义可选构建变体
 set(BUILD_VARIANT
-    "MASTER;SLAVE;DEMO"
-    CACHE STRING "Available build variants: MASTER, SLAVE, DEMO")
-set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER SLAVE DEMO)
+    "MASTER;SLAVE;BOARDTEST"
+    CACHE STRING "Available build variants: MASTER, SLAVE, BOARDTEST")
+set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER SLAVE BOARDTEST)
 
 if(BUILD_VARIANT STREQUAL "MASTER")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER
@@ -28,8 +28,9 @@ if(BUILD_VARIANT STREQUAL "MASTER")
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE
                                                         BUILD_VARIANT=SLAVE)
-elseif(BUILD_VARIANT STREQUAL "DEMO")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE DEMO BUILD_VARIANT=DEMO)
+elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE BOARDTEST
+                                                        BUILD_VARIANT=BOARDTEST)
 else()
   message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
@@ -50,7 +51,8 @@ target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel
 # ===============================================================================
 
 # 设置可执行文件的生成位置
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin/${BUILD_VARIANT}/${CMAKE_BUILD_TYPE}/)
+set(EXECUTABLE_OUTPUT_PATH
+    ${PROJECT_SOURCE_DIR}/bin/${BUILD_VARIANT}/${CMAKE_BUILD_TYPE}/)
 
 # 指定map文件生成路径
 target_link_options(

@@ -125,7 +125,7 @@ class GPIO {
 
     uint16_t input_port_get() { return gpio_input_port_get(port_base()); }
 
-    FlagStatus input_bit_get() {
+    FlagStatus input_bit_get() const {
         return gpio_input_bit_get(port_base(), pin_mask());
     }
 

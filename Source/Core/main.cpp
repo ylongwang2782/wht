@@ -24,10 +24,13 @@ extern "C" {
 int main(void) {
     nvic_priority_group_set(NVIC_PRIGROUP_PRE4_SUB0);
 
-#ifdef MASTER 
+#ifdef MASTER
     // 主节点模式入口
     Master_Init();
 #elif defined(SLAVE)
+    // 从节点模式入口
+    Slave_Init();
+#elif defined(BOARDTEST)
     // 从节点模式入口
     Slave_Init();
 #else
@@ -38,4 +41,3 @@ int main(void) {
     for (;;);
     return 0;
 }
-
