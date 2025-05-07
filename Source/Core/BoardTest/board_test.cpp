@@ -134,38 +134,38 @@ class DipSwithTestTask : public TaskClassS<256> {
    public:
     DipSwithTestTask() : TaskClassS<256>("DipSwithTestTask", TaskPrio_High) {}
     void task() override {
-    // SW1 = PC3
-    // SW2 = PC2
-    // SW3 = PC1
-    // SW4 = PC0
-    // SW5 = PF10
-    // SW6 = PF9
-    // SW7 = PF8
-    // SW8 = PF5
-    DipSwitchInfo info = {
-            .pins = {
-               {GPIO::Port::C, GPIO::Pin::PIN_3},    // PC3
-               {GPIO::Port::C, GPIO::Pin::PIN_2},    // PC2
-               {GPIO::Port::C, GPIO::Pin::PIN_1},    // PC1
-               {GPIO::Port::C, GPIO::Pin::PIN_0},    // PC0
-               {GPIO::Port::F, GPIO::Pin::PIN_10},   // PF10
-               {GPIO::Port::F, GPIO::Pin::PIN_9},    // PF9
-               {GPIO::Port::F, GPIO::Pin::PIN_8},    // PF8
-               {GPIO::Port::F, GPIO::Pin::PIN_5},    // PF5
-            }
-        };
+        // SW1 = PC3
+        // SW2 = PC2
+        // SW3 = PC1
+        // SW4 = PC0
+        // SW5 = PF10
+        // SW6 = PF9
+        // SW7 = PF8
+        // SW8 = PF5
+        DipSwitchInfo info = {.pins = {
+                                  {GPIO::Port::C, GPIO::Pin::PIN_3},     // PC3
+                                  {GPIO::Port::C, GPIO::Pin::PIN_2},     // PC2
+                                  {GPIO::Port::C, GPIO::Pin::PIN_1},     // PC1
+                                  {GPIO::Port::C, GPIO::Pin::PIN_0},     // PC0
+                                  {GPIO::Port::F, GPIO::Pin::PIN_10},    // PF10
+                                  {GPIO::Port::F, GPIO::Pin::PIN_9},     // PF9
+                                  {GPIO::Port::F, GPIO::Pin::PIN_8},     // PF8
+                                  {GPIO::Port::F, GPIO::Pin::PIN_5},     // PF5
+                              }};
         DipSwitch dip(info);
         for (;;) {
-            uint8_t switchVal = dip.value();  // 获取当前拨码值
+            uint8_t switchVal = dip.value();    // 获取当前拨码值
             Log.d("DipSwitch value: %02X", switchVal);
             TaskBase::delay(1000);
         }
-    } 
+    }
 };
 
 static void Demo_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
-    Log.d("Slave Boot: %08X", myUid);
+    Log.d("[Boot]");
+    Log.d("[Boot] Board Test Firmware v3.0, Build: %s %s", __DATE__, __TIME__);
+    Log.d("[Boot] UID: %08X", myUid);
 
     LogTask logTask;
     logTask.give();
