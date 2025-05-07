@@ -153,3 +153,12 @@ class Key {
    private:
     GPIO gpio;    // Add this member declaration
 };
+
+class Elv {
+   public:
+    Elv(GPIO::Port port, GPIO::Pin pin) : gpio(port, pin, GPIO::Mode::OUTPUT) {}
+    void toggle() { gpio.toggle(); }
+
+   private:
+    GPIO gpio;    // Add this member declaration
+};

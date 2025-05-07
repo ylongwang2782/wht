@@ -45,20 +45,34 @@ class GpioTestTask : public TaskClassS<1024> {
     }
 };
 
-class LedTestTask : public TaskClassS<1024> {
+class LedElvTestTask : public TaskClassS<1024> {
    public:
-    LedTestTask() : TaskClassS<1024>("LedTestTask", TaskPrio_High) {}
+    LedElvTestTask() : TaskClassS<1024>("LedElvTestTask", TaskPrio_High) {}
     void task() override {
-        // LED1:PG9
-        // LED2:PG12
-        // LED3:PG15
+        // LED1: PG9
+        // LED2: PG12
+        // LED3: PG15
         LED led1(GPIO::Port::G, GPIO::Pin::PIN_9);
         LED led2(GPIO::Port::G, GPIO::Pin::PIN_12);
         LED led3(GPIO::Port::G, GPIO::Pin::PIN_15);
+
+        // ELV1: PE1
+        // ELV2: PE0
+        // ELV3: PB9
+        // ELV4: PB8
+        Elv elv1(GPIO::Port::E, GPIO::Pin::PIN_1);
+        Elv elv2(GPIO::Port::E, GPIO::Pin::PIN_0);
+        Elv elv3(GPIO::Port::B, GPIO::Pin::PIN_9);
+        Elv elv4(GPIO::Port::B, GPIO::Pin::PIN_8);
         for (;;) {
             led1.toggle();
             led2.toggle();
             led3.toggle();
+
+            elv1.toggle();
+            elv2.toggle();
+            elv3.toggle();
+            elv4.toggle();
             TaskBase::delay(1000);
         }
     }
@@ -81,6 +95,11 @@ class KeyTestTask : public TaskClassS<1024> {
         Key key5(GPIO::Port::B, GPIO::Pin::PIN_3);
         Key key6(GPIO::Port::B, GPIO::Pin::PIN_4);
 
+        // Airpress: PB5
+        Key airprse(GPIO::Port::B, GPIO::Pin::PIN_5);
+        // ColorSensor: PD7
+        Key colorSensor(GPIO::Port::D, GPIO::Pin::PIN_7);
+
         for (;;) {
             if (key1.isPressed()) {
                 Log.d("Key1 pressed");
@@ -99,6 +118,12 @@ class KeyTestTask : public TaskClassS<1024> {
             }
             if (key6.isPressed()) {
                 Log.d("Key6 pressed");
+            }
+            if (airprse.isPressed()) {
+                Log.d("Airprse pressed");
+            }
+            if (colorSensor.isPressed()) {
+                Log.d("ColorSensor pressed");
             }
             TaskBase::delay(1000);
         }
@@ -121,9 +146,9 @@ static void Demo_Task(void* pvParameters) {
     GpioTestTask.give();
     Log.d("GpioTestTask started");
 
-    LedTestTask LedTestTask;
-    LedTestTask.give();
-    Log.d("LedTestTask started");
+    LedElvTestTask LedElvTestTask;
+    LedElvTestTask.give();
+    Log.d("LedElvTestTask started");
 
     KeyTestTask KeyTestTask;
     KeyTestTask.give();
