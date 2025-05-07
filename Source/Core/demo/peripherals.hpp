@@ -144,3 +144,12 @@ class HarnessGpio {
         }
     }
 };
+
+class Key {
+   public:
+    Key(GPIO::Port port, GPIO::Pin pin) : gpio(port, pin, GPIO::Mode::INPUT) {}
+    bool isPressed() { return !gpio.input_bit_get(); }
+
+   private:
+    GPIO gpio;    // Add this member declaration
+};

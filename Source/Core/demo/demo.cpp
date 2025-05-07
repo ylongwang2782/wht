@@ -64,21 +64,70 @@ class LedTestTask : public TaskClassS<1024> {
     }
 };
 
+class KeyTestTask : public TaskClassS<1024> {
+   public:
+    KeyTestTask() : TaskClassS<1024>("KeyTestTask", TaskPrio_High) {}
+    void task() override {
+        // KEY1:PG10
+        // KEY2:PG11
+        // KEY3:PG13
+        // KEY4:PG14
+        // KEY5:PB2
+        // KEY6:PB3
+        Key key1(GPIO::Port::G, GPIO::Pin::PIN_10);
+        Key key2(GPIO::Port::G, GPIO::Pin::PIN_11);
+        Key key3(GPIO::Port::G, GPIO::Pin::PIN_13);
+        Key key4(GPIO::Port::G, GPIO::Pin::PIN_14);
+        Key key5(GPIO::Port::B, GPIO::Pin::PIN_3);
+        Key key6(GPIO::Port::B, GPIO::Pin::PIN_4);
+
+        for (;;) {
+            if (key1.isPressed()) {
+                Log.d("Key1 pressed");
+            }
+            if (key2.isPressed()) {
+                Log.d("Key2 pressed");
+            }
+            if (key3.isPressed()) {
+                Log.d("Key3 pressed");
+            }
+            if (key4.isPressed()) {
+                Log.d("Key4 pressed");
+            }
+            if (key5.isPressed()) {
+                Log.d("Key5 pressed");
+            }
+            if (key6.isPressed()) {
+                Log.d("Key6 pressed");
+            }
+            TaskBase::delay(1000);
+        }
+    }
+};
+
 static void Demo_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
     Log.d("Slave Boot: %08X", myUid);
 
     LogTask logTask;
     logTask.give();
+    Log.d("LogTask started");
 
     ComEchoTask ComEchoTask;
     ComEchoTask.give();
+    Log.d("ComEchoTask started");
 
     GpioTestTask GpioTestTask;
     GpioTestTask.give();
+    Log.d("GpioTestTask started");
 
     LedTestTask LedTestTask;
     LedTestTask.give();
+    Log.d("LedTestTask started");
+
+    KeyTestTask KeyTestTask;
+    KeyTestTask.give();
+    Log.d("KeyTestTask started");
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
