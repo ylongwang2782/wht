@@ -36,22 +36,29 @@ class GpioTestTask : public TaskClassS<1024> {
    public:
     GpioTestTask() : TaskClassS<1024>("GpioTestTask", TaskPrio_High) {}
     void task() override {
-        // // PA3 - PA7输出
-        // std::array<GPIO, 5> gpio_outputs = {
-        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_3, GPIO::Mode::OUTPUT),
-        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT),
-        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_5, GPIO::Mode::OUTPUT),
-        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_6, GPIO::Mode::OUTPUT),
-        //     GPIO(GPIO::Port::A, GPIO::Pin::PIN_7, GPIO::Mode::OUTPUT),
-        // };
-
-        // for (auto& pin : gpio_outputs) {
-        //     pin.bit_set();
-        // }
         HarnessGpio harnessGpio;
         harnessGpio.init();
         for (;;) {
             harnessGpio.toggle();
+            TaskBase::delay(1000);
+        }
+    }
+};
+
+class LedTestTask : public TaskClassS<1024> {
+   public:
+    LedTestTask() : TaskClassS<1024>("LedTestTask", TaskPrio_High) {}
+    void task() override {
+        // LED1:PG9
+        // LED2:PG12
+        // LED3:PG15
+        LED led1(GPIO::Port::G, GPIO::Pin::PIN_9);
+        LED led2(GPIO::Port::G, GPIO::Pin::PIN_12);
+        LED led3(GPIO::Port::G, GPIO::Pin::PIN_15);
+        for (;;) {
+            led1.toggle();
+            led2.toggle();
+            led3.toggle();
             TaskBase::delay(1000);
         }
     }
@@ -69,6 +76,9 @@ static void Demo_Task(void* pvParameters) {
 
     GpioTestTask GpioTestTask;
     GpioTestTask.give();
+
+    LedTestTask LedTestTask;
+    LedTestTask.give();
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
