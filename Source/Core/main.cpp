@@ -30,7 +30,7 @@ int main(void) {
 #elif defined(SLAVE)
     // 从节点模式入口
     Slave_Init();
-#elif defined(DEMO)
+#elif defined(BOARDTEST)
     // 从节点模式入口
     Slave_Init();
 #else

@@ -1,11 +1,11 @@
 
-#include "demo.hpp"
+#include "board_test.hpp"
 
 #include "TaskCPP.h"
 #include "bsp_uid.hpp"
 #include "peripherals.hpp"
 
-#ifdef DEMO
+#ifdef BOARDTEST
 
 class ComEchoTask : public TaskClassS<256> {
    public:
