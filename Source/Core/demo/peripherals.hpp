@@ -148,10 +148,52 @@ class HarnessGpio {
 class Key {
    public:
     Key(GPIO::Port port, GPIO::Pin pin) : gpio(port, pin, GPIO::Mode::INPUT) {}
-    bool isPressed() { return !gpio.input_bit_get(); }
+    bool isPressed() const { return !gpio.input_bit_get(); }
 
    private:
     GPIO gpio;    // Add this member declaration
+};
+
+struct DipSwitchInfo {
+    struct PinInfo {
+        GPIO::Port port;
+        GPIO::Pin pin;
+    };
+
+    PinInfo pins[8];    // 8个拨码开关，每个有端口和引脚编号
+};
+
+class DipSwitch {
+   public:
+    DipSwitch(const DipSwitchInfo& info)
+        : keys{Key(info.pins[0].port, info.pins[0].pin),
+               Key(info.pins[1].port, info.pins[1].pin),
+               Key(info.pins[2].port, info.pins[2].pin),
+               Key(info.pins[3].port, info.pins[3].pin),
+               Key(info.pins[4].port, info.pins[4].pin),
+               Key(info.pins[5].port, info.pins[5].pin),
+               Key(info.pins[6].port, info.pins[6].pin),
+               Key(info.pins[7].port, info.pins[7].pin)} {}
+
+    // 获取某一位拨码开关的状态，0~7
+    bool isOn(int index) const {
+        if (index < 0 || index >= 8) return false;
+        return keys[index].isPressed();    // 拨码开关拨到 ON 为按下
+    }
+
+    // 获取整个8位拨码开关的值，按位打包
+    uint8_t value() const {
+        uint8_t val = 0;
+        for (int i = 0; i < 8; ++i) {
+            if (isOn(i)) {
+                val |= (1 << i);
+            }
+        }
+        return val;
+    }
+
+   private:
+    Key keys[8];
 };
 
 class Elv {

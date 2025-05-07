@@ -7,9 +7,9 @@
 
 #ifdef DEMO
 
-class ComEchoTask : public TaskClassS<1024> {
+class ComEchoTask : public TaskClassS<256> {
    public:
-    ComEchoTask() : TaskClassS<1024>("ComEchoTask", TaskPrio_High) {}
+    ComEchoTask() : TaskClassS<256>("ComEchoTask", TaskPrio_High) {}
     void task() override {
         std::vector<uint8_t> rs232_data;
         std::vector<uint8_t> rs485_data;
@@ -32,9 +32,9 @@ class ComEchoTask : public TaskClassS<1024> {
     }
 };
 
-class GpioTestTask : public TaskClassS<1024> {
+class GpioTestTask : public TaskClassS<256> {
    public:
-    GpioTestTask() : TaskClassS<1024>("GpioTestTask", TaskPrio_High) {}
+    GpioTestTask() : TaskClassS<256>("GpioTestTask", TaskPrio_High) {}
     void task() override {
         HarnessGpio harnessGpio;
         harnessGpio.init();
@@ -45,9 +45,9 @@ class GpioTestTask : public TaskClassS<1024> {
     }
 };
 
-class LedElvTestTask : public TaskClassS<1024> {
+class LedElvTestTask : public TaskClassS<256> {
    public:
-    LedElvTestTask() : TaskClassS<1024>("LedElvTestTask", TaskPrio_High) {}
+    LedElvTestTask() : TaskClassS<256>("LedElvTestTask", TaskPrio_High) {}
     void task() override {
         // LED1: PG9
         // LED2: PG12
@@ -78,9 +78,9 @@ class LedElvTestTask : public TaskClassS<1024> {
     }
 };
 
-class KeyTestTask : public TaskClassS<1024> {
+class KeyTestTask : public TaskClassS<256> {
    public:
-    KeyTestTask() : TaskClassS<1024>("KeyTestTask", TaskPrio_High) {}
+    KeyTestTask() : TaskClassS<256>("KeyTestTask", TaskPrio_High) {}
     void task() override {
         // KEY1:PG10
         // KEY2:PG11
@@ -130,6 +130,39 @@ class KeyTestTask : public TaskClassS<1024> {
     }
 };
 
+class DipSwithTestTask : public TaskClassS<256> {
+   public:
+    DipSwithTestTask() : TaskClassS<256>("DipSwithTestTask", TaskPrio_High) {}
+    void task() override {
+    // SW1 = PC3
+    // SW2 = PC2
+    // SW3 = PC1
+    // SW4 = PC0
+    // SW5 = PF10
+    // SW6 = PF9
+    // SW7 = PF8
+    // SW8 = PF5
+    DipSwitchInfo info = {
+            .pins = {
+               {GPIO::Port::C, GPIO::Pin::PIN_3},    // PC3
+               {GPIO::Port::C, GPIO::Pin::PIN_2},    // PC2
+               {GPIO::Port::C, GPIO::Pin::PIN_1},    // PC1
+               {GPIO::Port::C, GPIO::Pin::PIN_0},    // PC0
+               {GPIO::Port::F, GPIO::Pin::PIN_10},   // PF10
+               {GPIO::Port::F, GPIO::Pin::PIN_9},    // PF9
+               {GPIO::Port::F, GPIO::Pin::PIN_8},    // PF8
+               {GPIO::Port::F, GPIO::Pin::PIN_5},    // PF5
+            }
+        };
+        DipSwitch dip(info);
+        for (;;) {
+            uint8_t switchVal = dip.value();  // 获取当前拨码值
+            Log.d("DipSwitch value: %02X", switchVal);
+            TaskBase::delay(1000);
+        }
+    } 
+};
+
 static void Demo_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
     Log.d("Slave Boot: %08X", myUid);
@@ -153,6 +186,10 @@ static void Demo_Task(void* pvParameters) {
     KeyTestTask KeyTestTask;
     KeyTestTask.give();
     Log.d("KeyTestTask started");
+
+    DipSwithTestTask DipSwithTestTask;
+    DipSwithTestTask.give();
+    Log.d("DipSwithTestTask started");
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
