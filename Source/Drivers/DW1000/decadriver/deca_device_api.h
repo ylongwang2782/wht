@@ -17,26 +17,28 @@
 extern "C" {
 #endif
 
-#ifndef uint8_t
-#ifndef _DECA_uint8_t_
-#define _DECA_uint8_t_
-typedef unsigned char uint8_t;
-#endif
-#endif
+#include <stdint.h>
 
-#ifndef uint16_t
-#ifndef _DECA_uint16_t_
-#define _DECA_uint16_t_
-typedef unsigned short uint16_t;
-#endif
-#endif
+// #ifndef uint8_t
+// #ifndef _DECA_uint8_t_
+// #define _DECA_uint8_t_
+// typedef unsigned char uint8_t;
+// #endif
+// #endif
 
-#ifndef uint32_t
-#ifndef _DECA_uint32_t_
-#define _DECA_uint32_t_
-typedef unsigned int uint32_t;
-#endif
-#endif
+// #ifndef uint16_t
+// #ifndef _DECA_uint16_t_
+// #define _DECA_uint16_t_
+// typedef unsigned short uint16_t;
+// #endif
+// #endif
+
+// #ifndef uint32_t
+// #ifndef _DECA_uint32_t_
+// #define _DECA_uint32_t_
+// typedef unsigned int uint32_t;
+// #endif
+// #endif
 
 #ifndef int8
 #ifndef _DECA_INT8_
