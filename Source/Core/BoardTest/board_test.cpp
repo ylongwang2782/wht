@@ -1,12 +1,12 @@
 
 #include "board_test.hpp"
 
+#include <cstddef>
 #include <cstdio>
 
 #include "TaskCPP.h"
 #include "bsp_uid.hpp"
 #include "peripherals.hpp"
-
 
 #ifdef BOARDTEST
 
@@ -81,9 +81,11 @@ class LedElvTestTask : public TaskClassS<256> {
     }
 };
 
-class KeyTestTask : public TaskClassS<256> {
+class KeyTestTask : public TaskClassS<1024> {
    public:
-    KeyTestTask() : TaskClassS<256>("KeyTestTask", TaskPrio_High) {}
+    KeyTestTask() : TaskClassS<1024>("KeyTestTask", TaskPrio_High) {}
+
+   private:
     void task() override {
         // KEY1:PG10
         // KEY2:PG11
@@ -91,51 +93,35 @@ class KeyTestTask : public TaskClassS<256> {
         // KEY4:PG14
         // KEY5:PB2
         // KEY6:PB3
-        Key key1(GPIO::Port::G, GPIO::Pin::PIN_10);
-        Key key2(GPIO::Port::G, GPIO::Pin::PIN_11);
-        Key key3(GPIO::Port::G, GPIO::Pin::PIN_13);
-        Key key4(GPIO::Port::G, GPIO::Pin::PIN_14);
-        Key key5(GPIO::Port::B, GPIO::Pin::PIN_3);
-        Key key6(GPIO::Port::B, GPIO::Pin::PIN_4);
+        Key key1("KEY1", GPIO::Port::G, GPIO::Pin::PIN_10);
+        Key key2("KEY2", GPIO::Port::G, GPIO::Pin::PIN_11);
+        Key key3("KEY3", GPIO::Port::G, GPIO::Pin::PIN_13);
+        Key key4("KEY4", GPIO::Port::G, GPIO::Pin::PIN_14);
+        Key key5("KEY5", GPIO::Port::B, GPIO::Pin::PIN_3);
+        Key key6("KEY6", GPIO::Port::B, GPIO::Pin::PIN_4);
 
         // Airpress: PB5
-        Key airprse(GPIO::Port::B, GPIO::Pin::PIN_5);
+        Key pressSensor("PressSensor", GPIO::Port::B, GPIO::Pin::PIN_5);
         // ColorSensor: PD7
-        Key colorSensor(GPIO::Port::D, GPIO::Pin::PIN_7);
+        Key colorSensor("ColorSensor", GPIO::Port::D, GPIO::Pin::PIN_7);
+
+        std::array<Key*, 8> keys = {&key1, &key2, &key3,        &key4,
+                                    &key5, &key6, &pressSensor, &colorSensor};
 
         for (;;) {
-            if (key1.isPressed()) {
-                Log.d("Key1 pressed");
-            }
-            if (key2.isPressed()) {
-                Log.d("Key2 pressed");
-            }
-            if (key3.isPressed()) {
-                Log.d("Key3 pressed");
-            }
-            if (key4.isPressed()) {
-                Log.d("Key4 pressed");
-            }
-            if (key5.isPressed()) {
-                Log.d("Key5 pressed");
-            }
-            if (key6.isPressed()) {
-                Log.d("Key6 pressed");
-            }
-            if (airprse.isPressed()) {
-                Log.d("Airprse pressed");
-            }
-            if (colorSensor.isPressed()) {
-                Log.d("ColorSensor pressed");
+            for (auto key : keys) {
+                if (key->isPressed()) {
+                    Log.d("[%s] pressed", key->getName());
+                }
             }
             TaskBase::delay(1000);
         }
     }
 };
 
-class DipSwithTestTask : public TaskClassS<256> {
+class DipSwithTestTask : public TaskClassS<1024> {
    public:
-    DipSwithTestTask() : TaskClassS<256>("DipSwithTestTask", TaskPrio_High) {}
+    DipSwithTestTask() : TaskClassS<1024>("DipSwithTestTask", TaskPrio_Mid) {}
     void task() override {
         // SW1 = PC3
         // SW2 = PC2
@@ -156,9 +142,10 @@ class DipSwithTestTask : public TaskClassS<256> {
                                   {GPIO::Port::F, GPIO::Pin::PIN_5},     // PF5
                               }};
         DipSwitch dip(info);
+
         for (;;) {
             uint8_t switchVal = dip.value();    // 获取当前拨码值
-            Log.d("DipSwitch value: %02X", switchVal);
+            Log.d("[DipSwitch]: %02X", switchVal);
             TaskBase::delay(1000);
         }
     }
@@ -173,8 +160,8 @@ class DW1000Task : public TaskClassS<1024> {
         for (;;) {
             dw1000.recv();
             if (dw1000.frame_len != 0) {
-                Log.d("[DW1000] recv: %d", dw1000.frame_len);
-                dw1000.frame_len = 0;
+                // Log.d("[DW1000] recv: %d", dw1000.frame_len);
+                // dw1000.frame_len = 0;
             }
             TaskBase::delay(1000);
         }
@@ -191,25 +178,25 @@ static void BootTask(void* pvParameters) {
     logTask.give();
     Log.d("[BOOT] LogTask started");
 
-    // ComEchoTask ComEchoTask;
-    // ComEchoTask.give();
-    // Log.d("ComEchoTask started");
+    ComEchoTask ComEchoTask;
+    ComEchoTask.give();
+    Log.d("[BOOT] ComEchoTask started");
 
-    // GpioTestTask GpioTestTask;
-    // GpioTestTask.give();
-    // Log.d("GpioTestTask started");
+    GpioTestTask GpioTestTask;
+    GpioTestTask.give();
+    Log.d("[BOOT] GpioTestTask started");
 
-    // LedElvTestTask LedElvTestTask;
-    // LedElvTestTask.give();
-    // Log.d("LedElvTestTask started");
+    LedElvTestTask LedElvTestTask;
+    LedElvTestTask.give();
+    Log.d("[BOOT] LedElvTestTask started");
 
-    // KeyTestTask KeyTestTask;
-    // KeyTestTask.give();
-    // Log.d("KeyTestTask started");
+    KeyTestTask KeyTestTask;
+    KeyTestTask.give();
+    Log.d("[BOOT] KeyTestTask started");
 
-    // DipSwithTestTask DipSwithTestTask;
-    // DipSwithTestTask.give();
-    // Log.d("DipSwithTestTask started");
+    DipSwithTestTask DipSwithTestTask;
+    DipSwithTestTask.give();
+    Log.d("[BOOT] DipSwithTestTask started");
 
     DW1000Task DW1000Task;
     DW1000Task.give();
@@ -223,7 +210,7 @@ static void BootTask(void* pvParameters) {
 }
 
 int Slave_Init(void) {
-    xTaskCreate(BootTask, "MasterTask", 4 * 1024, NULL, 2, NULL);
+    xTaskCreate(BootTask, "BootTask", 10 * 1024, NULL, 2, NULL);
 
     return 0;
 }

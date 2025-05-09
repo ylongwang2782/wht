@@ -28,7 +28,7 @@ class LogTask : public TaskClassS<LogTask_SIZE> {
             LogMessage logMsg;
             // 从队列中获取日志消息
             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.send(
+                Log.uart.data_send(
                     reinterpret_cast<const uint8_t*>(logMsg.message.data()),
                     strlen(logMsg.message.data()));
             }
@@ -155,13 +155,17 @@ class HarnessGpio {
 
 class Key {
    public:
-    Key(GPIO::Port port, GPIO::Pin pin) : gpio(port, pin, GPIO::Mode::INPUT) {}
+    Key(const char* name, GPIO::Port port, GPIO::Pin pin)
+        : name(name), gpio(port, pin, GPIO::Mode::INPUT) {}
+
     bool isPressed() const { return !gpio.input_bit_get(); }
 
-   private:
-    GPIO gpio;    // Add this member declaration
-};
+    const char* getName() const { return name; }
 
+   private:
+    const char* name;
+    GPIO gpio;
+};
 struct DipSwitchInfo {
     struct PinInfo {
         GPIO::Port port;
@@ -174,14 +178,14 @@ struct DipSwitchInfo {
 class DipSwitch {
    public:
     DipSwitch(const DipSwitchInfo& info)
-        : keys{Key(info.pins[0].port, info.pins[0].pin),
-               Key(info.pins[1].port, info.pins[1].pin),
-               Key(info.pins[2].port, info.pins[2].pin),
-               Key(info.pins[3].port, info.pins[3].pin),
-               Key(info.pins[4].port, info.pins[4].pin),
-               Key(info.pins[5].port, info.pins[5].pin),
-               Key(info.pins[6].port, info.pins[6].pin),
-               Key(info.pins[7].port, info.pins[7].pin)} {}
+        : keys{Key("DIP0", info.pins[0].port, info.pins[0].pin),
+               Key("DIP1", info.pins[1].port, info.pins[1].pin),
+               Key("DIP2", info.pins[2].port, info.pins[2].pin),
+               Key("DIP3", info.pins[3].port, info.pins[3].pin),
+               Key("DIP4", info.pins[4].port, info.pins[4].pin),
+               Key("DIP5", info.pins[5].port, info.pins[5].pin),
+               Key("DIP6", info.pins[6].port, info.pins[6].pin),
+               Key("DIP7", info.pins[7].port, info.pins[7].pin)} {}
 
     // 获取某一位拨码开关的状态，0~7
     bool isOn(int index) const {
@@ -231,7 +235,7 @@ class DW1000 {
         reset();
 
         if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-            Log.e("[DW1000] init failed");
+            Log.e("[DW1000]: init FAIL");
             return 1;
         }
 
@@ -239,7 +243,7 @@ class DW1000 {
         dwt_configure(&dw1000_config);
 
         dwt_write32bitreg(TX_POWER_ID, 0x85858585);
-        Log.d("[DW1000] init ok");
+        Log.d("[DW1000] init OK");
         return 0;
     }
 

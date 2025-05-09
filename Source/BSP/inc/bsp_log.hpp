@@ -64,7 +64,7 @@ class Logger {
         // 添加时间戳和级别前缀
         char finalMessage[bufferSize + 32];    // 增加缓冲区大小以容纳时间戳
         snprintf(finalMessage, sizeof(finalMessage),
-                 "[%02lu.%03lu] [%s] %s\n",    // 改动点：时间前补0 +
+                 "[%03lu.%03lu] [%s] %s\n",    // 改动点：时间前补0 +
                                                   // 等宽字段 + 空格
                  seconds, milliseconds, levelStr[static_cast<int>(level)],
                  buffer);
