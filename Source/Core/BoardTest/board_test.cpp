@@ -1,9 +1,12 @@
 
 #include "board_test.hpp"
 
+#include <cstdio>
+
 #include "TaskCPP.h"
 #include "bsp_uid.hpp"
 #include "peripherals.hpp"
+
 
 #ifdef BOARDTEST
 
@@ -161,35 +164,56 @@ class DipSwithTestTask : public TaskClassS<256> {
     }
 };
 
-static void Demo_Task(void* pvParameters) {
+class DW1000Task : public TaskClassS<1024> {
+   public:
+    DW1000Task() : TaskClassS<1024>("DW1000Task", TaskPrio_High) {}
+    void task() override {
+        DW1000 dw1000;
+
+        for (;;) {
+            dw1000.recv();
+            if (dw1000.frame_len != 0) {
+                Log.d("[DW1000] recv: %d", dw1000.frame_len);
+                dw1000.frame_len = 0;
+            }
+            TaskBase::delay(1000);
+        }
+    }
+};
+
+static void BootTask(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
-    Log.d("[Boot]");
-    Log.d("[Boot] Board Test Firmware v3.0, Build: %s %s", __DATE__, __TIME__);
-    Log.d("[Boot] UID: %08X", myUid);
+    Log.d("[BOOT]");
+    Log.d("[BOOT] Board Test Firmware v3.0, Build: %s %s", __DATE__, __TIME__);
+    Log.d("[BOOT] UID: %08X", myUid);
 
     LogTask logTask;
     logTask.give();
-    Log.d("LogTask started");
+    Log.d("[BOOT] LogTask started");
 
-    ComEchoTask ComEchoTask;
-    ComEchoTask.give();
-    Log.d("ComEchoTask started");
+    // ComEchoTask ComEchoTask;
+    // ComEchoTask.give();
+    // Log.d("ComEchoTask started");
 
-    GpioTestTask GpioTestTask;
-    GpioTestTask.give();
-    Log.d("GpioTestTask started");
+    // GpioTestTask GpioTestTask;
+    // GpioTestTask.give();
+    // Log.d("GpioTestTask started");
 
-    LedElvTestTask LedElvTestTask;
-    LedElvTestTask.give();
-    Log.d("LedElvTestTask started");
+    // LedElvTestTask LedElvTestTask;
+    // LedElvTestTask.give();
+    // Log.d("LedElvTestTask started");
 
-    KeyTestTask KeyTestTask;
-    KeyTestTask.give();
-    Log.d("KeyTestTask started");
+    // KeyTestTask KeyTestTask;
+    // KeyTestTask.give();
+    // Log.d("KeyTestTask started");
 
-    DipSwithTestTask DipSwithTestTask;
-    DipSwithTestTask.give();
-    Log.d("DipSwithTestTask started");
+    // DipSwithTestTask DipSwithTestTask;
+    // DipSwithTestTask.give();
+    // Log.d("DipSwithTestTask started");
+
+    DW1000Task DW1000Task;
+    DW1000Task.give();
+    Log.d("[BOOT] DW1000Task started");
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
@@ -199,7 +223,7 @@ static void Demo_Task(void* pvParameters) {
 }
 
 int Slave_Init(void) {
-    xTaskCreate(Demo_Task, "MasterTask", 4 * 1024, NULL, 2, NULL);
+    xTaskCreate(BootTask, "MasterTask", 4 * 1024, NULL, 2, NULL);
 
     return 0;
 }

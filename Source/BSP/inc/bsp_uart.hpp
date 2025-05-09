@@ -93,6 +93,7 @@ class UartConfig {
 };
 
 extern UasrtInfo usart0_info;
+extern UasrtInfo usart0_info_PA9PA10;
 extern UasrtInfo usart1_info;
 extern UasrtInfo usart2_info;
 extern UasrtInfo uart3_info;

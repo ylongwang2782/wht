@@ -82,7 +82,7 @@ const Spi_IOConfig SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS = {
     .sclk_func_num = GPIO_AF_5,
 
     .nss_port = GPIOE,
-    .nss_pin = GPIO_PIN_11,
+    .nss_pin = GPIO_PIN_4,
     .nss_func_num = GPIO_AF_5,
 };
 
