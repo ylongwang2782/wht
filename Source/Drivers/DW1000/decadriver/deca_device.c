@@ -1263,6 +1263,7 @@ void dwt_readfromdevice
     }
 
     // Do the read from the SPI
+
     readfromspi(cnt, header, length, buffer);  // result is stored in the buffer
 } // end dwt_readfromdevice()
 

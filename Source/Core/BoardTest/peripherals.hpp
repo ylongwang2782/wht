@@ -1,12 +1,20 @@
 #pragma once
+#include <cstdint>
+#include <cstdio>
+
+#include "TaskCPP.h"
 #include "bsp_gpio.hpp"
 #include "bsp_led.hpp"
 #include "bsp_log.hpp"
+#include "bsp_spi.hpp"
 #include "bsp_uart.hpp"
+#include "deca_device_api.h"
+#include "deca_regs.h"
 
 extern LED sysLed;
 extern Uart rs232;
 extern Uart uart6;
+extern Uart usart0;
 extern Logger Log;
 extern Rs485 rs485;
 
@@ -203,4 +211,193 @@ class Elv {
 
    private:
     GPIO gpio;    // Add this member declaration
+};
+
+extern const Spi_IOConfig SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS;
+extern dwt_config_t dw1000_config;
+
+#define FRAME_LEN_MAX 127
+class DW1000 {
+   public:
+    uint8_t rx_buffer[FRAME_LEN_MAX];
+    uint32_t status_reg = 0;
+    uint16_t frame_len = 0;
+
+    DW1000() { init(); }
+
+    int init() {
+        spi_config();
+        rst_init();
+        reset();
+
+        if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
+            Log.e("[DW1000] init failed");
+            return 1;
+        }
+
+        port_set_dw1000_fastrate();    // spi freq: 1.875MHz ->15MHz
+        dwt_configure(&dw1000_config);
+
+        dwt_write32bitreg(TX_POWER_ID, 0x85858585);
+        Log.d("[DW1000] init ok");
+        return 0;
+    }
+
+    // static uint8_t tx_msg[] = {
+    //     0xC5,    // Frame control: blink frame
+    //     0x00,    // Sequence number
+    //     0xDE, 0xCA, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00    // CRC
+    // };
+    // #define BLINK_FRAME_SN_IDX 1
+
+    void send(std::vector<uint8_t> txdata) {
+        dwt_writetxdata(txdata.size(), txdata.data(), 0);
+        dwt_writetxfctrl(txdata.size(), 0, 0);
+
+        dwt_starttx(DWT_START_TX_IMMEDIATE);
+        while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS)) {
+        };
+
+        dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+    }
+
+    int recv() {
+        int i;
+        /* Clear the RX buffer. */
+        for (i = 0; i < FRAME_LEN_MAX; i++) {
+            rx_buffer[i] = 0;
+        }
+
+        dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_GOOD |
+                                             SYS_STATUS_ALL_RX_ERR |
+                                             SYS_STATUS_ALL_RX_TO);
+        dwt_rxenable(DWT_START_RX_IMMEDIATE);
+        TaskBase::delay(1);
+
+        while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) &
+                 (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_ERR |
+                  SYS_STATUS_ALL_RX_TO))) {
+        };
+
+        if (status_reg & SYS_STATUS_RXFCG) {
+            frame_len = dwt_read32bitreg(RX_FINFO_ID) & RX_FINFO_RXFL_MASK_1023;
+            if (frame_len <= FRAME_LEN_MAX) {
+                dwt_readrxdata(rx_buffer, frame_len, 0);
+                frame_len -= 2;    // del CRC
+            }
+            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);
+        } else if (status_reg & SYS_STATUS_ALL_RX_TO) {
+            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO);
+            Log.e("RX TIMEOUT!");
+            return 1;
+        } else if (status_reg & SYS_STATUS_ALL_RX_ERR) {
+            dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+            Log.e("RX ERROR!");
+            return 1;
+        }
+        // Log.d("RX OK!");
+        return 0;
+    }
+
+    bool get_recv_data(std::vector<uint8_t>& rx_data) {
+        // copy rx_buffer to rx_data
+        rx_data.clear();
+        memcpy(rx_data.data(), rx_buffer, frame_len);
+        frame_len = 0;
+        if (rx_data.size() > 0) {
+            return true;
+        }
+        return false;
+    }
+
+   private:
+    void rst_init() {
+        gpio_mode_set(GPIOE, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_3);
+        gpio_output_options_set(GPIOE, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                                GPIO_PIN_3);
+    }
+
+    void reset() {
+        gpio_bit_reset(GPIOE, GPIO_PIN_3);    // reset pin
+        TaskBase::delay(5);                   // hold
+        gpio_bit_set(GPIOE, GPIO_PIN_3);
+    }
+
+    void port_set_dw1000_fastrate() {
+        spi_disable(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph);
+
+        spi_parameter_struct spi_init_struct;
+        spi_struct_para_init(&spi_init_struct);
+        spi_init_struct.device_mode = SPI_MASTER;
+        spi_init_struct.trans_mode = SPI_TRANSMODE_FULLDUPLEX;
+        spi_init_struct.frame_size = SPI_FRAMESIZE_8BIT;
+        spi_init_struct.endian = SPI_ENDIAN_MSB;
+        spi_init_struct.nss = SPI_NSS_SOFT;
+        spi_init_struct.clock_polarity_phase = SPI_CK_PL_LOW_PH_1EDGE;
+        spi_init_struct.prescale = SPI_PSC_2;
+        spi_init(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph, &spi_init_struct);
+
+        spi_enable(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph);
+    }
+
+    void spi_config() {
+        // 打开所有相关外设时钟
+        rcu_periph_clock_enable(
+            SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph_clock);
+        rcu_periph_clock_enable(RCU_GPIOE);
+
+        // 配置 SCK, MISO, MOSI 复用
+        gpio_af_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_port,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_func_num,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_pin);
+        gpio_mode_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_port, GPIO_MODE_AF,
+                      GPIO_PUPD_NONE,
+                      SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_pin);
+        gpio_output_options_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_port,
+                                GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                                SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.sclk_pin);
+
+        gpio_af_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_port,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_func_num,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_pin);
+        gpio_mode_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_port, GPIO_MODE_AF,
+                      GPIO_PUPD_NONE,
+                      SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_pin);
+        gpio_output_options_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_port,
+                                GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                                SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.miso_pin);
+
+        gpio_af_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_port,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_func_num,
+                    SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_pin);
+        gpio_mode_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_port, GPIO_MODE_AF,
+                      GPIO_PUPD_NONE,
+                      SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_pin);
+        gpio_output_options_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_port,
+                                GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                                SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.mosi_pin);
+
+        // NSS 独立配置为普通输出（软件控制）
+        gpio_mode_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_port,
+                      GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
+                      SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_pin);
+        gpio_output_options_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_port,
+                                GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                                SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_pin);
+        gpio_bit_set(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_port,
+                     SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.nss_pin);
+
+        spi_parameter_struct spi_init_struct;
+        spi_init_struct.trans_mode = SPI_TRANSMODE_FULLDUPLEX;
+        spi_init_struct.device_mode = SPI_MASTER;
+        spi_init_struct.frame_size = SPI_FRAMESIZE_8BIT;
+        spi_init_struct.clock_polarity_phase = SPI_CK_PL_LOW_PH_1EDGE;
+        spi_init_struct.nss = SPI_NSS_SOFT;
+        spi_init_struct.prescale = SPI_PSC_32;    // 这里spi主频为60MHz
+        spi_init_struct.endian = SPI_ENDIAN_MSB;
+        spi_init(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph, &spi_init_struct);
+
+        spi_nss_output_disable(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph);
+        spi_enable(SPI3_E6MOSI_E5MISO_E2SCLK_E11NSS.spi_periph);
+    }
 };

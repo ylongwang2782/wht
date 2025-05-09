@@ -9,7 +9,6 @@
 #include "TaskCPP.h"
 #include "bsp_uart.hpp"
 
-
 extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -64,7 +63,9 @@ class Logger {
 
         // 添加时间戳和级别前缀
         char finalMessage[bufferSize + 32];    // 增加缓冲区大小以容纳时间戳
-        snprintf(finalMessage, sizeof(finalMessage), "[%lu.%03lu][%s]:%s\n",
+        snprintf(finalMessage, sizeof(finalMessage),
+                 "[%02lu.%03lu] [%s] %s\n",    // 改动点：时间前补0 +
+                                                  // 等宽字段 + 空格
                  seconds, milliseconds, levelStr[static_cast<int>(level)],
                  buffer);
         // 输出日志
@@ -131,8 +132,7 @@ class Logger {
    private:
     void output(Level level, const char *message) {
         LogMessage logMsg;
-        std::strncpy(logMsg.message.data(), message,
-                     LOG_QUEUE_SIZE - 1);
+        std::strncpy(logMsg.message.data(), message, LOG_QUEUE_SIZE - 1);
         logMsg.message[LOG_QUEUE_SIZE - 1] = '\0';
 
         // 将日志消息放入队列
