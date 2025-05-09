@@ -158,11 +158,11 @@ class DW1000Task : public TaskClassS<1024> {
         DW1000 dw1000;
 
         for (;;) {
-            dw1000.recv();
-            if (dw1000.frame_len != 0) {
+            // dw1000.recv();
+            // if (dw1000.frame_len != 0) {
                 // Log.d("[DW1000] recv: %d", dw1000.frame_len);
                 // dw1000.frame_len = 0;
-            }
+            // }
             TaskBase::delay(1000);
         }
     }
