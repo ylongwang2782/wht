@@ -227,6 +227,19 @@ class SpiMaster : private SpiDevBase {
         return true;
     }
 
+    bool send_open_loop(uint8_t*tx_buffer, uint32_t tx_len)
+    {
+        uint32_t txcount = 0;
+        // nss_low();
+        while(txcount < tx_len){
+            while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, tx_buffer[txcount++]); 
+        } 
+        while(SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        // nss_high();
+        return true;
+    }
+
     bool recv_open_loop(uint32_t rx_len)
     {
         uint32_t rxcount = 0;
@@ -240,6 +253,19 @@ class SpiMaster : private SpiDevBase {
             while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_RBNE));
             rx_buffer.push_back(spi_i2s_data_receive(__cfg.spi_periph));
             rxcount++; 
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        return true;
+    }
+
+    bool recv_open_loop(uint8_t*rx_buffer, uint32_t rx_len,uint8_t send_data = 0xFF)
+    {
+        uint32_t rxcount = 0;
+        while(rxcount < rx_len){
+            // while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, send_data);
+            while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_RBNE));
+            rx_buffer[rxcount++] = spi_i2s_data_receive(__cfg.spi_periph); 
         }
         while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
         return true;
