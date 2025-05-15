@@ -10,7 +10,7 @@ add_compile_options(
 )
 
 # 添加可执行文件目标
-add_executable(${EXECUTABLE_NAME})
+add_executable(${EXECUTABLE_NAME} $<TARGET_OBJECTS:lwip_obj>)
 
 # 设置目标的私有包含目录
 include_directories(Config # 配置文件目录
@@ -35,6 +35,7 @@ else()
   message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
 
+
 # 添加公共宏
 target_compile_definitions(${EXECUTABLE_NAME} PRIVATE GD32F470)
 
@@ -46,7 +47,7 @@ add_subdirectory(Middlewares)
 
 # 链接目标与其他库
 target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel
-                      FreeRTOScpp)
+                      FreeRTOScpp lwip_obj)
 
 # ===============================================================================
 

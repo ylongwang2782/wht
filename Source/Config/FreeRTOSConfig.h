@@ -30,7 +30,7 @@
  
  #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
  #include <stdint.h>
- extern uint32_t SystemCoreClock;
+//  extern uint32_t SystemCoreClock;
  #endif
  #include <stdio.h>
  #define vPortSVCHandler     SVC_Handler
@@ -48,7 +48,7 @@
   * settings.  Your application will certainly need a different value so set this
   * correctly. This is very often, but not always, equal to the main system clock
   * frequency. */
- #define configCPU_CLOCK_HZ (SystemCoreClock)
+ #define configCPU_CLOCK_HZ (240000000)
  
  /* configSYSTICK_CLOCK_HZ is an optional parameter for ARM Cortex-M ports only.
   *

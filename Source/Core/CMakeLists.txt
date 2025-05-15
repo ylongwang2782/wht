@@ -3,9 +3,16 @@ add_subdirectory(uwb)
 
 if(BUILD_VARIANT STREQUAL "MASTER")
   target_sources(
-    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./master/master_mode.cpp
-                               ./master/pc_message.cpp)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master)
+    ${EXECUTABLE_NAME}
+    PRIVATE ${COMMON_SOURCES}
+            ./master/master_mode.cpp
+            ./master/pc_message.cpp
+            ./Enet/netconf.cpp
+            ./Enet/enet.cpp
+            ./Enet/udp_echo.cpp
+            ./Enet/ethernetif.cpp
+            ./Enet/sys_arch.c)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master ./master/include ./Enet)
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_sources(
     ${EXECUTABLE_NAME}
@@ -15,6 +22,8 @@ elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave/inc)
 
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-  target_sources(${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./BoardTest/board_test.cpp ./BoardTest/peripherals.cpp)
+  target_sources(
+    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./BoardTest/board_test.cpp
+                               ./BoardTest/peripherals.cpp)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./BoardTest)
 endif()
