@@ -5,8 +5,8 @@
 #define UCI_CTRL_PKT_HDR_SIZE 0x04
 
 /* --------------------------- < Max Payload len> -------------------------- */
-#define MAX_PAYLOAD_LEN 127
-#define CX_APP_DATA_TX_MAX_PAYLOAD_LEN 122
+#define MAX_PAYLOAD_LEN                1024
+#define CX_APP_DATA_TX_MAX_PAYLOAD_LEN (MAX_PAYLOAD_LEN - 4)
 
 /* ------------------------- < Message type (MT) > ------------------------- */
 #define MT_CMD 0x01
@@ -49,7 +49,7 @@
 
 /* --------------- < GID = 0b0011, Message name definition > --------------- */
 
-#define GID0x03         0x03
+#define GID0x03            0x03
 #define CX_APP_DATA_TX     0x0000
 #define CX_APP_DATA_TX_CMD CX_APP_DATA_TX
 #define CX_APP_DATA_TX_RSP CX_APP_DATA_TX
@@ -65,7 +65,7 @@
 #define CX_APP_DATA_STOP_RX_RSP CX_APP_DATA_STOP_RX
 
 /* --------------------- <Device Status definition> --------------------- */
-#define DEVICE_STATE_READY 0x01
+#define DEVICE_STATE_READY  0x01
 #define DEVICE_STATE_ACTIVE 0x02
 
 #define DEVICE_STATE_ERROR 0xFF

@@ -192,7 +192,8 @@ class SpiMaster : private SpiDevBase {
               uint8_t nss_index = 0) {
         uint32_t timeout_tick = pdMS_TO_TICKS(timeout_ms);
         uint32_t txcount = 0;
-        nss_low(nss_index);
+        // nss_low(nss_index);
+
         uint32_t tickstart = xTaskGetTickCount();
         while (txcount < tx_data.size()) {
             if (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
@@ -200,11 +201,81 @@ class SpiMaster : private SpiDevBase {
             }
 
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
-                nss_high(nss_index);
+                // nss_high(nss_index);
+                spi_i2s_data_receive(__cfg.spi_periph);
+
                 return false;
             }
         }
-        nss_high(nss_index);
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                // nss_high(nss_index);
+                spi_i2s_data_receive(__cfg.spi_periph);
+
+                return false;
+            }
+        }
+        // nss_high(nss_index);
+        spi_i2s_data_receive(__cfg.spi_periph);
+        return true;
+    }
+
+    bool send_open_loop(std::vector<uint8_t> tx_data) {
+        uint32_t txcount = 0;
+        // nss_low();
+        while (txcount < tx_data.size()) {
+            while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, tx_data[txcount++]);
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        spi_i2s_data_receive(__cfg.spi_periph);
+        // nss_high();
+        return true;
+    }
+
+    bool send_open_loop(uint8_t* tx_buffer, uint32_t tx_len) {
+        uint32_t txcount = 0;
+        // nss_low();
+        while (txcount < tx_len) {
+            while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, tx_buffer[txcount++]);
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        spi_i2s_data_receive(__cfg.spi_periph);  
+        // nss_high();
+        return true;
+    }
+
+    bool recv_open_loop(uint32_t rx_len) {
+        uint32_t rxcount = 0;
+        rx_buffer.clear();
+        if (rx_len > rx_buffer.capacity()) {
+            rx_buffer.reserve(rx_len);
+        }
+        while (rxcount < rx_len) {
+            // while(RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, 0xFF);
+            while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_RBNE));
+            rx_buffer.push_back(spi_i2s_data_receive(__cfg.spi_periph));
+            rxcount++;
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
+        return true;
+    }
+
+    bool recv_open_loop(uint8_t* rx_buffer, uint32_t rx_len,
+                        uint8_t send_data = 0xFF) {
+        uint32_t rxcount = 0;
+        spi_i2s_data_receive(__cfg.spi_periph);
+
+        // uint8_t data=spi_i2s_data_receive(__cfg.spi_periph);
+        while (rxcount < rx_len) {
+            while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE));
+            spi_i2s_data_transmit(__cfg.spi_periph, send_data);
+            while (RESET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_RBNE));
+            rx_buffer[rxcount++] = spi_i2s_data_receive(__cfg.spi_periph);
+        }
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS));
         return true;
     }
 
@@ -217,7 +288,7 @@ class SpiMaster : private SpiDevBase {
         if (rx_len > rx_buffer.capacity()) {
             rx_buffer.reserve(rx_len);
         }
-        nss_low(nss_index);
+        // nss_low(nss_index);
         uint32_t tickstart = xTaskGetTickCount();
         while (rxcount < rx_len) {
             if (txallowed) {
@@ -230,12 +301,19 @@ class SpiMaster : private SpiDevBase {
                 txallowed = 1;
             }
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
-                nss_high(nss_index);
+                // nss_high(nss_index);
                 return false;
             }
         }
 
-        nss_high(nss_index);
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                // nss_high(nss_index);
+                return false;
+            }
+        }
+
+        // nss_high(nss_index);
         return true;
     }
     bool send_recv(std::vector<uint8_t> tx_data, uint32_t rx_len,
@@ -250,7 +328,7 @@ class SpiMaster : private SpiDevBase {
             rx_buffer.reserve(rx_len);
         }
 
-        nss_low(nss_index);
+        // nss_low(nss_index);
         uint32_t tickstart = xTaskGetTickCount();
         while ((txcount < tx_size) || (rxcount < rx_len)) {
             if (txallowed) {
@@ -269,16 +347,22 @@ class SpiMaster : private SpiDevBase {
                 txallowed = 1;
             }
             if (rxcount >= rx_len &&
-                SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TBE)) {
+                SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_FLAG_TBE)) {
                 txallowed = 1;
             }
 
             if (xTaskGetTickCount() - tickstart > timeout_tick) {
-                nss_high(nss_index);
+                // nss_high(nss_index);
                 return false;
             }
         }
-        nss_high(nss_index);
+        while (SET == spi_i2s_flag_get(__cfg.spi_periph, SPI_STAT_TRANS)) {
+            if (xTaskGetTickCount() - tickstart > timeout_tick) {
+                // nss_high(nss_index);
+                return false;
+            }
+        }
+        // nss_high(nss_index);
         return true;
     }
 };
