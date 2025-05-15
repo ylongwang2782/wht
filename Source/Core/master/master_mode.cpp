@@ -48,9 +48,7 @@ static void Master_Task(void* pvParameters) {
     __LogTask logTask;
     logTask.give();
     // printf("Master_Task: Boot\n");
-    Log.i("Master_Task: Boot");
 
-    Log.i("[Master_Task]: Cond packet:");
     // Backend2Master::SlaveCfgMsg slave_cfg_msg;
     // Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
     // cfg.id = 0x12345678;
@@ -84,13 +82,12 @@ static void Master_Task(void* pvParameters) {
     // msg = PacketPacker::backend2MasterPack(ctrl_msg);
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
-    
+
     // Log.i("[Master_Task]: Control stop packet:");
     // ctrl_msg.runningStatus = 0x00;
     // msg = PacketPacker::backend2MasterPack(ctrl_msg);
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
-
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -99,6 +96,7 @@ static void Master_Task(void* pvParameters) {
                                pc_data_transfer_msg.tx_done_sem);
 
     PCinterface pc_interface(pc_manger_msg, pc_data_transfer_msg);
+    // EthTask ethTask;
     PCdataTransfer pc_data_transfer(pc_data_transfer_msg);
 
     // 从机数据传输任务 从机管理任务 初始化
@@ -106,6 +104,7 @@ static void Master_Task(void* pvParameters) {
     SlaveManager slave_manager(pc_manger_msg, manager_transfer_msg);
     ManagerDataTransfer manager_data_transfer(manager_transfer_msg);
 
+    // ethTask.give();
     pc_interface.give();
     pc_data_transfer.give();
     slave_manager.give();
@@ -113,10 +112,9 @@ static void Master_Task(void* pvParameters) {
 
     DataForward tmp;
     while (1) {
-       
-        Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
+        Log.d("SYS", "heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
         led.toggle();
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }
 
@@ -142,30 +140,30 @@ void CondCfgMsg::process() {
     __ProcessBase::rsp_parsed = true;
     if (__ProcessBase::expected_rsp_msg_id !=
         (uint8_t)(Slave2MasterMessageID::COND_CFG_MSG)) {
-        Log.e("CondCfgMsg: msg_id not match");
+        Log.e("CondCfgMsg", "msg_id not match");
         __ProcessBase::rsp_parsed = false;
         return;
     }
     if (CondCfgMsg::timeSlot != WriteCondInfoMsg::timeSlot) {
-        Log.e("CondCfgMsg: timeSlot not match");
+        Log.e("CondCfgMsg", "timeSlot not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (CondCfgMsg::interval != WriteCondInfoMsg::interval) {
-        Log.e("CondCfgMsg: interval not match");
+        Log.e("CondCfgMsg", "interval not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (CondCfgMsg::totalConductionNum !=
         WriteCondInfoMsg::totalConductionNum) {
-        Log.e("CondCfgMsg: totalConductionNum not match");
+        Log.e("CondCfgMsg", "totalConductionNum not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (CondCfgMsg::startConductionNum !=
         WriteCondInfoMsg::startConductionNum) {
-        Log.e("CondCfgMsg: startConductionNum not match");
+        Log.e("CondCfgMsg", "startConductionNum not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (CondCfgMsg::conductionNum != WriteCondInfoMsg::conductionNum) {
-        Log.e("CondCfgMsg: conductionNum not match");
+        Log.e("CondCfgMsg", "conductionNum not match");
         __ProcessBase::rsp_parsed = false;
     }
 }
@@ -173,20 +171,20 @@ void ClipCfgMsg::process() {
     __ProcessBase::rsp_parsed = true;
     if (__ProcessBase::expected_rsp_msg_id !=
         (uint8_t)(Slave2MasterMessageID::CLIP_CFG_MSG)) {
-        Log.e("ClipCfgMsg: msg_id not match");
+        Log.e("ClipCfgMsg", " msg_id not match");
         __ProcessBase::rsp_parsed = false;
         return;
     }
     if (ClipCfgMsg::mode != WriteClipInfoMsg::mode) {
-        Log.e("ClipCfgMsg: mode not match");
+        Log.e("ClipCfgMsg", " mode not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ClipCfgMsg::clipPin != WriteClipInfoMsg::clipPin) {
-        Log.e("ClipCfgMsg: clipPin not match");
+        Log.e("ClipCfgMsg", " clipPin not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ClipCfgMsg::interval != WriteClipInfoMsg::interval) {
-        Log.e("ClipCfgMsg: clipNum not match");
+        Log.e("ClipCfgMsg", " clipNum not match");
         __ProcessBase::rsp_parsed = false;
     }
 }
@@ -194,28 +192,28 @@ void ResCfgMsg::process() {
     __ProcessBase::rsp_parsed = true;
     if (__ProcessBase::expected_rsp_msg_id !=
         (uint8_t)(Slave2MasterMessageID::RES_CFG_MSG)) {
-        Log.e("ResCfgMsg: msg_id not match");
+        Log.e("ResCfgMsg", "msg_id not match");
         __ProcessBase::rsp_parsed = false;
         return;
     }
     if (ResCfgMsg::timeSlot != WriteResInfoMsg::timeSlot) {
-        Log.e("ResCfgMsg: timeSlot not match");
+        Log.e("ResCfgMsg", "timeSlot not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ResCfgMsg::interval != WriteResInfoMsg::interval) {
-        Log.e("ResCfgMsg: interval not match");
+        Log.e("ResCfgMsg", "interval not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ResCfgMsg::totalResistanceNum != WriteResInfoMsg::totalResistanceNum) {
-        Log.e("ResCfgMsg: totalResistanceNum not match");
+        Log.e("ResCfgMsg", "totalResistanceNum not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ResCfgMsg::startResistanceNum != WriteResInfoMsg::startResistanceNum) {
-        Log.e("ResCfgMsg: startResistanceNum not match");
+        Log.e("ResCfgMsg", "startResistanceNum not match");
         __ProcessBase::rsp_parsed = false;
     }
     if (ResCfgMsg::resistanceNum != WriteResInfoMsg::resistanceNum) {
-        Log.e("ResCfgMsg: resistanceNum not match");
+        Log.e("ResCfgMsg", "resistanceNum not match");
         __ProcessBase::rsp_parsed = false;
     }
 }
@@ -223,15 +221,15 @@ void ResCfgMsg::process() {
 }    // namespace Slave2Master
 
 namespace Slave2Backend {
-    void CondDataMsg::process() {
-        __ProcessBase::rsp_parsed = true;
-        if (__ProcessBase::expected_rsp_msg_id !=
-            (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG)) {
-            Log.e("CondDataMsg: msg_id not match");
-            __ProcessBase::rsp_parsed = false;
-            return;
-        }
+void CondDataMsg::process() {
+    __ProcessBase::rsp_parsed = true;
+    if (__ProcessBase::expected_rsp_msg_id !=
+        (uint8_t)(Slave2BackendMessageID::COND_DATA_MSG)) {
+        Log.e("CondDataMsg", "msg_id not match");
+        __ProcessBase::rsp_parsed = false;
+        return;
     }
 }
+}    // namespace Slave2Backend
 
 #endif

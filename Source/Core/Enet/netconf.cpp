@@ -62,19 +62,19 @@ void EthTask::task() {
     lwip_stack_init();
     Log.v("BOOT", "lwip stack initialized");
 
-    UdpTask udpTask;
-    udpTask.give();
+    // UdpTask udpTask;
+    // udpTask.give();
 
-    // send buf test
-    udpTask.send_buf.resize(100);
-    for (int i = 0; i < 100; i++) {
-        udpTask.send_buf[i] = i;
-    }
+    // // send buf test
+    // udpTask.send_buf.resize(100);
+    // for (int i = 0; i < 100; i++) {
+    //     udpTask.send_buf[i] = i;
+    // }
     for (;;) {
-        for (int i = 0; i < 100; i++) {
-            udpTask.send_buf[i] = i;
-        }
-        TaskBase::delay(100);
+        // for (int i = 0; i < 100; i++) {
+        //     udpTask.send_buf[i] = i;
+        // }
+        TaskBase::delay(1000);
     }
 }
 

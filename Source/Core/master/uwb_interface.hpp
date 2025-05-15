@@ -69,7 +69,7 @@ class UwbUartInterface : public CxUwbInterface {
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        Log.d(buffer);
+        Log.d("uwb",buffer);
     }
 };
 
