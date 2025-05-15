@@ -44,7 +44,7 @@ class UciCtrlPacket : public UciCtrlPcketBase {
     uint16_t currunt_payload_len = 0;
     bool is_last_packet = true;
     ParserSta parser_sta = PARSE_START;
-    uint8_t pkt_recv_len = 0;
+    uint16_t pkt_recv_len = 0;
     bool recv_packet = false;
 
    public:
