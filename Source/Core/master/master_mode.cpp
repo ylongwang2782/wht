@@ -19,29 +19,10 @@ UasrtInfo& log_com_info = uart7_info;
 UartConfig log_com_cfg(log_com_info, false);
 Uart log_com(log_com_cfg);
 Logger Log(log_com);
-// UartConfig uart3Conf(uart3_info);
 
 bool __ProcessBase::rsp_parsed = false;    // 从机回复正确标志位
 
 uint8_t __ProcessBase::expected_rsp_msg_id;    // 期望从机回复的消息ID
-
-// class __LogTask : public TaskClassS<1024> {
-//    public:
-//     __LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
-
-//     void task() override {
-//         char buffer[LOG_QUEUE_SIZE + 8];
-//         for (;;) {
-//             LogMessage logMsg;
-//             // 从队列中获取日志消息
-//             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-//                 Log.uart.send(
-//                     reinterpret_cast<const uint8_t*>(logMsg.message.data()),
-//                     strlen(logMsg.message.data()));
-//             }
-//         }
-//     }
-// };
 
 static void Master_Task(void* pvParameters) {
     LED led(GPIO::Port::A, GPIO::Pin::PIN_0);
@@ -109,11 +90,11 @@ static void Master_Task(void* pvParameters) {
     pc_interface.give();
     pc_data_transfer.give();
     slave_manager.give();
-    // manager_data_transfer.give();
+    manager_data_transfer.give();
 
     DataForward tmp;
     while (1) {
-        Log.v("SYS", "heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
+        // Log.v("SYS", "heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
         led.toggle();
         vTaskDelay(pdMS_TO_TICKS(2000));
     }

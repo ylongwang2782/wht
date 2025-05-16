@@ -20,7 +20,7 @@
 //         log_com.data_send((uint8_t*)"in\r\n", 5); \
 //     }
 
-#define UWB_GENERAL_TIMEOUT_MS 5000
+#define UWB_GENERAL_TIMEOUT_MS 1000
 
 class CxUwbInterface {
    public:
