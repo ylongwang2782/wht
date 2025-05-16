@@ -18,23 +18,33 @@ include_directories(Config # 配置文件目录
 
 # 定义可选构建变体
 set(BUILD_VARIANT
-    "MASTER;SLAVE;BOARDTEST"
-    CACHE STRING "Available build variants: MASTER, SLAVE, BOARDTEST")
-set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER SLAVE BOARDTEST)
+    "MASTER_DEBUG;MASTER_RELEASE;SLAVE;BOARDTEST"
+    CACHE STRING
+          "Available build variants: MASTER_DEBUG, MASTER_RELEASE, SLAVE, BOARDTEST")
+set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER MASTER_RELEASE SLAVE
+                                          BOARDTEST)
 
-if(BUILD_VARIANT STREQUAL "MASTER")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER
-                                                        BUILD_VARIANT=MASTER)
+if(BUILD_VARIANT STREQUAL "MASTER_DEBUG")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER)
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
+                                                    -funwind-tables)
+
+elseif(BUILD_VARIANT STREQUAL "MASTER_RELEASE")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER)
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Os -DNDEBUG)
+
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE
-                                                        BUILD_VARIANT=SLAVE)
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE)
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
+                                                    -funwind-tables)
+
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE BOARDTEST
-                                                        BUILD_VARIANT=BOARDTEST)
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE BOARDTEST)
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
+                                                    -funwind-tables)
 else()
   message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
-
 
 # 添加公共宏
 target_compile_definitions(${EXECUTABLE_NAME} PRIVATE GD32F470)

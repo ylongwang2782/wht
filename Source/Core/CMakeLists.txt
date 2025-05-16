@@ -1,7 +1,7 @@
 set(COMMON_SOURCES ./gd32f4xx_it.c ./main.cpp ./protocal.cpp)
 add_subdirectory(uwb)
 
-if(BUILD_VARIANT STREQUAL "MASTER")
+if(BUILD_VARIANT STREQUAL "MASTER_DEBUG" OR BUILD_VARIANT STREQUAL "MASTER_RELEASE")
   target_sources(
     ${EXECUTABLE_NAME}
     PRIVATE ${COMMON_SOURCES}
@@ -12,7 +12,9 @@ if(BUILD_VARIANT STREQUAL "MASTER")
             ./master/Enet/udp_echo.cpp
             ./master/Enet/ethernetif.cpp
             ./master/Enet/sys_arch.c)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master ./master/include ./master/Enet)
+  target_include_directories(${EXECUTABLE_NAME}
+                             PUBLIC . ./master ./master/include ./master/Enet)
+
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_sources(
     ${EXECUTABLE_NAME}
