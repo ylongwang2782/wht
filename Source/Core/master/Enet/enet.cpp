@@ -48,16 +48,16 @@ __IO uint32_t Enet::enet_init_status = 0;
 */
 void Enet::enet_system_setup(void) {
     nvic_configuration();
+    Log.v("ENET", "nvic_configuration done");
 
-    /* configure the GPIO ports for ethernet pins */
     enet_gpio_config();
     Log.v("ENET", "enet_gpio_config done");
 
-    /* configure the ethernet MAC/DMA */
     enet_mac_dma_config();
     Log.v("ENET", "enet_mac_dma_config done");
 
     if (0 == enet_init_status) {
+        Log.e("ENET", "enet_init_status ERROR");
         while (1) {
         }
     }

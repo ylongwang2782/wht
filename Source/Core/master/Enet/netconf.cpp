@@ -48,29 +48,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "tcpip.h"
 #include "udp_echo.h"
 
-
 extern Logger Log;
 
 void EthDevice::init() {
-    /* configure ethernet (GPIOs, clocks, MAC, DMA) */
-    Enet::enet_system_setup();
-    Log.v("BOOT", "ethernet initialized");
+    if (!initialized) {
+        /* configure ethernet (GPIOs, clocks, MAC, DMA) */
+        Enet::enet_system_setup();
+        Log.v("ETH", "ethernet initialized");
 
-    /* initilaize the LwIP stack */
-    lwip_stack_init();
-    Log.v("BOOT", "lwip stack initialized");
+        /* initilaize the LwIP stack */
+        lwip_stack_init();
+        Log.v("ETH", "lwip stack initialized");
+        initialized = true;
+    }
 }
 
 void EthDevice::lwip_netif_status_callback(struct netif *netif) {
-    Log.v("NET", "netif status changed: %d", netif->flags);
-    // logd addr
-    Log.v("NET", "netif addr: %d.%d.%d.%d", ip4_addr1_16(&netif->ip_addr),
-          ip4_addr2_16(&netif->ip_addr), ip4_addr3_16(&netif->ip_addr),
-          ip4_addr4_16(&netif->ip_addr));
-    if (((netif->flags & NETIF_FLAG_UP) != 0) && (0 != netif->ip_addr.addr)) {
-        /* initilaize the udp: echo 1025 */
-        Log.v("NET", "udp echo initialized");
-    }
+    // Log.v("LWIP", "netif status changed: %d", netif->flags);
+    // // logd addr
+    // Log.v("LWIP", "netif addr: %d.%d.%d.%d", ip4_addr1_16(&netif->ip_addr),
+    //       ip4_addr2_16(&netif->ip_addr), ip4_addr3_16(&netif->ip_addr),
+    //       ip4_addr4_16(&netif->ip_addr));
+    // if (((netif->flags & NETIF_FLAG_UP) != 0) && (0 != netif->ip_addr.addr)) {
+    //     /* initilaize the udp: echo 1025 */
+    //     Log.v("LWIP", "udp echo initialized");
+    // }
 }
 
 /*!
@@ -86,32 +88,32 @@ void EthDevice::lwip_stack_init(void) {
 
     /* create tcp_ip stack thread */
     tcpip_init(NULL, NULL);
-    Log.v("NET", "tcpip_init initialized");
+    Log.v("LWIP", "tcpip_init initialized");
 
     /* IP address setting */
     IP4_ADDR(&ipaddr, IP_ADDR0, IP_ADDR1, IP_ADDR2, IP_ADDR3);
-    Log.v("NET", "static ip address set to %d.%d.%d.%d", ip4_addr1_16(&ipaddr),
+    Log.v("LWIP", "static ip address set to %d.%d.%d.%d", ip4_addr1_16(&ipaddr),
           ip4_addr2_16(&ipaddr), ip4_addr3_16(&ipaddr), ip4_addr4_16(&ipaddr));
     IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1, NETMASK_ADDR2,
              NETMASK_ADDR3);
-    Log.v("NET", "netmask set to %d.%d.%d.%d", ip4_addr1_16(&netmask),
+    Log.v("LWIP", "netmask set to %d.%d.%d.%d", ip4_addr1_16(&netmask),
           ip4_addr2_16(&netmask), ip4_addr3_16(&netmask),
           ip4_addr4_16(&netmask));
     IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
-    Log.v("NET", "gateway set to %d.%d.%d.%d", ip4_addr1_16(&gw),
+    Log.v("LWIP", "gateway set to %d.%d.%d.%d", ip4_addr1_16(&gw),
           ip4_addr2_16(&gw), ip4_addr3_16(&gw), ip4_addr4_16(&gw));
 
     netif_add(&g_mynetif, &ipaddr, &netmask, &gw, NULL, &ethernetif_init,
               &tcpip_input);
-    Log.v("NET", "ethernet interface added");
+    Log.v("LWIP", "ethernet interface added");
 
     /* registers the default network interface */
     netif_set_default(&g_mynetif);
-    Log.v("NET", "default network interface set");
+    Log.v("LWIP", "default network interface set");
     netif_set_status_callback(&g_mynetif, lwip_netif_status_callback);
-    Log.v("NET", "network interface status callback set");
+    Log.v("LWIP", "network interface status callback set");
 
     /* when the netif is fully configured this function must be called */
     netif_set_up(&g_mynetif);
-    Log.v("NET", "network interface set up");
+    Log.v("LWIP", "network interface set up");
 }

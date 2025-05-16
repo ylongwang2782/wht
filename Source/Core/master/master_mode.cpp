@@ -90,7 +90,7 @@ static void Master_Task(void* pvParameters) {
 
     EthDevice ethDevice;
     ethDevice.init();
-    Log.v("BOOT", "ethDevice initialized");
+    Log.d("BOOT", "ethDevice initialized");
 
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
@@ -109,7 +109,7 @@ static void Master_Task(void* pvParameters) {
     pc_interface.give();
     pc_data_transfer.give();
     slave_manager.give();
-    manager_data_transfer.give(); 
+    manager_data_transfer.give();
 
     DataForward tmp;
     while (1) {

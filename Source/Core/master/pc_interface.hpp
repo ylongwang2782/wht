@@ -99,16 +99,20 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         bod_addr.sin_family = AF_INET;
         bod_addr.sin_port = htons(bod_port);
         bod_addr.sin_addr.s_addr = htons(INADDR_ANY);
-        Log.v("UDP", "UDP server start");
-
-        // 测试缓存数据
-        std::vector<uint8_t> send_buf;
-        send_buf.resize(100);
-        for (int i = 0; i < 100; i++) {
-            send_buf[i] = i;
-        }
 
         sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        // 打印所有UDP 信息
+        // Log.v("UDP", "UDP server start");
+        // Log.v("UDP", "rmt_addr: %d.%d.%d.%d", ip4_addr1_16(&rmt_addr.sin_addr),
+        //       ip4_addr2_16(&rmt_addr.sin_addr),
+        //       ip4_addr3_16(&rmt_addr.sin_addr),
+        //       ip4_addr4_16(&rmt_addr.sin_addr));
+        // Log.v("UDP", "bod_addr: %d.%d.%d.%d", ip4_addr1_16(&bod_addr.sin_addr),
+        //       ip4_addr2_16(&bod_addr.sin_addr),
+        //       ip4_addr3_16(&bod_addr.sin_addr),
+        //       ip4_addr4_16(&bod_addr.sin_addr));
+        Log.v("UDP", "rmt_port: %d", rmt_port);
+        Log.v("UDP", "bod_port: %d", bod_port);
 
         if (sockfd < 0) {
             vTaskDelete(nullptr);
@@ -130,6 +134,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                     __msg.rx_data_queue.add(buf[i]);
                 }
                 __msg.rx_done_sem.give();
+                Log.v("UDP", "recvnum: %d", recvnum);
             }
             recvnum = recvfrom(sockfd, buf, MAX_BUF_SIZE, 0,
                                (struct sockaddr*)&rmt_addr, &len);
@@ -142,6 +147,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                        sizeof(rmt_addr));
                 __msg.tx_share_mem.unlock();
                 __msg.tx_done_sem.give();
+                Log.v("UDP", "sendto: %d", size);
             }
 
             TaskBase::delay(10);

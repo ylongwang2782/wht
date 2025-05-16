@@ -11,6 +11,7 @@
 class EthDevice {
    private:
     struct netif g_mynetif;
+    bool initialized = false;
 
    public:
     void init();
