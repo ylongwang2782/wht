@@ -934,7 +934,7 @@ class SlaveCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 || (data.size() - 1) % 9 != 0) {    // 每个从机9字节
-            Log.e("SlaveCfgMsg", "Invalid data size");
+            Log.e("SlaveCfgMsg","", "Invalid data size");
             return;
         }
 
@@ -964,10 +964,10 @@ class SlaveCfgMsg : public Message {
         }
 
         // 日志输出
-        Log.d("SlaveCfgMsg", "slaveNum = %d", slaveNum);
+        Log.d("SlaveCfgMsg","", "slaveNum = %d", slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("SlaveCfgMsg",
+            Log.d("SlaveCfgMsg","",
                   "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
@@ -1137,7 +1137,7 @@ class SlaveCfgMsg : public Message {
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2 ||
             (data.size() - 2) % 9 != 0) {    // 2字节头部 + 每个从机9字节
-            Log.e("SlaveCfgMsg", "Invalid data size");
+            Log.e("SlaveCfgMsg","", "Invalid data size");
             return;
         }
 
@@ -1168,10 +1168,10 @@ class SlaveCfgMsg : public Message {
         }
 
         // 日志输出
-        Log.d("SlaveCfgMsg", "status=0x%02X, slaveNum=%d", status, slaveNum);
+        Log.d("SlaveCfgMsg","", "status=0x%02X, slaveNum=%d", status, slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("SlaveCfgMsg",
+            Log.d("SlaveCfgMsg","",
                   "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);

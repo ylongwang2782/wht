@@ -63,7 +63,16 @@ class UwbUartInterface : public CxUwbInterface {
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        Log.d(buffer);
+        Log.d("uwb", buffer);
+    }
+
+    bool get_recv_data(std::queue<uint8_t>& rx_data) override {
+        bool ret = false;
+        uint8_t data;
+        while (uwb_com->recv_1byte(data, 0)) {
+            rx_data.push(data);
+        }
+        return ret;
     }
 };
 
@@ -107,7 +116,6 @@ class BoardUwbUartInterface : public CxUwbInterface {
         return ret;
     }
 
-
     void commuication_peripheral_init() override {
         uwb_com = new Uart(uwb_com_cfg);
     }
@@ -127,7 +135,7 @@ class BoardUwbUartInterface : public CxUwbInterface {
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        Log.d(buffer);
+        Log.d("uwb", buffer);
     }
 };
 
@@ -178,9 +186,9 @@ class SlaveUwbSpiInterface : public CxUwbInterface {
         }
         if (int_pin.input_bit_get() == RESET) {
             spi_dev->nss_low();
-            int a=100;
+            int a = 100;
             while (a--) {
-                __NOP(); 
+                __NOP();
             }
             if (!spi_dev->recv_open_loop(rx_buffer, 4, 0)) {
                 spi_dev->nss_high();
@@ -222,11 +230,11 @@ class SlaveUwbSpiInterface : public CxUwbInterface {
         return ret;
     }
 
-    bool get_recv_data(std::queue<uint8_t>& rx_data) override {    
+    bool get_recv_data(std::queue<uint8_t>& rx_data) override {
         if (rx_semaphore.take(0)) {
             for (int i = 0; i < revc_len + 4; i++) {
                 rx_data.push(rx_buffer[i]);
-            } 
+            }
             memset(rx_buffer, 0, sizeof(rx_buffer));
             return true;
         }
@@ -259,6 +267,6 @@ class SlaveUwbSpiInterface : public CxUwbInterface {
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        Log.d(buffer);
+        Log.d("uwb", buffer);
     }
 };

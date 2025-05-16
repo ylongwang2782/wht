@@ -21,7 +21,7 @@ class UsartDMATask : public TaskClassS<1024> {
                 if (msg != nullptr) {
                     msg->process();
                 } else {
-                    Log.d("Uart: parse fail.");
+                    Log.d("UART","parse fail.");
                 }
             }
         }
@@ -53,7 +53,6 @@ class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
     MsgProcTask() : TaskClassS<MsgProcTask_SIZE>("MsgProcTask", MsgProcTask_PRIORITY) {}
 
     void task() override {
-        Log.d("MsgProcTask: Boot");
         for (;;) {
             msgProc.proc();
             TaskBase::delay(1);
@@ -63,9 +62,9 @@ class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
 
 static void Slave_Task(void* pvParameters) {
     uint32_t myUid = UIDReader::get();
-    Log.d("Slave Boot: %02X", myUid);
+    Log.d("BOOT","Slave: %02X", myUid);
 
-    LogTask logTask;
+    LogTask logTask(Log);
     logTask.give();
 
     ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
