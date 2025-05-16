@@ -113,7 +113,7 @@ static void Master_Task(void* pvParameters) {
 
     DataForward tmp;
     while (1) {
-        Log.d("SYS", "heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
+        Log.v("SYS", "heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
         led.toggle();
         vTaskDelay(pdMS_TO_TICKS(2000));
     }

@@ -10,6 +10,8 @@
 #include "TaskCPP.h"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
+#include "enet.h"
+#include "ethernetif.h"
 #include "json.hpp"
 #include "json_sorting.hpp"
 #include "lwip/api.h"
@@ -21,12 +23,10 @@
 #include "main.h"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
+#include "netconf.h"
 #include "pc_message.hpp"
 #include "tcpip.h"
 #include "udp_echo.h"
-#include "enet.h"
-#include "ethernetif.h"
-#include "netconf.h"
 
 extern Logger Log;
 extern UasrtInfo& pc_com_info;
@@ -37,6 +37,8 @@ extern UasrtInfo& pc_com_info;
 #undef write
 
 // using json = nlohmann::json;
+#define BACKEND_TRANSFER_USE_UDP
+#define MAX_BUF_SIZE 100
 
 class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
    public:
@@ -47,6 +49,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
     void task() override {
         Log.i("PCdataTransfer_Task", "Boot");
 
+#ifdef BACKEND_TRANSFER_USE_COM
         taskENTER_CRITICAL();
         UartConfig pc_com_cfg(pc_com_info, true);
         Uart pc_com(pc_com_cfg);
@@ -55,12 +58,30 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
         std::vector<uint8_t> rx_data;
 
-        /**
-         * @brief  udp server
-         *
-         */
-        /* configure ethernet (GPIOs, clocks, MAC, DMA) */
+        for (;;) {
+            // 等待 DMA 完成信号
+            if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) == pdPASS) {
+                rx_data = pc_com.getReceivedData();
+                for (auto it : rx_data) {
+                    __msg.rx_data_queue.add(it);
+                }
+                __msg.rx_done_sem.give();
+            };
+            if (__msg.tx_request_sem.take(0)) {
+                __msg.tx_share_mem.lock();
+                const uint8_t* ptr = __msg.tx_share_mem.get();
+                size_t size = __msg.tx_share_mem.size();
 
+                pc_com.send(ptr, size);
+
+                __msg.tx_share_mem.unlock();
+                __msg.tx_done_sem.give();
+            }
+            TaskBase::delay(500);
+        }
+#endif
+
+#ifdef BACKEND_TRANSFER_USE_UDP
         int ret, recvnum, sockfd = -1;
         int rmt_port = 8080;
         int bod_port = 8080;
@@ -101,30 +122,31 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         }
 
         for (;;) {
-            // // 等待 DMA 完成信号
-            // if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) == pdPASS) {
-            //     rx_data = pc_com.getReceivedData();
-            //     for (auto it : rx_data) {
-            //         __msg.rx_data_queue.add(it);
-            //     }
-            //     __msg.rx_done_sem.give();
-            // };
-            // if (__msg.tx_request_sem.take(0)) {
-            //     __msg.tx_share_mem.lock();
-            //     const uint8_t* ptr = __msg.tx_share_mem.get();
-            //     size_t size = __msg.tx_share_mem.size();
+            // sendto(sockfd, send_buf.data(), send_buf.size(), 0,
+            //        (struct sockaddr*)&rmt_addr, sizeof(rmt_addr));
 
-            //     pc_com.send(ptr, size);
+            if (recvnum > 0) {
+                for (int i = 0; i < recvnum; i++) {
+                    __msg.rx_data_queue.add(buf[i]);
+                }
+                __msg.rx_done_sem.give();
+            }
+            recvnum = recvfrom(sockfd, buf, MAX_BUF_SIZE, 0,
+                               (struct sockaddr*)&rmt_addr, &len);
 
-            //     __msg.tx_share_mem.unlock();
-            //     __msg.tx_done_sem.give();
-            // }
+            if (__msg.tx_request_sem.take(0)) {
+                __msg.tx_share_mem.lock();
+                const uint8_t* ptr = __msg.tx_share_mem.get();
+                size_t size = __msg.tx_share_mem.size();
+                sendto(sockfd, ptr, size, 0, (struct sockaddr*)&rmt_addr,
+                       sizeof(rmt_addr));
+                __msg.tx_share_mem.unlock();
+                __msg.tx_done_sem.give();
+            }
 
-            sendto(sockfd, send_buf.data(), send_buf.size(), 0,
-                   (struct sockaddr*)&rmt_addr, sizeof(rmt_addr));
-
-            TaskBase::delay(500);
+            TaskBase::delay(10);
         }
+#endif
     }
 
    private:
