@@ -101,13 +101,25 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         bod_addr.sin_addr.s_addr = htons(INADDR_ANY);
 
         sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+        // 设置为非阻塞
+        int flags = fcntl(sockfd, F_GETFL, 0);
+        if (flags < 0) {
+            // 获取失败处理
+            lwip_close(sockfd);
+            vTaskDelete(nullptr);
+            return;
+        }
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
         // 打印所有UDP 信息
         // Log.v("UDP", "UDP server start");
-        // Log.v("UDP", "rmt_addr: %d.%d.%d.%d", ip4_addr1_16(&rmt_addr.sin_addr),
+        // Log.v("UDP", "rmt_addr: %d.%d.%d.%d",
+        // ip4_addr1_16(&rmt_addr.sin_addr),
         //       ip4_addr2_16(&rmt_addr.sin_addr),
         //       ip4_addr3_16(&rmt_addr.sin_addr),
         //       ip4_addr4_16(&rmt_addr.sin_addr));
-        // Log.v("UDP", "bod_addr: %d.%d.%d.%d", ip4_addr1_16(&bod_addr.sin_addr),
+        // Log.v("UDP", "bod_addr: %d.%d.%d.%d",
+        // ip4_addr1_16(&bod_addr.sin_addr),
         //       ip4_addr2_16(&bod_addr.sin_addr),
         //       ip4_addr3_16(&bod_addr.sin_addr),
         //       ip4_addr4_16(&bod_addr.sin_addr));
@@ -126,18 +138,16 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         }
 
         for (;;) {
-            // sendto(sockfd, send_buf.data(), send_buf.size(), 0,
-            //        (struct sockaddr*)&rmt_addr, sizeof(rmt_addr));
-
+            recvnum = recvfrom(sockfd, buf, MAX_BUF_SIZE, 0,
+                               (struct sockaddr*)&rmt_addr, &len);
             if (recvnum > 0) {
                 for (int i = 0; i < recvnum; i++) {
                     __msg.rx_data_queue.add(buf[i]);
                 }
                 __msg.rx_done_sem.give();
+                recvnum = 0;
                 Log.v("UDP", "recvnum: %d", recvnum);
             }
-            recvnum = recvfrom(sockfd, buf, MAX_BUF_SIZE, 0,
-                               (struct sockaddr*)&rmt_addr, &len);
 
             if (__msg.tx_request_sem.take(0)) {
                 __msg.tx_share_mem.lock();

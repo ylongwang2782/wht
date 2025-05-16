@@ -90,7 +90,7 @@ class SlaveConfig : private __PcMessageBase {
         }
 
         rsp_msg.slaveNum = slave_num;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -114,13 +114,14 @@ class ModeConfig : private __PcMessageBase {
         Log.i("ModeConfig","mode = %u", mode_cmd.mode);
         if (__PcMessageBase::forward()) {
             if ((pc_manager_msg.event.get() & MODE_SUCCESS_EVENT)) {
-                Log.i("ModeConfig","config success\n");
+                Log.i("ModeConfig","config success");
             } else {
-                Log.e("ModeConfig","config failed\n");
+                Log.e("ModeConfig","config failed");
                 is_success = false;
             }
         }
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
+        rsp_msg.mode = mode_cmd.mode;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -168,7 +169,7 @@ class ResetConfig : private __PcMessageBase {
             }
         }
         rsp_msg.slaveNum = slave_num;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -199,7 +200,7 @@ class ControlConfig : private __PcMessageBase {
             }
         }
         rsp_msg.runningStatus = ctrl_cmd.ctrl;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }

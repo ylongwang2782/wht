@@ -109,7 +109,7 @@ static void Master_Task(void* pvParameters) {
     pc_interface.give();
     pc_data_transfer.give();
     slave_manager.give();
-    manager_data_transfer.give();
+    // manager_data_transfer.give();
 
     DataForward tmp;
     while (1) {
@@ -121,7 +121,7 @@ static void Master_Task(void* pvParameters) {
 
 int Master_Init(void) {
     // 创建主节点任务
-    xTaskCreate(Master_Task, "MasterTask", 8 * 1024, NULL, 2, NULL);
+    xTaskCreate(Master_Task, "MasterTask", 10 * 1024, NULL, 2, NULL);
     return 0;
 }
 namespace Master2Slave {
