@@ -7,12 +7,12 @@ if(BUILD_VARIANT STREQUAL "MASTER")
     PRIVATE ${COMMON_SOURCES}
             ./master/master_mode.cpp
             ./master/pc_message.cpp
-            ./Enet/netconf.cpp
-            ./Enet/enet.cpp
-            ./Enet/udp_echo.cpp
-            ./Enet/ethernetif.cpp
-            ./Enet/sys_arch.c)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master ./master/include ./Enet)
+            ./master/Enet/netconf.cpp
+            ./master/Enet/enet.cpp
+            ./master/Enet/udp_echo.cpp
+            ./master/Enet/ethernetif.cpp
+            ./master/Enet/sys_arch.c)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master ./master/include ./master/Enet)
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_sources(
     ${EXECUTABLE_NAME}

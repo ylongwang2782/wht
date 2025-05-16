@@ -25,29 +25,28 @@ bool __ProcessBase::rsp_parsed = false;    // 从机回复正确标志位
 
 uint8_t __ProcessBase::expected_rsp_msg_id;    // 期望从机回复的消息ID
 
-class __LogTask : public TaskClassS<1024> {
-   public:
-    __LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
+// class __LogTask : public TaskClassS<1024> {
+//    public:
+//     __LogTask() : TaskClassS<1024>("LogTask", TaskPrio_Low) {}
 
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        for (;;) {
-            LogMessage logMsg;
-            // 从队列中获取日志消息
-            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.send(
-                    reinterpret_cast<const uint8_t*>(logMsg.message.data()),
-                    strlen(logMsg.message.data()));
-            }
-        }
-    }
-};
+//     void task() override {
+//         char buffer[LOG_QUEUE_SIZE + 8];
+//         for (;;) {
+//             LogMessage logMsg;
+//             // 从队列中获取日志消息
+//             if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
+//                 Log.uart.send(
+//                     reinterpret_cast<const uint8_t*>(logMsg.message.data()),
+//                     strlen(logMsg.message.data()));
+//             }
+//         }
+//     }
+// };
 
 static void Master_Task(void* pvParameters) {
     LED led(GPIO::Port::A, GPIO::Pin::PIN_0);
-    __LogTask logTask;
+    LogTask logTask(Log);
     logTask.give();
-    // printf("Master_Task: Boot\n");
 
     // Backend2Master::SlaveCfgMsg slave_cfg_msg;
     // Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
@@ -89,6 +88,10 @@ static void Master_Task(void* pvParameters) {
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
 
+    EthDevice ethDevice;
+    ethDevice.init();
+    Log.v("BOOT", "ethDevice initialized");
+
     // 上位机数据传输任务 json解析任务 初始化
     PCdataTransferMsg pc_data_transfer_msg;
     PCmanagerMsg pc_manger_msg(pc_data_transfer_msg.tx_share_mem,
@@ -96,7 +99,6 @@ static void Master_Task(void* pvParameters) {
                                pc_data_transfer_msg.tx_done_sem);
 
     PCinterface pc_interface(pc_manger_msg, pc_data_transfer_msg);
-    // EthTask ethTask;
     PCdataTransfer pc_data_transfer(pc_data_transfer_msg);
 
     // 从机数据传输任务 从机管理任务 初始化
@@ -104,11 +106,10 @@ static void Master_Task(void* pvParameters) {
     SlaveManager slave_manager(pc_manger_msg, manager_transfer_msg);
     ManagerDataTransfer manager_data_transfer(manager_transfer_msg);
 
-    // ethTask.give();
     pc_interface.give();
     pc_data_transfer.give();
     slave_manager.give();
-    manager_data_transfer.give();
+    manager_data_transfer.give(); 
 
     DataForward tmp;
     while (1) {
@@ -120,7 +121,7 @@ static void Master_Task(void* pvParameters) {
 
 int Master_Init(void) {
     // 创建主节点任务
-    xTaskCreate(Master_Task, "MasterTask", 4 * 1024, NULL, 2, NULL);
+    xTaskCreate(Master_Task, "MasterTask", 8 * 1024, NULL, 2, NULL);
     return 0;
 }
 namespace Master2Slave {

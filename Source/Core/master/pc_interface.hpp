@@ -101,24 +101,24 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
         }
 
         for (;;) {
-            // 等待 DMA 完成信号
-            if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) == pdPASS) {
-                rx_data = pc_com.getReceivedData();
-                for (auto it : rx_data) {
-                    __msg.rx_data_queue.add(it);
-                }
-                __msg.rx_done_sem.give();
-            };
-            if (__msg.tx_request_sem.take(0)) {
-                __msg.tx_share_mem.lock();
-                const uint8_t* ptr = __msg.tx_share_mem.get();
-                size_t size = __msg.tx_share_mem.size();
+            // // 等待 DMA 完成信号
+            // if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) == pdPASS) {
+            //     rx_data = pc_com.getReceivedData();
+            //     for (auto it : rx_data) {
+            //         __msg.rx_data_queue.add(it);
+            //     }
+            //     __msg.rx_done_sem.give();
+            // };
+            // if (__msg.tx_request_sem.take(0)) {
+            //     __msg.tx_share_mem.lock();
+            //     const uint8_t* ptr = __msg.tx_share_mem.get();
+            //     size_t size = __msg.tx_share_mem.size();
 
-                pc_com.send(ptr, size);
+            //     pc_com.send(ptr, size);
 
-                __msg.tx_share_mem.unlock();
-                __msg.tx_done_sem.give();
-            }
+            //     __msg.tx_share_mem.unlock();
+            //     __msg.tx_done_sem.give();
+            // }
 
             sendto(sockfd, send_buf.data(), send_buf.size(), 0,
                    (struct sockaddr*)&rmt_addr, sizeof(rmt_addr));

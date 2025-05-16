@@ -43,7 +43,6 @@ add_subdirectory(BSP)
 add_subdirectory(Core)
 add_subdirectory(Drivers)
 add_subdirectory(Middlewares)
-# add_subdirectory(Retarget)
 
 # 链接目标与其他库
 target_link_libraries(${EXECUTABLE_NAME} BSP Drivers freertos_kernel
