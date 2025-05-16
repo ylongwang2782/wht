@@ -10,16 +10,35 @@
 #include "TaskCPP.h"
 #include "bsp_log.hpp"
 #include "bsp_uart.hpp"
+#include "enet.h"
+#include "ethernetif.h"
 #include "json.hpp"
 #include "json_sorting.hpp"
+#include "lwip/api.h"
+#include "lwip/memp.h"
+#include "lwip/opt.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
+#include "lwip/tcp.h"
+#include "main.h"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
+#include "netconf.h"
 #include "pc_message.hpp"
+#include "tcpip.h"
+#include "udp_echo.h"
 
 extern Logger Log;
 extern UasrtInfo& pc_com_info;
 
+#undef accept
+#undef recv
+#undef send
+#undef write
+
 // using json = nlohmann::json;
+#define BACKEND_TRANSFER_USE_UDP
+#define MAX_BUF_SIZE 100
 
 class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
    public:
@@ -28,8 +47,9 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                                                 TaskPrio_High),
           __msg(msg) {}
     void task() override {
-        Log.i("PCdataTransfer_Task: Boot");
+        Log.i("PCdataTransfer_Task", "Boot");
 
+#ifdef BACKEND_TRANSFER_USE_COM
         taskENTER_CRITICAL();
         UartConfig pc_com_cfg(pc_com_info, true);
         Uart pc_com(pc_com_cfg);
@@ -37,6 +57,7 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
 
         uint8_t buffer[DMA_RX_BUFFER_SIZE];
         std::vector<uint8_t> rx_data;
+
         for (;;) {
             // 等待 DMA 完成信号
             if (xSemaphoreTake(pc_com_info.dmaRxDoneSema, 0) == pdPASS) {
@@ -56,8 +77,92 @@ class PCdataTransfer : public TaskClassS<PCdataTransfer_STACK_SIZE> {
                 __msg.tx_share_mem.unlock();
                 __msg.tx_done_sem.give();
             }
-            TaskBase::delay(5);
+            TaskBase::delay(500);
         }
+#endif
+
+#ifdef BACKEND_TRANSFER_USE_UDP
+        int ret, recvnum, sockfd = -1;
+        int rmt_port = 8080;
+        int bod_port = 8080;
+        struct sockaddr_in rmt_addr, bod_addr;
+        char buf[100];
+        u32_t len;
+        ip_addr_t ipaddr;
+
+        IP4_ADDR(&ipaddr, IP_S_ADDR0, IP_S_ADDR1, IP_S_ADDR2, IP_S_ADDR3);
+
+        rmt_addr.sin_family = AF_INET;
+        rmt_addr.sin_port = htons(rmt_port);
+        rmt_addr.sin_addr.s_addr = ipaddr.addr;
+
+        bod_addr.sin_family = AF_INET;
+        bod_addr.sin_port = htons(bod_port);
+        bod_addr.sin_addr.s_addr = htons(INADDR_ANY);
+
+        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+        // 设置为非阻塞
+        int flags = fcntl(sockfd, F_GETFL, 0);
+        if (flags < 0) {
+            // 获取失败处理
+            lwip_close(sockfd);
+            vTaskDelete(nullptr);
+            return;
+        }
+        fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+        // 打印所有UDP 信息
+        // Log.v("UDP", "UDP server start");
+        // Log.v("UDP", "rmt_addr: %d.%d.%d.%d",
+        // ip4_addr1_16(&rmt_addr.sin_addr),
+        //       ip4_addr2_16(&rmt_addr.sin_addr),
+        //       ip4_addr3_16(&rmt_addr.sin_addr),
+        //       ip4_addr4_16(&rmt_addr.sin_addr));
+        // Log.v("UDP", "bod_addr: %d.%d.%d.%d",
+        // ip4_addr1_16(&bod_addr.sin_addr),
+        //       ip4_addr2_16(&bod_addr.sin_addr),
+        //       ip4_addr3_16(&bod_addr.sin_addr),
+        //       ip4_addr4_16(&bod_addr.sin_addr));
+        Log.v("UDP", "rmt_port: %d", rmt_port);
+        Log.v("UDP", "bod_port: %d", bod_port);
+
+        if (sockfd < 0) {
+            vTaskDelete(nullptr);
+            return;
+        }
+
+        if (bind(sockfd, (struct sockaddr*)&bod_addr, sizeof(bod_addr)) < 0) {
+            lwip_close(sockfd);
+            vTaskDelete(nullptr);
+            return;
+        }
+
+        for (;;) {
+            recvnum = recvfrom(sockfd, buf, MAX_BUF_SIZE, 0,
+                               (struct sockaddr*)&rmt_addr, &len);
+            if (recvnum > 0) {
+                for (int i = 0; i < recvnum; i++) {
+                    __msg.rx_data_queue.add(buf[i]);
+                }
+                __msg.rx_done_sem.give();
+                recvnum = 0;
+                Log.v("UDP", "recvnum: %d", recvnum);
+            }
+
+            if (__msg.tx_request_sem.take(0)) {
+                __msg.tx_share_mem.lock();
+                const uint8_t* ptr = __msg.tx_share_mem.get();
+                size_t size = __msg.tx_share_mem.size();
+                sendto(sockfd, ptr, size, 0, (struct sockaddr*)&rmt_addr,
+                       sizeof(rmt_addr));
+                __msg.tx_share_mem.unlock();
+                __msg.tx_done_sem.give();
+                Log.v("UDP", "sendto: %d", size);
+            }
+
+            TaskBase::delay(10);
+        }
+#endif
     }
 
    private:
@@ -80,7 +185,7 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
           pmf(pc_manager_msg) {}
 
     void task() override {
-        Log.i("PCinterface_Task: Boot");
+        Log.i("PCinterface_Task", "Boot");
 
         std::vector<uint8_t> buffer;
         std::vector<uint8_t> rsp_data;
@@ -115,13 +220,13 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
     void jsonSorting(uint8_t* ch, uint16_t len) {
         // 先检查JSON字符串是否有效
         if (!json::accept(ch, ch + len)) {
-            Log.e("[PCinterface]: Invalid JSON format");
+            Log.e("PCinterface", "Invalid JSON format");
             return;
         }
 
         json j = json::parse((uint8_t*)ch, ch + len, nullptr, false);
         if (j.is_discarded()) {
-            Log.e("[PCinterface]: json parse failed");
+            Log.e("PCinterface", "json parse failed");
             return;
         }
 
@@ -163,14 +268,14 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
                                                 rsp.size());
                 transfer_msg.tx_request_sem.give();
                 if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
-                    Log.e(
-                        "[PCinterface]: json respond failed. tx_done_sem.take "
-                        "failed");
+                    Log.e("PCinterface",
+                          " json respond failed. tx_done_sem.take "
+                          "failed");
                 }
                 // 释放写访问权限
                 transfer_msg.tx_share_mem.release_write_access();
             } else {
-                Log.e("[PCinterface]: tx_share_mem.get_write_access failed");
+                Log.e("PCinterface", " tx_share_mem.get_write_access failed");
             }
         }
     }
@@ -181,16 +286,16 @@ class PCinterface : public TaskClassS<PCinterface_STACK_SIZE> {
             transfer_msg.tx_share_mem.write(ch, len);
             transfer_msg.tx_request_sem.give();
             if (!transfer_msg.tx_done_sem.take(PCinterface_RSP_TIMEOUT)) {
-                Log.e(
-                    "[PCinterface]: respond to PC failed: tx_done_sem.take "
-                    "failed");
+                Log.e("PCinterface",
+                      " respond to PC failed: tx_done_sem.take "
+                      "failed");
             }
             // 释放写访问权限
             transfer_msg.tx_share_mem.release_write_access();
         } else {
-            Log.e(
-                "[PCinterface]: respond to PC failed: "
-                "tx_share_mem.get_write_access failed");
+            Log.e("PCinterface",
+                  " respond to PC failed: "
+                  "tx_share_mem.get_write_access failed");
         }
     }
 };

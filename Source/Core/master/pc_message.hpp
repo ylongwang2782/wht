@@ -66,22 +66,22 @@ class SlaveConfig : private __PcMessageBase {
             slave_cfg.conductionNum = dev.conductionNum;
             slave_cfg.resistanceNum = dev.resistanceNum;
             rsp_msg.slaves.push_back(slave_cfg);
-            Log.i("[SlaveConfig]: 0x%.8X  configing... ", slave_cfg.id);
-            // Log.i("[SlaveConfig]: conductionNum = %u", cfg_cmd.cond);
-            // Log.i("[SlaveConfig]: resistanceNum = %u", cfg_cmd.Z);
-            // Log.i("[SlaveConfig]: clipMode = %u", cfg_cmd.clip_mode);
-            // Log.i("[SlaveConfig]: clipStatus = %u", cfg_cmd.clip_pin);
-            Log.i("[SlaveConfig]: startHarnessNum = %u",
+            Log.i("SlaveConfig","0x%.8X  configing... ", slave_cfg.id);
+            // Log.i("SlaveConfig","conductionNum = %u", cfg_cmd.cond);
+            // Log.i("SlaveConfig","resistanceNum = %u", cfg_cmd.Z);
+            // Log.i("SlaveConfig","clipMode = %u", cfg_cmd.clip_mode);
+            // Log.i("SlaveConfig","clipStatus = %u", cfg_cmd.clip_pin);
+            Log.i("SlaveConfig","startHarnessNum = %u",
                   cfg_cmd.startHarnessNum);
 
             if (__PcMessageBase::forward()) {
                 if ((pc_manager_msg.event.get() & CONFIG_SUCCESS_EVENT)) {
-                    Log.i("[SlaveConfig]: %.2X-%.2X-%.2X-%.2X config success\n",
+                    Log.i("SlaveConfig","%.2X-%.2X-%.2X-%.2X config success\n",
                           cfg_cmd.id[0], cfg_cmd.id[1], cfg_cmd.id[2],
                           cfg_cmd.id[3]);
 
                 } else {
-                    Log.e("[SlaveConfig]: %.2X-%.2X-%.2X-%.2X config failed\n",
+                    Log.e("SlaveConfig","%.2X-%.2X-%.2X-%.2X config failed\n",
                           cfg_cmd.id[0], cfg_cmd.id[1], cfg_cmd.id[2],
                           cfg_cmd.id[3]);
                     is_success = false;
@@ -90,7 +90,7 @@ class SlaveConfig : private __PcMessageBase {
         }
 
         rsp_msg.slaveNum = slave_num;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -111,16 +111,17 @@ class ModeConfig : private __PcMessageBase {
         data_forward.type = DEV_MODE;
         mode_cmd.mode = (SysMode)Backend2Master::ModeCfgMsg::mode;
         data_forward.mode_cmd = mode_cmd;
-        Log.i("[ModeConfig]: mode = %u", mode_cmd.mode);
+        Log.i("ModeConfig","mode = %u", mode_cmd.mode);
         if (__PcMessageBase::forward()) {
             if ((pc_manager_msg.event.get() & MODE_SUCCESS_EVENT)) {
-                Log.i("[ModeConfig]: config success\n");
+                Log.i("ModeConfig","config success");
             } else {
-                Log.e("[ModeConfig]: config failed\n");
+                Log.e("ModeConfig","config failed");
                 is_success = false;
             }
         }
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
+        rsp_msg.mode = mode_cmd.mode;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -157,18 +158,18 @@ class ResetConfig : private __PcMessageBase {
             rst_cfg.lock = dev.lock;
             rsp_msg.slaves.push_back(rst_cfg);
 
-            Log.i("[ResetConfig]: 0x%.8X  reseting... ", rst_cmd.id);
+            Log.i("ResetConfig","0x%.8X  reseting... ", rst_cmd.id);
             if (__PcMessageBase::forward()) {
                 if ((pc_manager_msg.event.get() & RESET_SUCCESS_EVENT)) {
-                    Log.i("[ResetConfig]:  0x%.8X reset success\n", rst_cmd.id);
+                    Log.i("ResetConfig"," 0x%.8X reset success\n", rst_cmd.id);
                 } else {
-                    Log.e("[ResetConfig]:  0x%.8X reset failed\n", rst_cmd.id);
+                    Log.e("ResetConfig"," 0x%.8X reset failed\n", rst_cmd.id);
                     is_success = false;
                 }
             }
         }
         rsp_msg.slaveNum = slave_num;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -189,17 +190,17 @@ class ControlConfig : private __PcMessageBase {
         data_forward.type = DEV_CTRL;
         ctrl_cmd.ctrl = (CtrlType)Backend2Master::CtrlMsg::runningStatus;
         data_forward.ctrl_cmd = ctrl_cmd;
-        Log.i("[ControlConfig]: runningStatus = %u", ctrl_cmd.ctrl);
+        Log.i("ControlConfig","runningStatus = %u", ctrl_cmd.ctrl);
         if (__PcMessageBase::forward()) {
             if ((pc_manager_msg.event.get() & CTRL_SUCCESS_EVENT)) {
-                Log.i("[ControlConfig]: config success\n");
+                Log.i("ControlConfig","config success\n");
             } else {
-                Log.e("[ControlConfig]: config failed\n");
+                Log.e("ControlConfig","config failed\n");
                 is_success = false;
             }
         }
         rsp_msg.runningStatus = ctrl_cmd.ctrl;
-        rsp_msg.status = is_success;
+        rsp_msg.status = !is_success;
         auto rsp_packet = PacketPacker::master2BackendPack(rsp_msg);
         return FramePacker::pack(rsp_packet);
     }
@@ -252,7 +253,7 @@ class ProtocolMessageForward {
                 }
             }
         } else {
-            Log.e("SlaveManager: parse failed");
+            Log.e("SlaveManager","parse failed");
             rsp_packet.clear();
         }
         return rsp_packet;

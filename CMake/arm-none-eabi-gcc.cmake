@@ -40,7 +40,7 @@ set(CMAKE_CXX_FLAGS
 
 set(CMAKE_C_LINK_FLAGS "${TARGET_FLAGS}")
 set(CMAKE_C_LINK_FLAGS
-    "${CMAKE_C_LINK_FLAGS} -T \"${CMAKE_SOURCE_DIR}/gd32f4xx_flash.ld\"")
+    "${CMAKE_C_LINK_FLAGS} -T \"${CMAKE_SOURCE_DIR}/gd32f470zi_flash.ld\"")
 set(CMAKE_C_LINK_FLAGS "${CMAKE_C_LINK_FLAGS} --specs=nano.specs")
 set(CMAKE_C_LINK_FLAGS
     "${CMAKE_C_LINK_FLAGS} -Wl,-Map=${CMAKE_PROJECT_NAME}.map -Wl,--gc-sections -Wl,--as-needed"
@@ -53,7 +53,7 @@ set(CMAKE_CXX_LINK_FLAGS
     "${CMAKE_C_LINK_FLAGS} -Wl,--start-group -lstdc++ -lsupc++ -Wl,--end-group")
 
 # 添加编译指令
-add_compile_options(
-  "$<$<CONFIG:Debug>:-Og;-DDEBUG;-g;-funwind-tables>"
-  "$<$<CONFIG:Release>:-O3;-DNDEBUG>" "$<$<CONFIG:MinSizeRel>:-Os;-DNDEBUG>"
-  "$<$<CONFIG:RelWithDebInfo>:-Os;-g;-DDEBUG>")
+# add_compile_options(
+#   "$<$<CONFIG:Debug>:-Og;-DDEBUG;-g;-funwind-tables>"
+#   "$<$<CONFIG:Release>:-O3;-DNDEBUG>" "$<$<CONFIG:MinSizeRel>:-Os;-DNDEBUG>"
+#   "$<$<CONFIG:RelWithDebInfo>:-Os;-g;-DDEBUG>")

@@ -1,11 +1,20 @@
 set(COMMON_SOURCES ./gd32f4xx_it.c ./main.cpp ./protocal.cpp)
 add_subdirectory(uwb)
 
-if(BUILD_VARIANT STREQUAL "MASTER")
+if(BUILD_VARIANT STREQUAL "MASTER_DEBUG" OR BUILD_VARIANT STREQUAL "MASTER_RELEASE")
   target_sources(
-    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./master/master_mode.cpp
-                               ./master/pc_message.cpp)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./master)
+    ${EXECUTABLE_NAME}
+    PRIVATE ${COMMON_SOURCES}
+            ./master/master_mode.cpp
+            ./master/pc_message.cpp
+            ./master/Enet/netconf.cpp
+            ./master/Enet/enet.cpp
+            ./master/Enet/udp_echo.cpp
+            ./master/Enet/ethernetif.cpp
+            ./master/Enet/sys_arch.c)
+  target_include_directories(${EXECUTABLE_NAME}
+                             PUBLIC . ./master ./master/include ./master/Enet)
+
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_sources(
     ${EXECUTABLE_NAME}
@@ -15,6 +24,8 @@ elseif(BUILD_VARIANT STREQUAL "SLAVE")
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave/inc)
 
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-  target_sources(${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./BoardTest/board_test.cpp ./BoardTest/peripherals.cpp)
+  target_sources(
+    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./BoardTest/board_test.cpp
+                               ./BoardTest/peripherals.cpp)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./BoardTest)
 endif()

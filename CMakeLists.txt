@@ -14,12 +14,14 @@ enable_language(ASM C CXX)
 
 # 设置项目名称和版本号
 
-if(BUILD_VARIANT STREQUAL "MASTER")
-project(MasterFirmware VERSION 3.0)
+if(BUILD_VARIANT STREQUAL "MASTER_DEBUG")
+  project(MasterFirmware VERSION 3.0)
+elseif(BUILD_VARIANT STREQUAL "MASTER_RELEASE")
+  project(MasterFirmwareRelease VERSION 3.0)
 elseif(BUILD_VARIANT STREQUAL "SLAVE")
-project(SlaveFirmware VERSION 3.0)
+  project(SlaveFirmware VERSION 3.0)
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-project(BoardTestFirmware VERSION 3.1)
+  project(BoardTestFirmware VERSION 3.1)
 else()
   message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
@@ -31,6 +33,6 @@ add_compile_options(
 
 add_link_options(-Wl,--unresolved-symbols=ignore-in-object-files)
 
-add_definitions(-DGD32F470 -DGCC)
+add_definitions(-DGD32F470 -DGCC -DUSE_STDPERIPH_DRIVER)
 
 add_subdirectory(Source)

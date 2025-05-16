@@ -132,13 +132,13 @@ struct FrameHeader {
 
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < HEADER_SIZE) {
-            Log.e("Invalid frame header data size");
+            Log.e("FrameHeader", "Invalid frame header data size");
             return false;
         }
 
         // 验证帧分隔符
         if (data[0] != FRAME_DELIMITER[0] || data[1] != FRAME_DELIMITER[1]) {
-            Log.e("Invalid frame delimiter");
+            Log.e("FrameHeader", "Invalid frame delimiter");
             return false;
         }
 
@@ -179,7 +179,7 @@ struct Master2SlavePacket {
     // 反序列化 Master2SlavePacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 5) {
-            Log.e("Master2SlavePacket data too short");
+            Log.e("Master2SlavePacket ", "data too short");
             return false;
         }
         message_id = data[0];
@@ -207,7 +207,7 @@ struct Slave2MasterPacket {
     // 反序列化 Master2SlavePacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 5) {
-            Log.e("Slave2MasterPacket data too short");
+            Log.e("Slave2MasterPacket ", "data too short");
             return false;
         }
         message_id = data[0];
@@ -233,7 +233,7 @@ struct Backend2MasterPacket {
     // 反序列化 Backend2MasterPacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 1) {
-            Log.e("Backend2MasterPacket data too short");
+            Log.e("Backend2MasterPacket ", "data too short");
             return false;
         }
         message_id = data[0];
@@ -260,7 +260,7 @@ struct Master2BackendPacket {
     // 反序列化 Master2BackendPacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 1) {
-            Log.e("Master2BackendPacket data too short");
+            Log.e("Master2BackendPacket ", "data too short");
             return false;
         }
         // 反序列化消息ID
@@ -312,7 +312,7 @@ struct Slave2BackendPacket {
     // 反序列化 Slave2BackendPacket
     bool deserialize(const std::vector<uint8_t>& data) {
         if (data.size() < 7) {
-            Log.e("Slave2BackendPacket data too short");
+            Log.e("Slave2BackendPacket", "data too short");
             return false;
         }
 
@@ -493,11 +493,11 @@ class SyncMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {
-            Log.e("SyncMsg: Invalid SyncMsg data size");
+            Log.e("SyncMsg", "Invalid SyncMsg data size");
         }
         mode = data[0];
         timestamp = ProtocolUtils::deserializeUint32(data, 1);
-        Log.d("SyncMsg: mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
+        Log.d("SyncMsg", "mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
     }
 
     void process() override;
@@ -528,7 +528,7 @@ class CondCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
-            Log.e("CondCfgMsg: Invalid CondCfgMsg data size");
+            Log.e("CondCfgMsg", "Invalid CondCfgMsg data size");
             return;
         }
         timeSlot = data[0];
@@ -536,12 +536,12 @@ class CondCfgMsg : public Message {
         totalConductionNum = (data[3] << 8) | data[2];
         startConductionNum = (data[5] << 8) | data[4];
         conductionNum = (data[7] << 8) | data[6];
-        Log.d(
-            "CondCfgMsg: timeSlot = 0x%02X, interval = 0x%02X, "
-            "totalConductionNum "
-            "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
-            timeSlot, interval, totalConductionNum, startConductionNum,
-            conductionNum);
+        Log.d("CondCfgMsg",
+              "timeSlot = 0x%02X, interval = 0x%02X, "
+              "totalConductionNum "
+              "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
+              timeSlot, interval, totalConductionNum, startConductionNum,
+              conductionNum);
     }
     void process() override;
 
@@ -571,7 +571,7 @@ class ResCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
-            Log.e("ResCfgMsg: Invalid ResCfgMsg data size");
+            Log.e("ResCfgMsg", "Invalid ResCfgMsg data size");
             return;
         }
         timeSlot = data[0];
@@ -579,12 +579,12 @@ class ResCfgMsg : public Message {
         totalResistanceNum = (data[3] << 8) | data[2];
         startResistanceNum = (data[5] << 8) | data[4];
         resistanceNum = (data[7] << 8) | data[6];
-        Log.d(
-            "ResCfgMsg: timeSlot = 0x%02X, interval = 0x%02X, "
-            "totalResistanceNum = 0x%04X, "
-            "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
-            timeSlot, interval, totalResistanceNum, startResistanceNum,
-            resistanceNum);
+        Log.d("ResCfgMsg",
+              "timeSlot = 0x%02X, interval = 0x%02X, "
+              "totalResistanceNum = 0x%04X, "
+              "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
+              timeSlot, interval, totalResistanceNum, startResistanceNum,
+              resistanceNum);
     }
 
     void process() override;
@@ -610,16 +610,16 @@ class ClipCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {    // 修改为4字节
-            Log.e("ClipCfgMsg: Invalid ClipCfgMsg data size");
+            Log.e("ClipCfgMsg", "Invalid ClipCfgMsg data size");
             return;
         }
         interval = data[0];                    // 反序列化采集间隔
         mode = data[1];                        // 反序列化 mode
         clipPin = data[2] | (data[3] << 8);    // 低字节在前，高字节在后
-        Log.d(
-            "ClipCfgMsg: interval = 0x%02X, mode = 0x%02X, clipPin = "
-            "0x%04X",
-            interval, mode, clipPin);
+        Log.d("ClipCfgMsg",
+              "interval = 0x%02X, mode = 0x%02X, clipPin = "
+              "0x%04X",
+              interval, mode, clipPin);
     }
 
     void process() override;
@@ -641,11 +641,11 @@ class ReadCondDataMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ReadCondDataMsg: Invalid ReadCondDataMsg data size");
+            Log.e("ReadCondDataMsg", "Invalid ReadCondDataMsg data size");
             return;
         }
         reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadCondDataMsg: reserve = 0x%02X", reserve);
+        Log.d("ReadCondDataMsg", "reserve = 0x%02X", reserve);
     }
 
     void process() override;
@@ -667,11 +667,11 @@ class ReadResDataMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ReadResDataMsg: Invalid ReadResDataMsg data size");
+            Log.e("ReadResDataMsg", "Invalid ReadResDataMsg data size");
             return;
         }
         reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadResDataMsg: reserve = 0x%02X", reserve);
+        Log.d("ReadResDataMsg", "reserve = 0x%02X", reserve);
     }
 
     void process() override;
@@ -692,11 +692,11 @@ class ReadClipDataMsg : public Message {
     }
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ReadClipDataMsg: Invalid ReadClipDataMsg data size");
+            Log.e("ReadClipDataMsg", "Invalid ReadClipDataMsg data size");
             return;
         }
         reserve = data[0];    // 反序列化保留字段
-        Log.d("ReadClipDataMsg: reserve = 0x%02X", reserve);
+        Log.d("ReadClipDataMsg", "reserve = 0x%02X", reserve);
     }
     void process() override;
 
@@ -719,12 +719,12 @@ class RstMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 3) {    // 修改为3字节
-            Log.e("RstMsg: Invalid RstMsg data size");
+            Log.e("RstMsg", "Invalid RstMsg data size");
         }
         lock = data[0];
         // 新增 clipLed 反序列化
         clipLed = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
-        Log.d("RstMsg: lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
+        Log.d("RstMsg", "lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
     }
 
     void process() override;
@@ -760,7 +760,7 @@ class CondCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 9) {    // 修改为9字节(原8+新增1)
-            Log.e("CondCfgMsg: Invalid CondCfgMsg data size");
+            Log.e("CondCfgMsg", "Invalid CondCfgMsg data size");
             return;
         }
         status = data[0];    // 新增状态码反序列化
@@ -769,12 +769,12 @@ class CondCfgMsg : public Message {
         totalConductionNum = (data[4] << 8) | data[3];
         startConductionNum = (data[6] << 8) | data[5];
         conductionNum = (data[8] << 8) | data[7];
-        Log.d(
-            "CondCfgMsg: status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
-            "totalConductionNum = 0x%04X, "
-            "startConductionNum = 0x%04X, conductionNum = 0x%04X",
-            status, timeSlot, interval, totalConductionNum, startConductionNum,
-            conductionNum);
+        Log.d("CondCfgMsg",
+              "status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
+              "totalConductionNum = 0x%04X, "
+              "startConductionNum = 0x%04X, conductionNum = 0x%04X",
+              status, timeSlot, interval, totalConductionNum,
+              startConductionNum, conductionNum);
     }
     void process() override;
 
@@ -806,7 +806,7 @@ class ResCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 9) {    // 修改为9字节(原8+新增1)
-            Log.e("ResCfgMsg: Invalid ResCfgMsg data size");
+            Log.e("ResCfgMsg", "Invalid ResCfgMsg data size");
             return;
         }
         status = data[0];    // 新增状态码反序列化
@@ -815,12 +815,12 @@ class ResCfgMsg : public Message {
         totalResistanceNum = (data[4] << 8) | data[3];
         startResistanceNum = (data[6] << 8) | data[5];
         resistanceNum = (data[8] << 8) | data[7];
-        Log.d(
-            "ResCfgMsg: status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
-            "totalResistanceNum = 0x%04X, "
-            "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
-            status, timeSlot, interval, totalResistanceNum, startResistanceNum,
-            resistanceNum);
+        Log.d("ResCfgMsg",
+              "status=0x%02X, timeSlot = 0x%02X, interval = 0x%02X, "
+              "totalResistanceNum = 0x%04X, "
+              "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
+              status, timeSlot, interval, totalResistanceNum,
+              startResistanceNum, resistanceNum);
     }
 
     void process() override;
@@ -848,17 +848,17 @@ class ClipCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {    // 修改为5字节(原4+新增1)
-            Log.e("ClipCfgMsg: Invalid ClipCfgMsg data size");
+            Log.e("ClipCfgMsg", "Invalid ClipCfgMsg data size");
             return;
         }
         status = data[0];                      // 新增状态码反序列化
         interval = data[1];                    // 调整字段索引(+1)
         mode = data[2];                        // 调整字段索引(+1)
         clipPin = data[3] | (data[4] << 8);    // 调整字段索引(+1)
-        Log.d(
-            "ClipCfgMsg: status=0x%02X, interval = 0x%02X, mode = 0x%02X, "
-            "clipPin = 0x%04X",
-            status, interval, mode, clipPin);
+        Log.d("ClipCfgMsg",
+              "status=0x%02X, interval = 0x%02X, mode = 0x%02X, "
+              "clipPin = 0x%04X",
+              status, interval, mode, clipPin);
     }
 
     void process() override;
@@ -883,14 +883,14 @@ class RstMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {    // 修改为4字节(原3+新增1)
-            Log.e("RstMsg: Invalid RstMsg data size");
+            Log.e("RstMsg", "Invalid RstMsg data size");
             return;
         }
 
         status = data[0];                      // 新增状态码反序列化
         lockStatus = data[1];                  // 调整字段索引(+1)
         clipLed = data[2] | (data[3] << 8);    // 调整字段索引(+1)
-        Log.d("RstMsg: status=0x%02X, lockStatus = 0x%02X, clipLed = 0x%04X",
+        Log.d("RstMsg", "status=0x%02X, lockStatus = 0x%02X, clipLed = 0x%04X",
               status, lockStatus, clipLed);
     }
 
@@ -934,7 +934,7 @@ class SlaveCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 || (data.size() - 1) % 9 != 0) {    // 每个从机9字节
-            Log.e("SlaveCfgMsg: Invalid data size");
+            Log.e("SlaveCfgMsg", "Invalid data size");
             return;
         }
 
@@ -964,10 +964,11 @@ class SlaveCfgMsg : public Message {
         }
 
         // 日志输出
-        Log.d("SlaveCfgMsg: slaveNum = %d", slaveNum);
+        Log.d("SlaveCfgMsg", "slaveNum = %d", slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
+            Log.d("SlaveCfgMsg",
+                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }
@@ -991,11 +992,11 @@ class ModeCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("ModeCfgMsg: Invalid data size");
+            Log.e("ModeCfgMsg", "Invalid data size");
             return;
         }
         mode = data[0];
-        Log.d("ModeCfgMsg: mode = 0x%02X", mode);
+        Log.d("ModeCfgMsg", "mode = 0x%02X", mode);
     }
 
     void process() override;
@@ -1032,7 +1033,7 @@ class RstMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 || (data.size() - 1) % 7 != 0) {    // 每个从机7字节
-            Log.e("RstMsg: Invalid data size");
+            Log.e("RstMsg", "Invalid data size");
             return;
         }
 
@@ -1060,11 +1061,11 @@ class RstMsg : public Message {
         }
 
         // 日志输出
-        Log.d("RstMsg: slaveNum = %d", slaveNum);
+        Log.d("RstMsg", "slaveNum = %d", slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("Slave %d: id=0x%08X, lock=%d, clipStatus=0x%04X", i, s.id,
-                  s.lock, s.clipStatus);
+            Log.d("RstMsg", "Slave %d: id=0x%08X, lock=%d, clipStatus=0x%04X",
+                  i, s.id, s.lock, s.clipStatus);
         }
     }
 
@@ -1085,11 +1086,11 @@ class CtrlMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
-            Log.e("CtrlMsg: Invalid data size");
+            Log.e("CtrlMsg", "Invalid data size");
             return;
         }
         runningStatus = data[0];
-        Log.d("CtrlMsg: runningStatus = 0x%02X", runningStatus);
+        Log.d("CtrlMsg", "runningStatus = 0x%02X", runningStatus);
     }
 
     void process() override;
@@ -1136,7 +1137,7 @@ class SlaveCfgMsg : public Message {
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2 ||
             (data.size() - 2) % 9 != 0) {    // 2字节头部 + 每个从机9字节
-            Log.e("SlaveCfgMsg: Invalid data size");
+            Log.e("SlaveCfgMsg", "Invalid data size");
             return;
         }
 
@@ -1167,10 +1168,11 @@ class SlaveCfgMsg : public Message {
         }
 
         // 日志输出
-        Log.d("SlaveCfgMsg: status=0x%02X, slaveNum=%d", status, slaveNum);
+        Log.d("SlaveCfgMsg", "status=0x%02X, slaveNum=%d", status, slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
+            Log.d("SlaveCfgMsg",
+                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }
@@ -1195,12 +1197,12 @@ class ModeCfgMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
-            Log.e("ModeCfgMsg: Invalid data size");
+            Log.e("ModeCfgMsg", "Invalid data size");
             return;
         }
         status = data[0];    // 反序列化响应状态
         mode = data[1];      // 反序列化模式
-        Log.d("ModeCfgMsg: status=0x%02X, mode=0x%02X", status, mode);
+        Log.d("ModeCfgMsg", "status=0x%02X, mode=0x%02X", status, mode);
     }
 
     void process() override;
@@ -1239,7 +1241,7 @@ class RstMsg : public Message {
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2 ||
             (data.size() - 2) % 7 != 0) {    // 2字节头部 + 每个从机7字节
-            Log.e("RstMsg: Invalid data size");
+            Log.e("RstMsg", "Invalid data size");
             return;
         }
 
@@ -1268,11 +1270,11 @@ class RstMsg : public Message {
         }
 
         // 日志输出
-        Log.d("RstMsg: status=0x%02X, slaveNum=%d", status, slaveNum);
+        Log.d("RstMsg", "status=0x%02X, slaveNum=%d", status, slaveNum);
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
-            Log.d("Slave %d: id=0x%08X, clipStatus=0x%04X, lock=%d", i, s.id,
-                  s.clipStatus, s.lock);
+            Log.d("RstMsg", "Slave %d: id=0x%08X, clipStatus=0x%04X, lock=%d",
+                  i, s.id, s.clipStatus, s.lock);
         }
     }
 
@@ -1295,12 +1297,12 @@ class CtrlMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
-            Log.e("CtrlMsg: Invalid data size");
+            Log.e("CtrlMsg", "Invalid data size");
             return;
         }
         status = data[0];           // 反序列化响应状态
         runningStatus = data[1];    // 反序列化运行状态
-        Log.d("CtrlMsg: status=0x%02X, runningStatus=0x%02X", status,
+        Log.d("CtrlMsg", "status=0x%02X, runningStatus=0x%02X", status,
               runningStatus);
     }
 
@@ -1331,7 +1333,7 @@ class CondDataMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2) {
-            Log.e("CondDataMsg: Invalid data size");
+            Log.e("CondDataMsg", "Invalid data size");
             return;
         }
 
@@ -1340,12 +1342,12 @@ class CondDataMsg : public Message {
 
         // 反序列化导通数据
         if (data.size() != 2 + conductionLength) {
-            Log.e("CondDataMsg: Invalid conduction data size");
+            Log.e("CondDataMsg", "Invalid conduction data size");
             return;
         }
         conductionData.assign(data.begin() + 2, data.end());
 
-        Log.d("CondDataMsg: length=%d, dataSize=%d", conductionLength,
+        Log.d("CondDataMsg", "length=%d, dataSize=%d", conductionLength,
               conductionData.size());
     }
 
@@ -1373,7 +1375,7 @@ class ResDataMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2) {
-            Log.e("ResDataMsg: Invalid data size");
+            Log.e("ResDataMsg", "Invalid data size");
             return;
         }
 
@@ -1382,12 +1384,12 @@ class ResDataMsg : public Message {
 
         // 反序列化阻值数据
         if (data.size() != 2 + resistanceLength) {
-            Log.e("ResDataMsg: Invalid resistance data size");
+            Log.e("ResDataMsg", "Invalid resistance data size");
             return;
         }
         resistanceData.assign(data.begin() + 2, data.end());
 
-        Log.d("ResDataMsg: length=%d, dataSize=%d", resistanceLength,
+        Log.d("ResDataMsg", "length=%d, dataSize=%d", resistanceLength,
               resistanceData.size());
     }
 
@@ -1410,14 +1412,14 @@ class ClipDataMsg : public Message {
 
     void deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
-            Log.e("ClipDataMsg: Invalid data size");
+            Log.e("ClipDataMsg", "Invalid data size");
             return;
         }
 
         // 反序列化卡钉板数据
         clipData = data[0] | (data[1] << 8);
 
-        Log.d("ClipDataMsg: clipData=0x%04X", clipData);
+        Log.d("ClipDataMsg", "clipData=0x%04X", clipData);
     }
 
     void process() override;
@@ -1434,18 +1436,18 @@ class FrameParser {
     std::unique_ptr<Message> parse(const std::vector<uint8_t>& raw_data) {
         // 1. 解析帧头
         FrameHeader header;
-        Log.d("FrameParser: raw_data size=%d", raw_data.size());
+        Log.d("FrameParser", "raw_data size=%d", raw_data.size());
         if (!header.deserialize(raw_data)) {
-            Log.e("FrameParser: Frame header parse failed");
+            Log.e("FrameParser", "Frame header parse failed");
             return nullptr;
         }
 
-        Log.d("FrameParser: header parsed, packet type=0x%02X, len=%d",
+        Log.d("FrameParser", "header parsed, packet type=0x%02X, len=%d",
               header.packet_id, header.data_length);
 
         // 数据完整性验证
         if (raw_data.size() != FrameHeader::HEADER_SIZE + header.data_length) {
-            Log.e("FrameParser: invalid frame, expected=%d, actual=%d",
+            Log.e("FrameParser", "invalid frame, expected=%d, actual=%d",
                   8 + header.data_length, raw_data.size());
             return nullptr;
         }
@@ -1454,14 +1456,14 @@ class FrameParser {
         auto packet_start = raw_data.begin() + FrameHeader::HEADER_SIZE;
         auto packet_end = packet_start + header.data_length;
         std::vector<uint8_t> packet_data(packet_start, packet_end);
-        Log.d("FrameParser: payload extracted, len=%d", packet_data.size());
+        Log.d("FrameParser", "payload extracted, len=%d", packet_data.size());
 
         if (header.packet_id ==
             static_cast<uint8_t>(PacketType::Master2Slave)) {
             // 3. 反序列化 Master2SlavePacket
             Master2SlavePacket packet;
             if (!packet.deserialize(packet_data)) {
-                Log.e("Failed to deserialize packet");
+                Log.e("M2S", "Failed to deserialize packet");
                 return nullptr;
             }
 
@@ -1489,97 +1491,100 @@ class FrameParser {
                     break;
             }
 
-            Log.d(
-                "FrameParser: packet parsed, type=%s (0x%02X), "
-                "destination_id=0x%08X",
-                msgTypeStr, packet.message_id, packet.destination_id);
+            Log.d("FrameParser",
+                  "packet parsed, type=%s (0x%02X), "
+                  "destination_id=0x%08X",
+                  msgTypeStr, packet.message_id, packet.destination_id);
 
             if (packet.destination_id != 0xFFFFFFFF &&
                 packet.destination_id != UIDReader::get()) {
-                Log.e("FrameParser: id compare fail");
+                Log.e("FrameParser", "id compare fail");
                 return nullptr;
             }
-            Log.d("FrameParser: id compare success");
+            Log.d("FrameParser", "id compare success");
 
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG: {
-                    Log.d("FrameParser: processing SYNC_MSG message");
+                    Log.d("FrameParser", "processing SYNC_MSG message");
                     auto msg = std::make_unique<Master2Slave::SyncMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d("FrameParser: SYNC_MSG message deserialized");
+                    Log.d("FrameParser", "SYNC_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::COND_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing COND_CFG_MSG "
-                        "message");
+                    Log.d("FrameParser",
+                          "processing COND_CFG_MSG "
+                          "message");
                     auto msg = std::make_unique<Master2Slave::CondCfgMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: COND_CFG_MSG message "
-                        "deserialized");
+                    Log.d("FrameParser",
+                          "COND_CFG_MSG message "
+                          "deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::RES_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing RES_CFG_MSG "
-                        "message");
+                    Log.d("FrameParser",
+                          "processing RES_CFG_MSG "
+                          "message");
                     auto msg = std::make_unique<Master2Slave::ResCfgMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: RES_CFG_MSG message "
-                        "deserialized");
+                    Log.d("FrameParser",
+                          "RES_CFG_MSG message "
+                          "deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::CLIP_CFG_MSG: {
-                    Log.d(
-                        "FrameParser: processing CLIP_CFG_MSG "
-                        "message");
+                    Log.d("FrameParser",
+                          "processing CLIP_CFG_MSG "
+                          "message");
                     auto msg = std::make_unique<Master2Slave::ClipCfgMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: CLIP_CFG_MSG message "
-                        "deserialized");
+                    Log.d("FrameParser",
+                          "CLIP_CFG_MSG message "
+                          "deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::READ_COND_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_COND_DATA_MSG message");
+                    Log.d("FrameParser",
+                          "processing READ_COND_DATA_MSG message");
                     auto msg =
                         std::make_unique<Master2Slave::ReadCondDataMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_COND_DATA_MSG message deserialized");
+                    Log.d("FrameParser",
+                          "READ_COND_DATA_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::READ_RES_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_RES_DATA_MSG message");
+                    Log.d("FrameParser",
+                          "processing READ_RES_DATA_MSG message");
                     auto msg = std::make_unique<Master2Slave::ReadResDataMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_RES_DATA_MSG message deserialized");
+                    Log.d("FrameParser",
+                          "READ_RES_DATA_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::READ_CLIP_DATA_MSG: {
-                    Log.d("FrameParser: processing READ_CLIP_DATA_MSG message");
+                    Log.d("FrameParser",
+                          "processing READ_CLIP_DATA_MSG message");
                     auto msg =
                         std::make_unique<Master2Slave::ReadClipDataMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d(
-                        "FrameParser: READ_CLIP_DATA_MSG message deserialized");
+                    Log.d("FrameParser",
+                          "READ_CLIP_DATA_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::RST_MSG: {
-                    Log.d("FrameParser: processing RST_MSG message");
+                    Log.d("FrameParser", "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Slave::RstMsg>();
                     msg->deserialize(packet.payload);
-                    Log.d("FrameParser: RST_MSG message deserialized");
+                    Log.d("FrameParser", "RST_MSG message deserialized");
                     return msg;
                 }
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Master message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser",
+                          "unsupported Master message "
+                          "type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
         } else if (header.packet_id ==
@@ -1588,7 +1593,7 @@ class FrameParser {
 
             // 3. 反序列化 Slave2MasterPacket
             if (!packet.deserialize(packet_data)) {
-                Log.e("Failed to deserialize packet");
+                Log.e("S2M", "Failed to deserialize packet");
                 return nullptr;
             }
 
@@ -1610,41 +1615,41 @@ class FrameParser {
                     break;
             }
 
-            Log.d(
-                "FrameParser: packet parsed, type=%s (0x%02X), "
-                "source_id=0x%08X",
-                msgTypeStr, packet.message_id, packet.source_id);
+            Log.d("FrameParser",
+                  "packet parsed, type=%s (0x%02X), "
+                  "source_id=0x%08X",
+                  msgTypeStr, packet.message_id, packet.source_id);
 
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
                 case Slave2MasterMessageID::COND_CFG_MSG: {
-                    Log.d("FrameParser: processing COND_CFG_MSG message");
+                    Log.d("FrameParser", "processing COND_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::CondCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::RES_CFG_MSG: {
-                    Log.d("FrameParser: processing RES_CFG_MSG message");
+                    Log.d("FrameParser", "processing RES_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ResCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::CLIP_CFG_MSG: {
-                    Log.d("FrameParser: processing CLIP_CFG_MSG message");
+                    Log.d("FrameParser", "processing CLIP_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ClipCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2MasterMessageID::RST_MSG: {
-                    Log.d("FrameParser: processing RST_MSG message");
+                    Log.d("FrameParser", "processing RST_MSG message");
                     auto msg = std::make_unique<Slave2Master::RstMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Slave message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser",
+                          "unsupported Slave message "
+                          "type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
 
@@ -1653,7 +1658,7 @@ class FrameParser {
             Backend2MasterPacket packet;
             // 3. 反序列化 Slave2MasterPacket
             if (!packet.deserialize(packet_data)) {
-                Log.e("Failed to deserialize packet");
+                Log.e("B2M", "Failed to deserialize packet");
                 return nullptr;
             }
 
@@ -1675,46 +1680,46 @@ class FrameParser {
                     break;
             }
 
-            Log.d("FrameParser: packet parsed, msg type=%s (0x%02X) ",
+            Log.d("FrameParser", "packet parsed, msg type=%s (0x%02X) ",
                   msgTypeStr, packet.message_id);
 
             switch (static_cast<Backend2MasterMessageID>(packet.message_id)) {
                 case Backend2MasterMessageID::SLAVE_CFG_MSG: {
-                    Log.d("FrameParser: processing SLAVE_CFG_MSG message");
+                    Log.d("FrameParser", "processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::SlaveCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Backend2MasterMessageID::MODE_CFG_MSG: {
-                    Log.d("FrameParser: processing MODE_CFG_MSG message");
+                    Log.d("FrameParser", "processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::ModeCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Backend2MasterMessageID::RST_MSG: {
-                    Log.d("FrameParser: processing RST_MSG message");
+                    Log.d("FrameParser", "processing RST_MSG message");
                     auto msg = std::make_unique<Backend2Master::RstMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Backend2MasterMessageID::CTRL_MSG: {
-                    Log.d("FrameParser: processing CTRL_MSG message");
+                    Log.d("FrameParser", "processing CTRL_MSG message");
                     auto msg = std::make_unique<Backend2Master::CtrlMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Slave message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser",
+                          "unsupported Slave message "
+                          "type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
         } else if (header.packet_id ==
                    static_cast<uint8_t>(PacketType::Master2Backend)) {
             Master2BackendPacket packet;
             if (!packet.deserialize(packet_data)) {
-                Log.e("Failed to deserialize packet");
+                Log.e("M2BP", "Failed to deserialize packet");
                 return nullptr;
             }
 
@@ -1736,45 +1741,45 @@ class FrameParser {
                     break;
             }
 
-            Log.d("FrameParser: packet parsed, msg type=%s (0x%02X) ",
+            Log.d("FrameParser", "packet parsed, msg type=%s (0x%02X) ",
                   msgTypeStr, packet.message_id);
             switch (static_cast<Master2BackendMessageID>(packet.message_id)) {
                 case Master2BackendMessageID::SLAVE_CFG_MSG: {
-                    Log.d("FrameParser: processing SLAVE_CFG_MSG message");
+                    Log.d("FrameParser", "processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::SlaveCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Master2BackendMessageID::MODE_CFG_MSG: {
-                    Log.d("FrameParser: processing MODE_CFG_MSG message");
+                    Log.d("FrameParser", "processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::ModeCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Master2BackendMessageID::RST_MSG: {
-                    Log.d("FrameParser: processing RST_MSG message");
+                    Log.d("FrameParser", "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Backend::RstMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Master2BackendMessageID::CTRL_MSG: {
-                    Log.d("FrameParser: processing CTRL_MSG message");
+                    Log.d("FrameParser", "processing CTRL_MSG message");
                     auto msg = std::make_unique<Master2Backend::CtrlMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Master2Backend message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser",
+                          "unsupported Master2Backend message "
+                          "type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
         } else if (header.packet_id ==
                    static_cast<uint8_t>(PacketType::Slave2Backend)) {
             Slave2BackendPacket packet;
             if (!packet.deserialize(packet_data)) {
-                Log.e("Failed to deserialize packet");
+                Log.e("S2BP", "Failed to deserialize packet");
                 return nullptr;
             }
 
@@ -1793,36 +1798,36 @@ class FrameParser {
                     break;
             }
 
-            Log.d("FrameParser: packet parsed, msg type=%s (0x%02X) ",
+            Log.d("FrameParser", "packet parsed, msg type=%s (0x%02X) ",
                   msgTypeStr, packet.message_id);
             switch (static_cast<Slave2BackendMessageID>(packet.message_id)) {
                 case Slave2BackendMessageID::COND_DATA_MSG: {
-                    Log.d("FrameParser: processing COND_DATA_MSG message");
+                    Log.d("FrameParser", "processing COND_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::CondDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2BackendMessageID::RES_DATA_MSG: {
-                    Log.d("FrameParser: processing RES_DATA_MSG message");
+                    Log.d("FrameParser", "processing RES_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ResDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Slave2BackendMessageID::CLIP_DATA_MSG: {
-                    Log.d("FrameParser: processing CLIP_DATA_MSG message");
+                    Log.d("FrameParser", "processing CLIP_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ClipDataMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 default:
-                    Log.e(
-                        "FrameParser: unsupported Slave2Backend message "
-                        "type=0x%02X",
-                        static_cast<uint8_t>(packet.message_id));
+                    Log.e("FrameParser",
+                          "unsupported Slave2Backend message "
+                          "type=0x%02X",
+                          static_cast<uint8_t>(packet.message_id));
                     return nullptr;
             }
         } else {
-            Log.e("FrameParser: unsupported Packet type=0x%02X",
+            Log.e("FrameParser", "unsupported Packet type=0x%02X",
                   header.packet_id);
             return nullptr;
         }

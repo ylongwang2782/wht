@@ -22,14 +22,14 @@ class DataForwardBase {
         if (pc_manager_msg.data_forward_queue.add(
                 data_forward, PCinterface_FORWARD_QUEUE_TIMEOUT)) {
         } else {
-            Log.e("[Forward]: pc_manager_msg.data_forward_queue.add failed");
+            Log.e("Forward","pc_manager_msg.data_forward_queue.add failed");
             return false;
         }
 
         if (pc_manager_msg.event.wait(FORWARD_SUCCESS_EVENT, true, true,
                                       PCinterface_FORWARD_TIMEOUT)) {
         } else {
-            Log.e("[Forward]: pc_manager_msg.event.take failed");
+            Log.e("Forward","pc_manager_msg.event.take failed");
             return false;
         }
         return true;
