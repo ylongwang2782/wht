@@ -2,6 +2,9 @@
 #include "slave_mode.hpp"
 #ifdef SLAVE
 
+#define SYS_LED_PORT GPIO::Port::C
+#define SYS_LED_PIN  GPIO::Pin::PIN_13
+
 class UsartDMATask : public TaskClassS<1024> {
    public:
     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
@@ -21,26 +24,9 @@ class UsartDMATask : public TaskClassS<1024> {
                 if (msg != nullptr) {
                     msg->process();
                 } else {
-                    Log.d("UART","parse fail.");
+                    Log.d("UART", "parse fail.");
                 }
             }
-        }
-    }
-};
-
-class LedBlinkTask : public TaskClassS<256> {
-   public:
-    LedBlinkTask() : TaskClassS<256>("LedBlinkTask", TaskPrio_Low) {}
-
-    void task() override {
-        // battery test
-        Battery battery;
-        battery.init();
-
-        for (;;) {
-            // battery.read();
-            // Log.d("Battery: %d", battery.value);
-            TaskBase::delay(500);
         }
     }
 };
@@ -50,7 +36,8 @@ MsgProc msgProc(manager_transfer_msg);
 
 class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
    public:
-    MsgProcTask() : TaskClassS<MsgProcTask_SIZE>("MsgProcTask", MsgProcTask_PRIORITY) {}
+    MsgProcTask()
+        : TaskClassS<MsgProcTask_SIZE>("MsgProcTask", MsgProcTask_PRIORITY) {}
 
     void task() override {
         for (;;) {
@@ -61,11 +48,18 @@ class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
 };
 
 static void Slave_Task(void* pvParameters) {
+    Log.v("BOOT", "Slave_Task start");
     uint32_t myUid = UIDReader::get();
-    Log.d("BOOT","Slave: %02X", myUid);
+    Log.v("BOOT", "UID: %08X", myUid);
 
     LogTask logTask(Log);
     logTask.give();
+    Log.v("BOOT", "LogTask initialized");
+
+    LED led0(SYS_LED_PORT, SYS_LED_PIN);
+    LedBlinkTask ledBlinkTask(led0, 500);
+    ledBlinkTask.give();
+    Log.v("BOOT", "LedBlinkTask initialized");
 
     ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
     MsgProcTask msgProcTask;

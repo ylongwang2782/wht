@@ -33,7 +33,7 @@ class UwbUartInterface : public CxUwbInterface {
 
    public:
     void reset_pin_init() override {
-        rst_pin = new GPIO(GPIO::Port::B, GPIO::Pin::PIN_4, GPIO::Mode::OUTPUT);
+        rst_pin = new GPIO(GPIO::Port::E, GPIO::Pin::PIN_3, GPIO::Mode::OUTPUT);
     }
     void generate_reset_signal() override { rst_pin->bit_reset(); }
     void turn_of_reset_signal() override { rst_pin->bit_set(); }
