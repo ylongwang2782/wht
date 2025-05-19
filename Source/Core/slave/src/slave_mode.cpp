@@ -45,31 +45,35 @@ class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
 };
 
 static void Slave_Task(void* pvParameters) {
-    Log.v("BOOT", "Slave_Task start");
+    static constexpr const char TAG[] = "BOOT";
+    Log.d(TAG, "Slave Device start");
     uint32_t myUid = UIDReader::get();
-    Log.v("BOOT", "UID: %08X", myUid);
+    Log.d(TAG, "UID: %08X", myUid);
 
     LogTask logTask(Log);
     logTask.give();
-    Log.v("BOOT", "LogTask initialized");
+    Log.d(TAG, "LogTask initialized");
 
     // LED led0(SYS_LED_PORT, SYS_LED_PIN);
     // LedBlinkTask ledBlinkTask(led0, 500);
     // ledBlinkTask.give();
-    // Log.v("BOOT", "LedBlinkTask initialized");
+    // Log.v(TAG, "LedBlinkTask initialized");
 
     ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
     MsgProcTask msgProcTask;
 
     manageDataTransferTask.give();
+    Log.d(TAG, "ManagerDataTransferTask initialized");
     msgProcTask.give();
+    Log.d(TAG, "MsgProcTask initialized");
 
     // 系统初始化完成，打开电源指示灯
     pwrLed.on();
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
-        vTaskDelay(pdMS_TO_TICKS(500));
+        sysLed.toggle();
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
