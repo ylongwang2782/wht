@@ -32,15 +32,18 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "gd32f4xx.h"
 #include "gd32f4xx_it.h"
-#include "main.h"
-#include "semphr.h"
-#include "queue.h"
+
+#include "gd32f4xx.h"
+
+#ifdef MASTER
 #include "lwip/sys.h"
+#include "main.h"
+#include "queue.h"
+#include "semphr.h"
 
 extern xSemaphoreHandle g_rx_semaphore;
-
+#endif
 /*!
     \brief      this function handles NMI exception
     \param[in]  none
@@ -59,7 +62,7 @@ void NMI_Handler(void) {
     \param[out] none
     \retval     none
 */
-extern uint32_t __StackTop;     // 栈顶地址（链接脚本定义）
+extern uint32_t __StackTop;      // 栈顶地址（链接脚本定义）
 extern uint32_t __StackLimit;    // 栈底地址
 void HardFault_Handler(void) {
     /* if Hard Fault exception occurs, go to infinite loop */
@@ -68,16 +71,14 @@ void HardFault_Handler(void) {
 
     printf(" HardFault_Handler\n");
 
-    printf("MSP=0x%08X(limit:0x%08X), PSP=0x%08X\r\n", 
-           msp, __StackLimit, psp);
-    
+    printf("MSP=0x%08X(limit:0x%08X), PSP=0x%08X\r\n", msp, __StackLimit, psp);
+
     // 检查主栈是否溢出
-    if(msp < __StackLimit) {
-        printf("MSP Stack Overflow! Used: %u bytes over limit\r\n", 
+    if (msp < __StackLimit) {
+        printf("MSP Stack Overflow! Used: %u bytes over limit\r\n",
                __StackLimit - msp);
     }
 
-    
     // printf("HardFault! MSP=0x%08X, PSP=0x%08X", msp, psp);
     while (1) {
     }
@@ -131,19 +132,18 @@ void DebugMon_Handler(void) {
     }
 }
 
-
+#ifdef MASTER
 /*!
     \brief      this function handles ethernet interrupt request
     \param[in]  none
     \param[out] none
     \retval     none
 */
-void ENET_IRQHandler(void)
-{
+void ENET_IRQHandler(void) {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
     /* frame received */
-    if(SET == enet_interrupt_flag_get(ENET_DMA_INT_FLAG_RS)){ 
+    if (SET == enet_interrupt_flag_get(ENET_DMA_INT_FLAG_RS)) {
         /* give the semaphore to wakeup LwIP task */
         xSemaphoreGiveFromISR(g_rx_semaphore, &xHigherPriorityTaskWoken);
     }
@@ -153,7 +153,8 @@ void ENET_IRQHandler(void)
     enet_interrupt_flag_clear(ENET_DMA_INT_FLAG_NI_CLR);
 
     /* switch tasks if necessary */
-    if(pdFALSE != xHigherPriorityTaskWoken){
+    if (pdFALSE != xHigherPriorityTaskWoken) {
         portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
     }
 }
+#endif

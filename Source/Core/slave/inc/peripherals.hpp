@@ -4,22 +4,20 @@
 
 #define USART_LOG      USART1
 
-extern LED sysLed;
-extern Logger Log;
-class LogTask : public TaskClassS<LogTask_SIZE> {
-   public:
-    LogTask() : TaskClassS<LogTask_SIZE>("LogTask", LogTask_PRIORITY) {}
+#define SYS_LED_PORT GPIO::Port::C
+#define SYS_LED_PIN  GPIO::Pin::PIN_13
 
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        for (;;) {
-            LogMessage logMsg;
-            // 从队列中获取日志消息
-            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.send(
-                    reinterpret_cast<const uint8_t *>(logMsg.message.data()),
-                    strlen(logMsg.message.data()));
-            }
-        }
-    }
-};
+#define PWR_LED_PORT GPIO::Port::G
+#define PWR_LED_PIN  GPIO::Pin::PIN_9
+
+#define RUN_LED_PORT GPIO::Port::G
+#define RUN_LED_PIN  GPIO::Pin::PIN_12
+
+#define ERR_LED_PORT GPIO::Port::G
+#define ERR_LED_PIN  GPIO::Pin::PIN_15
+
+extern LED sysLed;
+extern LED pwrLed;
+extern LED runLed;
+extern LED errLed;
+extern Logger Log;

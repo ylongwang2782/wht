@@ -40,8 +40,7 @@ class Logger {
 
     void setLogLevel(Level level) { currentLevel = level; }
 
-    void log(Level level, const char* module, const char* format,
-             va_list args) {
+    void log(Level level, const char* TAG, const char* format, va_list args) {
         // if (level < currentLevel) return;
         // 定义日志级别的字符串表示
         static const char* levelStr[] = {"V", "D", "I", "W", "E", "R"};
@@ -65,46 +64,46 @@ class Logger {
         char finalMessage[bufferSize + 32];
         snprintf(finalMessage, sizeof(finalMessage),
                  "[%03lu.%03lu] [%s] [%-6s] %s\n", seconds, milliseconds,
-                 levelStr[static_cast<int>(level)], module, buffer);
+                 levelStr[static_cast<int>(level)], TAG, buffer);
         // 输出日志
         output(level, finalMessage);
     }
-    void v(const char* module, const char* format, ...) {
+    void v(const char* TAG, const char* format, ...) {
         if (Level::VERBOSE < currentLevel) return;
         va_list args;
         va_start(args, format);
-        log(Level::VERBOSE, module, format, args);
+        log(Level::VERBOSE, TAG, format, args);
         va_end(args);
     }
-    void d(const char* module, const char* format, ...) {
+    void d(const char* TAG, const char* format, ...) {
         if (Level::DEBUGL < currentLevel) return;
         va_list args;
         va_start(args, format);
-        log(Level::DEBUGL, module, format, args);
+        log(Level::DEBUGL, TAG, format, args);
         va_end(args);
     }
 
-    void i(const char* module, const char* format, ...) {
+    void i(const char* TAG, const char* format, ...) {
         if (Level::INFO < currentLevel) return;
         va_list args;
         va_start(args, format);
-        log(Level::INFO, module, format, args);
+        log(Level::INFO, TAG, format, args);
         va_end(args);
     }
 
-    void w(const char* module, const char* format, ...) {
+    void w(const char* TAG, const char* format, ...) {
         if (Level::WARN < currentLevel) return;
         va_list args;
         va_start(args, format);
-        log(Level::WARN, module, format, args);
+        log(Level::WARN, TAG, format, args);
         va_end(args);
     }
 
-    void e(const char* module, const char* format, ...) {
+    void e(const char* TAG, const char* format, ...) {
         if (Level::ERROR < currentLevel) return;
         va_list args;
         va_start(args, format);
-        log(Level::ERROR, module, format, args);
+        log(Level::ERROR, TAG, format, args);
         va_end(args);
     }
 
@@ -122,8 +121,8 @@ class Logger {
         }
         buffer[size * 3 - 1] = '\0';    // 添加字符串终止符
         va_list emptyArgs;
-        const char* module = "";
-        log(Level::RAW, module, buffer, emptyArgs);
+        const char* TAG = "";
+        log(Level::RAW, TAG, buffer, emptyArgs);
     }
 
    private:

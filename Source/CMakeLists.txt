@@ -18,9 +18,11 @@ include_directories(Config # 配置文件目录
 
 # 定义可选构建变体
 set(BUILD_VARIANT
-    "MASTER_DEBUG;MASTER_RELEASE;SLAVE;BOARDTEST"
-    CACHE STRING
-          "Available build variants: MASTER_DEBUG, MASTER_RELEASE, SLAVE, BOARDTEST")
+    "MASTER_DEBUG;MASTER_RELEASE;SLAVE_DEBUG;SLAVE_RELEASE;BOARDTEST"
+    CACHE
+      STRING
+      "Available build variants: MASTER_DEBUG, MASTER_RELEASE, SLAVE, BOARDTEST"
+)
 set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER MASTER_RELEASE SLAVE
                                           BOARDTEST)
 
@@ -33,10 +35,14 @@ elseif(BUILD_VARIANT STREQUAL "MASTER_RELEASE")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER)
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Os -DNDEBUG)
 
-elseif(BUILD_VARIANT STREQUAL "SLAVE")
+elseif(BUILD_VARIANT STREQUAL "SLAVE_DEBUG")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE)
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
                                                     -funwind-tables)
+
+elseif(BUILD_VARIANT STREQUAL "SLAVE_RELEASE")
+  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE)
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Os -DNDEBUG)
 
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
   target_compile_definitions(${EXECUTABLE_NAME} PRIVATE BOARDTEST)

@@ -20,7 +20,7 @@
 //         log_com.data_send((uint8_t*)"in\r\n", 5); \
 //     }
 
-#define UWB_GENERAL_TIMEOUT_MS 5000
+#define UWB_GENERAL_TIMEOUT_MS 1000
 
 class CxUwbInterface {
    public:
@@ -375,8 +375,6 @@ class UWB {
 
             if (recv_packet.flow_parse(_data, rx_payload)) {
                 if (recv_packet.mt == MT_NTF) {
-                    // 接收到通知
-                    printf("[UWB]: receive notify");
                     __notify_process();
                 } else {
                     interface.log("[UWB]: error: unexpected rsp packet");
@@ -394,7 +392,6 @@ class UWB {
                     if (sta == DEVICE_STATE_READY) {
                         if (uwbs_sta == BOOT) {
                             uwbs_sta = READY;
-                            printf("[UWB]: ready\n");
                             interface.log("[UWB]: UWBS move to active state");
                         }
                     }

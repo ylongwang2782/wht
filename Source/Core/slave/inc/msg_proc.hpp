@@ -49,10 +49,8 @@ class ManagerDataTransferTask
    private:
     ManagerDataTransferMsg& transfer_msg;
     void task() override {
-        Log.i("ManagerDataTransferTask: Boot");
-
         UWB<UwbUartInterface> uwb;
-        Log.i("ManagerDataTransferTask: uwb.size=%d", sizeof(uwb));
+        Log.i("ManagerDataTransferTask", "uwb.size=%d", sizeof(uwb));
         std::vector<uint8_t> buffer = {1, 2, 3, 4, 5};
         uint8_t data = 0;
         std::vector<uint8_t> rx;
@@ -88,6 +86,7 @@ class MsgProc {
     MsgProc(ManagerDataTransferMsg& __transfer_msg)
         : transfer_msg(__transfer_msg) {}
 
+    static constexpr const char TAG[] = "MsgProc";
     std::vector<uint8_t> recv_data;
 
    public:
@@ -107,7 +106,7 @@ class MsgProc {
                 // 处理解析后的数据
                 msg->process();
             } else {
-                Log.e("[SlaveManager]: parse failed");
+                Log.e(TAG, "parse failed");
             }
             recv_data.clear();
         }
@@ -118,7 +117,7 @@ class MsgProc {
         for (auto it = frame.begin(); it != frame.end(); it++) {
             if (transfer_msg.tx_data_queue.add(*it, MsgProc_TX_QUEUE_TIMEOUT) ==
                 false) {
-                Log.e("[SlaveManager]: tx_data_queue.add failed");
+                Log.e(TAG, "tx_data_queue.add failed");
                 return false;
             }
         }
@@ -128,7 +127,7 @@ class MsgProc {
 
         // 等待数据发送完成
         if (transfer_msg.tx_done_sem.take(MsgProc_TX_TIMEOUT) == false) {
-            Log.e("[SlaveManager]: tx_done_sem.take failed, timeout");
+            Log.e(TAG, "tx_done_sem.take failed, timeout");
             return false;
         }
         return true;
