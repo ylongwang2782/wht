@@ -15,7 +15,7 @@ if(BUILD_VARIANT STREQUAL "MASTER_DEBUG" OR BUILD_VARIANT STREQUAL "MASTER_RELEA
   target_include_directories(${EXECUTABLE_NAME}
                              PUBLIC . ./master ./master/include ./master/Enet)
 
-elseif(BUILD_VARIANT STREQUAL "SLAVE")
+elseif(BUILD_VARIANT STREQUAL "SLAVE_DEBUG" OR BUILD_VARIANT STREQUAL "SLAVE_RELEASE")
   target_sources(
     ${EXECUTABLE_NAME}
     PRIVATE ${COMMON_SOURCES} ./slave/src/slave_mode.cpp

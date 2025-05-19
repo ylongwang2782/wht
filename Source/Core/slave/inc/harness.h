@@ -177,10 +177,9 @@ class Harness {
         if (maxTriggerCount > 0 && triggerCount++ >= maxTriggerCount) {
             harnessTimer.stop();
             reload();
-            runLed.on();
+            runLed.toggle();
             return;
         }
-        runLed.toggle();
         run();
         rowIndex++;
     }

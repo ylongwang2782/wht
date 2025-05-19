@@ -2,32 +2,6 @@
 #include "slave_mode.hpp"
 #ifdef SLAVE
 
-// class UsartDMATask : public TaskClassS<1024> {
-//    public:
-//     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
-//     FrameParser parser;
-//     void task() override {
-//         std::vector<uint8_t> rx_data;
-//         std::vector<uint8_t> uci_data;
-
-//         for (;;) {
-//             // 等待 DMA 完成信号
-//             if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
-//                 pdPASS) {
-//                 // Log.d("Uart: recv.");
-//                 sysLed.toggle();
-//                 // rx_data = uart3.getReceivedData();
-//                 auto msg = parser.parse(rx_data);
-//                 if (msg != nullptr) {
-//                     msg->process();
-//                 } else {
-//                     Log.d("UART", "parse fail.");
-//                 }
-//             }
-//         }
-//     }
-// };
-
 ManagerDataTransferMsg manager_transfer_msg;
 MsgProc msgProc(manager_transfer_msg);
 
@@ -53,11 +27,6 @@ static void Slave_Task(void* pvParameters) {
     LogTask logTask(Log);
     logTask.give();
     Log.d(TAG, "LogTask initialized");
-
-    // LED led0(SYS_LED_PORT, SYS_LED_PIN);
-    // LedBlinkTask ledBlinkTask(led0, 500);
-    // ledBlinkTask.give();
-    // Log.v(TAG, "LedBlinkTask initialized");
 
     ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
     MsgProcTask msgProcTask;

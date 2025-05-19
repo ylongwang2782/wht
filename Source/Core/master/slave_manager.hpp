@@ -281,7 +281,7 @@ class ReadCondProcessor : private __ProcessBase {
    public:
     ReadCondProcessor(ManagerDataTransferMsg& __transfer_msg)
         : __ProcessBase(__transfer_msg) {}
-
+    uint32_t deviceID;
    private:
     Master2Slave::ReadCondDataMsg read_cond_data_msg;
     Slave2Backend::CondDataMsg upload_cond_data_msg;
@@ -290,12 +290,16 @@ class ReadCondProcessor : private __ProcessBase {
    public:
     const std::vector<uint8_t>& get_upload_frame() { return upload_frame; }
     void process_rsp_data() override {
+        Log.v("ReadCondProcessor 3", "slaveID: %08X", deviceID);
         auto upload_msg =
-            PacketPacker::master2BackendPack(upload_cond_data_msg);
+            PacketPacker::slave2BackendPack(upload_cond_data_msg, deviceID);
         upload_frame = FramePacker::pack(upload_msg);
     }
     bool process(uint32_t id) {
-        Log.i("SlaveManager", "read cond data start");
+        Log.i("ReadCondProcessor", "read cond data start");
+        Log.v("ReadCondProcessor 1", "slaveID: %08X", id);
+        deviceID = id;
+        Log.v("ReadCondProcessor 2", "slaveID: %08X", deviceID);
         // 打包数据
         auto cond_packet =
             PacketPacker::master2SlavePack(read_cond_data_msg, id);
