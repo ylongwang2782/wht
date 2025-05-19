@@ -2,34 +2,31 @@
 #include "slave_mode.hpp"
 #ifdef SLAVE
 
-#define SYS_LED_PORT GPIO::Port::C
-#define SYS_LED_PIN  GPIO::Pin::PIN_13
+// class UsartDMATask : public TaskClassS<1024> {
+//    public:
+//     UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
+//     FrameParser parser;
+//     void task() override {
+//         std::vector<uint8_t> rx_data;
+//         std::vector<uint8_t> uci_data;
 
-class UsartDMATask : public TaskClassS<1024> {
-   public:
-    UsartDMATask() : TaskClassS<1024>("UsartDMATask", TaskPrio_High) {}
-    FrameParser parser;
-    void task() override {
-        std::vector<uint8_t> rx_data;
-        std::vector<uint8_t> uci_data;
-
-        for (;;) {
-            // 等待 DMA 完成信号
-            if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
-                pdPASS) {
-                // Log.d("Uart: recv.");
-                sysLed.toggle();
-                // rx_data = uart3.getReceivedData();
-                auto msg = parser.parse(rx_data);
-                if (msg != nullptr) {
-                    msg->process();
-                } else {
-                    Log.d("UART", "parse fail.");
-                }
-            }
-        }
-    }
-};
+//         for (;;) {
+//             // 等待 DMA 完成信号
+//             if (xSemaphoreTake(uart3_info.dmaRxDoneSema, portMAX_DELAY) ==
+//                 pdPASS) {
+//                 // Log.d("Uart: recv.");
+//                 sysLed.toggle();
+//                 // rx_data = uart3.getReceivedData();
+//                 auto msg = parser.parse(rx_data);
+//                 if (msg != nullptr) {
+//                     msg->process();
+//                 } else {
+//                     Log.d("UART", "parse fail.");
+//                 }
+//             }
+//         }
+//     }
+// };
 
 ManagerDataTransferMsg manager_transfer_msg;
 MsgProc msgProc(manager_transfer_msg);
@@ -56,16 +53,19 @@ static void Slave_Task(void* pvParameters) {
     logTask.give();
     Log.v("BOOT", "LogTask initialized");
 
-    LED led0(SYS_LED_PORT, SYS_LED_PIN);
-    LedBlinkTask ledBlinkTask(led0, 500);
-    ledBlinkTask.give();
-    Log.v("BOOT", "LedBlinkTask initialized");
+    // LED led0(SYS_LED_PORT, SYS_LED_PIN);
+    // LedBlinkTask ledBlinkTask(led0, 500);
+    // ledBlinkTask.give();
+    // Log.v("BOOT", "LedBlinkTask initialized");
 
     ManagerDataTransferTask manageDataTransferTask(manager_transfer_msg);
     MsgProcTask msgProcTask;
 
     manageDataTransferTask.give();
     msgProcTask.give();
+
+    // 系统初始化完成，打开电源指示灯
+    pwrLed.on();
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());

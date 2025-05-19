@@ -12,7 +12,7 @@ Harness harness;
 namespace Master2Slave {
 void SyncMsg::process() {
     Log.d("SyncMsg","process");
-    sysLed.off();
+    runLed.off();
     harness.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
