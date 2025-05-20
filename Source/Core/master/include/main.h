@@ -25,13 +25,13 @@ extern "C" {
 #define IP_ADDR0 192
 #define IP_ADDR1 168
 #define IP_ADDR2 0
-#define IP_ADDR3 3
+#define IP_ADDR3 2
 
 /* remote IP address: IP_S_ADDR0.IP_S_ADDR1.IP_S_ADDR2.IP_S_ADDR3 */
 #define IP_S_ADDR0 192
 #define IP_S_ADDR1 168
 #define IP_S_ADDR2 0
-#define IP_S_ADDR3 2
+#define IP_S_ADDR3 3
 
 /* net mask */
 #define NETMASK_ADDR0 255
