@@ -20,9 +20,9 @@ class MsgProcTask : public TaskClassS<MsgProcTask_SIZE> {
 
 static void Slave_Task(void* pvParameters) {
     static constexpr const char TAG[] = "BOOT";
-    Log.d(TAG, "Slave Device start");
+    Log.d(TAG,"Slave Firmware %s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
     uint32_t myUid = UIDReader::get();
-    Log.d(TAG, "UID: %08X", myUid);
+    Log.d(TAG, "Slave UID: %08X", myUid);
 
     LogTask logTask(Log);
     logTask.give();

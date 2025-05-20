@@ -81,7 +81,7 @@ UasrtInfo usart2_info = {.baudrate = 115200,
                          .rx_count = 0,
                          .dmaRxDoneSema = xSemaphoreCreateBinary()};
 
-UasrtInfo uart3_info = {.baudrate = 921600,
+UasrtInfo uart3_info = {.baudrate = 115200,
                         .gpio_port = GPIOA,
                         .tx_pin = GPIO_PIN_0,
                         .rx_pin = GPIO_PIN_1,

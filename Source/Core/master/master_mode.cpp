@@ -25,9 +25,11 @@ bool __ProcessBase::rsp_parsed = false;    // 从机回复正确标志位
 uint8_t __ProcessBase::expected_rsp_msg_id;    // 期望从机回复的消息ID
 
 static void Master_Task(void* pvParameters) {
+    static constexpr const char TAG[] = "BOOT";
     LED led(GPIO::Port::A, GPIO::Pin::PIN_0);
     LogTask logTask(Log);
     logTask.give();
+    Log.d(TAG, "LogTask initialized");
 
     // Backend2Master::SlaveCfgMsg slave_cfg_msg;
     // Backend2Master::SlaveCfgMsg::SlaveConfig cfg;
@@ -68,6 +70,8 @@ static void Master_Task(void* pvParameters) {
     // msg = PacketPacker::backend2MasterPack(ctrl_msg);
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
+
+    Log.d(TAG,"Slave Firmware %s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
 
     EthDevice ethDevice;
     ethDevice.init();
