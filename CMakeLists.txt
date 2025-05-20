@@ -12,18 +12,38 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 enable_language(ASM C CXX)
 
-# 设置项目名称和版本号
+# 获取 Git 标签作为版本号
+execute_process(
+  COMMAND git describe --tags --abbrev=0
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_TAG
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
+# 提取 MAJOR, MINOR, PATCH
+string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" VERSION_MATCH ${GIT_TAG})
+if(VERSION_MATCH)
+  string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\1" PROJECT_VERSION_MAJOR ${VERSION_MATCH})
+  string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\2" PROJECT_VERSION_MINOR ${VERSION_MATCH})
+  string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+)" "\\3" PROJECT_VERSION_PATCH ${VERSION_MATCH})
+else()
+  message(WARNING "Invalid git tag: ${GIT_TAG}, using default version 0.0.0")
+  set(PROJECT_VERSION_MAJOR 0)
+  set(PROJECT_VERSION_MINOR 0)
+  set(PROJECT_VERSION_PATCH 0)
+endif()
+
+# 设置项目名称和版本号（保留你的 BUILD_VARIANT 结构）
 if(BUILD_VARIANT STREQUAL "MASTER_DEBUG")
-  project(MasterFirmware VERSION 3.0.0)
+  project(MasterFirmware VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 elseif(BUILD_VARIANT STREQUAL "MASTER_RELEASE")
-  project(MasterFirmwareRelease VERSION 3.0.1)
+  project(MasterFirmwareRelease VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 elseif(BUILD_VARIANT STREQUAL "SLAVE_DEBUG")
-  project(SlaveFirmware VERSION 3.0.0)
+  project(SlaveFirmware VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 elseif(BUILD_VARIANT STREQUAL "SLAVE_RELEASE")
-  project(SlaveFirmwareRelease VERSION 3.0.0)
+  project(SlaveFirmwareRelease VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-  project(BoardTestFirmware VERSION 3.1)
+  project(BoardTestFirmware VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 else()
   message(FATAL_ERROR "Unknown BUILD_VARIANT value: ${BUILD_VARIANT}")
 endif()
