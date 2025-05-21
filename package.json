@@ -1,0 +1,12 @@
+{
+  "name": "wht",
+  "version": "1.0.0",
+  "description": "这是一个完全脱离`keil`使用`vscode`作为IDE进行GD32嵌入式开发的模板，适合更喜欢使用vscode的开发者。\r - `Cmake:build`：构建固件\r - `Cmake:install`：烧录固件到设备\r - `Cortex-Debug`：对设备进行调试",
+  "main": "release.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
