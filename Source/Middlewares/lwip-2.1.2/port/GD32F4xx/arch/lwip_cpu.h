@@ -32,6 +32,10 @@
 #ifndef __LWIP_CPU_H__
 #define __LWIP_CPU_H__
 
+// if undefine BYTE_ORDER, then define
+
+#ifndef BYTE_ORDER
 #define BYTE_ORDER LITTLE_ENDIAN
+#endif
 
 #endif /* __LWIP_CPU_H__ */
