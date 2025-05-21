@@ -30,9 +30,9 @@ int main(void) {
 #elif defined(SLAVE)
     // 从节点模式入口
     Slave_Init();
-#elif defined(BOARDTEST)
+#elif defined(SLAVE_BOARDTEST)
     // 从节点模式入口
-    Slave_Init();
+    slave_boardtest_init();
 #else
 #error "Please define either MASTER or SLAVE mode"
 #endif

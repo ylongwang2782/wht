@@ -23,9 +23,9 @@ elseif(BUILD_VARIANT STREQUAL "SLAVE_DEBUG" OR BUILD_VARIANT STREQUAL "SLAVE_REL
             ./slave/src/peripherals.cpp)
   target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./slave/inc)
 
-elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
+elseif(BUILD_VARIANT STREQUAL "SLAVE_BOARDTEST")
   target_sources(
-    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./BoardTest/board_test.cpp
-                               ./BoardTest/peripherals.cpp)
-  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./BoardTest)
+    ${EXECUTABLE_NAME} PRIVATE ${COMMON_SOURCES} ./board_test/slave/board_test.cpp
+                               ./board_test/slave/peripherals.cpp)
+  target_include_directories(${EXECUTABLE_NAME} PUBLIC . ./board_test/slave)
 endif()

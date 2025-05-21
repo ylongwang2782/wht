@@ -27,25 +27,36 @@ set_property(CACHE BUILD_VARIANT PROPERTY STRINGS MASTER MASTER_RELEASE SLAVE
                                           BOARDTEST)
 
 if(BUILD_VARIANT STREQUAL "MASTER_DEBUG")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER FIRMWARE_VERSION="v${PROJECT_VERSION}")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE MASTER FIRMWARE_VERSION="v${PROJECT_VERSION}")
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
                                                     -funwind-tables)
 
 elseif(BUILD_VARIANT STREQUAL "MASTER_RELEASE")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE MASTER FIRMWARE_VERSION="v${PROJECT_VERSION}")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE MASTER FIRMWARE_VERSION="v${PROJECT_VERSION}")
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Os -DNDEBUG)
 
 elseif(BUILD_VARIANT STREQUAL "SLAVE_DEBUG")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE FIRMWARE_VERSION="v${PROJECT_VERSION}")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE SLAVE FIRMWARE_VERSION="v${PROJECT_VERSION}")
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
                                                     -funwind-tables)
 
 elseif(BUILD_VARIANT STREQUAL "SLAVE_RELEASE")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE SLAVE FIRMWARE_VERSION="v${PROJECT_VERSION}")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE SLAVE FIRMWARE_VERSION="v${PROJECT_VERSION}")
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Os -DNDEBUG)
 
-elseif(BUILD_VARIANT STREQUAL "BOARDTEST")
-  target_compile_definitions(${EXECUTABLE_NAME} PRIVATE BOARDTEST FIRMWARE_VERSION="v${PROJECT_VERSION}")
+elseif(BUILD_VARIANT STREQUAL "MASTER_BOARDTEST")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE MASTER_BOARDTEST FIRMWARE_VERSION="v${PROJECT_VERSION}")
+  target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
+                                                    -funwind-tables)
+
+elseif(BUILD_VARIANT STREQUAL "SLAVE_BOARDTEST")
+  target_compile_definitions(
+    ${EXECUTABLE_NAME} PRIVATE SLAVE_BOARDTEST FIRMWARE_VERSION="v${PROJECT_VERSION}")
   target_compile_options(${EXECUTABLE_NAME} PRIVATE -Og -g -DDEBUG
                                                     -funwind-tables)
 else()
