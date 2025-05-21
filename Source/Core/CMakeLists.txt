@@ -1,4 +1,4 @@
-set(COMMON_SOURCES ./gd32f4xx_it.c ./main.cpp ./protocal.cpp)
+set(COMMON_SOURCES ./gd32f4xx_it.c ./main.cpp ./protocal.cpp syscalls.c)
 add_subdirectory(uwb)
 
 if(BUILD_VARIANT STREQUAL "MASTER_DEBUG" OR BUILD_VARIANT STREQUAL
