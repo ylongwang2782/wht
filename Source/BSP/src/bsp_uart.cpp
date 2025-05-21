@@ -22,26 +22,28 @@ UasrtInfo usart0_info = {.baudrate = 921600,
                          .nvic_irq_pre_priority = 10,
                          .nvic_irq_sub_priority = 3,
                          .rx_count = 0,
-                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                         .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                         .use_dma = false};
 
 UasrtInfo usart0_info_PA9PA10 = {.baudrate = 921600,
-                         .gpio_port = GPIOA,
-                         .tx_pin = GPIO_PIN_9,
-                         .rx_pin = GPIO_PIN_10,
-                         .usart_periph = USART0,
-                         .usart_clk = RCU_USART0,
-                         .usart_port_clk = RCU_GPIOA,
-                         .gpio_af = GPIO_AF_7,
-                         .rcu_dma_periph = RCU_DMA1,
-                         .dma_periph = DMA1,
-                         .dma_sub_per = DMA_SUBPERI4,
-                         .dma_tx_channel = DMA_CH7,
-                         .dma_rx_channel = DMA_CH2,
-                         .nvic_irq = USART0_IRQn,
-                         .nvic_irq_pre_priority = 10,
-                         .nvic_irq_sub_priority = 3,
-                         .rx_count = 0,
-                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                                 .gpio_port = GPIOA,
+                                 .tx_pin = GPIO_PIN_9,
+                                 .rx_pin = GPIO_PIN_10,
+                                 .usart_periph = USART0,
+                                 .usart_clk = RCU_USART0,
+                                 .usart_port_clk = RCU_GPIOA,
+                                 .gpio_af = GPIO_AF_7,
+                                 .rcu_dma_periph = RCU_DMA1,
+                                 .dma_periph = DMA1,
+                                 .dma_sub_per = DMA_SUBPERI4,
+                                 .dma_tx_channel = DMA_CH7,
+                                 .dma_rx_channel = DMA_CH2,
+                                 .nvic_irq = USART0_IRQn,
+                                 .nvic_irq_pre_priority = 10,
+                                 .nvic_irq_sub_priority = 3,
+                                 .rx_count = 0,
+                                 .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                                 .use_dma = false};
 
 UasrtInfo usart1_info = {.baudrate = 115200,
                          .gpio_port = GPIOD,
@@ -60,7 +62,8 @@ UasrtInfo usart1_info = {.baudrate = 115200,
                          .nvic_irq_pre_priority = 6,
                          .nvic_irq_sub_priority = 0,
                          .rx_count = 0,
-                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                         .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                         .use_dma = false};
 
 UasrtInfo usart2_info = {.baudrate = 115200,
                          .gpio_port = GPIOB,
@@ -79,7 +82,8 @@ UasrtInfo usart2_info = {.baudrate = 115200,
                          .nvic_irq_pre_priority = 1,
                          .nvic_irq_sub_priority = 2,
                          .rx_count = 0,
-                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                         .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                         .use_dma = false};
 
 UasrtInfo uart3_info = {.baudrate = 115200,
                         .gpio_port = GPIOA,
@@ -98,7 +102,8 @@ UasrtInfo uart3_info = {.baudrate = 115200,
                         .nvic_irq_pre_priority = 1,
                         .nvic_irq_sub_priority = 3,
                         .rx_count = 0,
-                        .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                        .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                        .use_dma = false};
 
 UasrtInfo usart5_info = {.baudrate = 115200,
                          .gpio_port = GPIOC,
@@ -117,7 +122,8 @@ UasrtInfo usart5_info = {.baudrate = 115200,
                          .nvic_irq_pre_priority = 7,
                          .nvic_irq_sub_priority = 0,
                          .rx_count = 0,
-                         .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                         .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                         .use_dma = false};
 
 UasrtInfo uart6_info = {.baudrate = 115200,
                         .gpio_port = GPIOF,
@@ -136,7 +142,8 @@ UasrtInfo uart6_info = {.baudrate = 115200,
                         .nvic_irq_pre_priority = 1,
                         .nvic_irq_sub_priority = 3,
                         .rx_count = 0,
-                        .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                        .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                        .use_dma = false};
 
 UasrtInfo uart7_info = {.baudrate = 115200,
                         .gpio_port = GPIOE,
@@ -155,7 +162,8 @@ UasrtInfo uart7_info = {.baudrate = 115200,
                         .nvic_irq_pre_priority = 3,
                         .nvic_irq_sub_priority = 3,
                         .rx_count = 0,
-                        .dmaRxDoneSema = xSemaphoreCreateBinary()};
+                        .dmaRxDoneSema = xSemaphoreCreateBinary(),
+                        .use_dma = false};
 
 // 全局信号量
 void handle_usart_interrupt(UasrtInfo* config) {
