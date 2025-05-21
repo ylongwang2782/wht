@@ -12,4 +12,6 @@ extern "C" {
 #include "timers.h"
 #ifdef __cplusplus
 }
+#include "uwb_interface.hpp"
+
 #endif

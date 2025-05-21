@@ -20,6 +20,7 @@
 #include "netconf.h"
 
 #ifdef MASTER_BOARDTEST
+
 UasrtInfo& log_com_info = uart7_info;
 UartConfig log_com_cfg(log_com_info, false);
 Uart log_com(log_com_cfg);
@@ -95,6 +96,18 @@ class UdpEchoTask : public TaskClassS<UDP_ECHO_TASK_DEPTH> {
     };
 };
 
+class UwbDevice : public TaskClassS<1024> {
+   public:
+    static constexpr const char TAG[] = "UWB";
+    UwbDevice() : TaskClassS<1024>("UwbDevice", TaskPrio_High) {};
+    void task() override {
+        UWB<UwbUartInterface> uwb;
+        for (;;) {
+            TaskBase::delay(10);
+        }
+    }
+};
+
 static void BootTask(void* pvParameters) {
     static constexpr const char TAG[] = "BOOT";
     LED sysLed(GPIO::Port::A, GPIO::Pin::PIN_0);
@@ -119,6 +132,10 @@ static void BootTask(void* pvParameters) {
         udpEchoTask.give();
         Log.d(TAG, "UDP Echo Task Start");
     }
+
+    UwbDevice uwbDevice;
+    uwbDevice.give();
+    Log.d(TAG, "UWB Device Task Start");
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
