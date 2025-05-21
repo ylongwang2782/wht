@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "bsp_log.hpp"
 #include "gd32f4xx_enet.h"
-#include "main.h"
+#include "netcfg.h"
 
 extern Logger Log;
 __IO uint32_t Enet::enet_init_status = 0;
@@ -46,7 +46,7 @@ __IO uint32_t Enet::enet_init_status = 0;
     \param[out] none
     \retval     none
 */
-void Enet::enet_system_setup(void) {
+int Enet::enet_system_setup(void) {
     nvic_configuration();
     Log.v("ENET", "nvic_configuration done");
 
@@ -54,17 +54,16 @@ void Enet::enet_system_setup(void) {
     Log.v("ENET", "enet_gpio_config done");
 
     enet_mac_dma_config();
-    Log.v("ENET", "enet_mac_dma_config done");
-
     if (0 == enet_init_status) {
-        Log.e("ENET", "enet_init_status ERROR");
-        while (1) {
-        }
+        Log.e("ENET", "enet_mac_dma_config failed, exiting enet_system_setup");
+        return 1;
     }
+    Log.v("ENET", "enet_mac_dma_config done");
 
     enet_interrupt_enable(ENET_DMA_INT_NIE);
     enet_interrupt_enable(ENET_DMA_INT_RIE);
     Log.v("ENET", "enet_interrupt_enable done");
+    return 0;
 }
 
 /*!
@@ -89,8 +88,8 @@ void Enet::enet_mac_dma_config(void) {
     Log.v("ENET", "enet_software_reset reval_state= %d\n", reval_state);
     if (ERROR == reval_state) {
         Log.e("ENET", "enet_software_reset ERROR");
-        while (1) {
-        }
+        enet_init_status = 0;    // 标记初始化失败
+        return;                  // 退出 enet_mac_dma_config 函数
     }
     /* configure the parameters which are usually less cared for enet
      * initialization */

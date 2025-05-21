@@ -20,7 +20,7 @@
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
 #include "lwip/tcp.h"
-#include "main.h"
+#include "netcfg.h"
 #include "master_cfg.hpp"
 #include "master_def.hpp"
 #include "netconf.h"

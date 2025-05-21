@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lwip/opt.h"
 #include "lwip/sys.h"
 #include "lwip/tcp.h"
-#include "main.h"
+#include "netcfg.h"
 
 #define UDP_TASK_PRIO (tskIDLE_PRIORITY + 5)
 #define MAX_BUF_SIZE  50

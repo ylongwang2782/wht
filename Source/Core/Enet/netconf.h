@@ -4,7 +4,7 @@
 #include "SemaphoreCPP.h"
 #include "TaskCPP.h"
 #include "enet.h"
-#include "main.h"
+#include "netcfg.h"
 
 #define ETH_TASK_DEPTH 1024
 
@@ -14,7 +14,7 @@ class EthDevice {
     bool initialized = false;
 
    public:
-    void init();
+    int init();
     static void lwip_netif_status_callback(struct netif* netif);
     void lwip_stack_init(void);
 };

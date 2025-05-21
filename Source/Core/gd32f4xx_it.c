@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef MASTER
 #include "lwip/sys.h"
-#include "main.h"
+#include "netcfg.h"
 #include "queue.h"
 #include "semphr.h"
 

@@ -45,7 +45,7 @@
 #include "err.h"
 #include "ethernetif.h"
 
-#include "main.h"
+#include "netcfg.h"
 #include "gd32f4xx_enet.h"
 #include <string.h>
 #include "semphr.h"
