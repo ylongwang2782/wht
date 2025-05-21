@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef MASTER
 #include "lwip/sys.h"
-#include "main.h"
+#include "netcfg.h"
 #include "queue.h"
 #include "semphr.h"
 
@@ -71,8 +71,8 @@ void HardFault_Handler(void) {
 
     printf(" HardFault_Handler\n");
 
-    printf("MSP=0x%08X(limit:0x%08X), PSP=0x%08X\r\n", msp, __StackLimit, psp);
-
+    printf("MSP=0x%08X(limit:0x%08X), PSP=0x%08X\r\n", (unsigned int)msp,
+           (unsigned int)__StackLimit, (unsigned int)psp);
     // 检查主栈是否溢出
     if (msp < __StackLimit) {
         printf("MSP Stack Overflow! Used: %u bytes over limit\r\n",

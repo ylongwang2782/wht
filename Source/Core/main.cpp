@@ -30,6 +30,9 @@ int main(void) {
 #elif defined(SLAVE)
     // 从节点模式入口
     Slave_Init();
+#elif defined(MASTER_BOARDTEST)
+    // 从节点模式入口
+    master_boardtest_init();
 #elif defined(SLAVE_BOARDTEST)
     // 从节点模式入口
     slave_boardtest_init();

@@ -10,7 +10,7 @@ class Enet {
     static __IO uint32_t enet_init_status;
 
    public:
-    static void enet_system_setup(void);
+    static int enet_system_setup(void);
     static void enet_gpio_config(void);
     static void enet_mac_dma_config(void);
     static void nvic_configuration(void);

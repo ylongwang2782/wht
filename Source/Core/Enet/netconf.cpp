@@ -43,17 +43,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lwip/errno.h"
 #include "lwip/mem.h"
 #include "lwip/memp.h"
-#include "main.h"
+#include "netcfg.h"
 #include "queue.h"
 #include "tcpip.h"
 #include "udp_echo.h"
 
 extern Logger Log;
 
-void EthDevice::init() {
+int EthDevice::init() {
+    int ret;
     if (!initialized) {
         /* configure ethernet (GPIOs, clocks, MAC, DMA) */
-        Enet::enet_system_setup();
+        ret = Enet::enet_system_setup();
+        if (0 != ret) {
+            Log.e("ETH", "enet_system_setup failed, exiting eth_device_init");
+            return 1;
+        }
         Log.v("ETH", "ethernet initialized");
 
         /* initilaize the LwIP stack */
@@ -61,6 +66,7 @@ void EthDevice::init() {
         Log.v("ETH", "lwip stack initialized");
         initialized = true;
     }
+    return 0;
 }
 
 void EthDevice::lwip_netif_status_callback(struct netif *netif) {
@@ -69,7 +75,8 @@ void EthDevice::lwip_netif_status_callback(struct netif *netif) {
     // Log.v("LWIP", "netif addr: %d.%d.%d.%d", ip4_addr1_16(&netif->ip_addr),
     //       ip4_addr2_16(&netif->ip_addr), ip4_addr3_16(&netif->ip_addr),
     //       ip4_addr4_16(&netif->ip_addr));
-    // if (((netif->flags & NETIF_FLAG_UP) != 0) && (0 != netif->ip_addr.addr)) {
+    // if (((netif->flags & NETIF_FLAG_UP) != 0) && (0 != netif->ip_addr.addr))
+    // {
     //     /* initilaize the udp: echo 1025 */
     //     Log.v("LWIP", "udp echo initialized");
     // }
