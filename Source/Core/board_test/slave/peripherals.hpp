@@ -18,24 +18,6 @@ extern Uart usart0;
 extern Logger Log;
 extern Rs485 rs485;
 
-class LogTask : public TaskClassS<LogTask_SIZE> {
-   public:
-    LogTask() : TaskClassS<LogTask_SIZE>("LogTask", LogTask_PRIORITY) {}
-
-    void task() override {
-        char buffer[LOG_QUEUE_SIZE + 8];
-        for (;;) {
-            LogMessage logMsg;
-            // 从队列中获取日志消息
-            if (Log.logQueue.pop(logMsg, portMAX_DELAY)) {
-                Log.uart.data_send(
-                    reinterpret_cast<const uint8_t*>(logMsg.message.data()),
-                    strlen(logMsg.message.data()));
-            }
-        }
-    }
-};
-
 const std::pair<GPIO::Port, GPIO::Pin> condPinInfo[] = {
     // PA3 - PA7
     {GPIO::Port::A, GPIO::Pin::PIN_3},    // PA3
@@ -223,6 +205,7 @@ extern dwt_config_t dw1000_config;
 #define FRAME_LEN_MAX 127
 class DW1000 {
    public:
+   static constexpr const char TAG[] = "DW1000";
     uint8_t rx_buffer[FRAME_LEN_MAX];
     uint32_t status_reg = 0;
     uint16_t frame_len = 0;
@@ -235,7 +218,7 @@ class DW1000 {
         reset();
 
         if (dwt_initialise(DWT_LOADUCODE) == DWT_ERROR) {
-            Log.e("[DW1000]: init FAIL");
+            Log.e(TAG,"init FAIL");
             return 1;
         }
 
@@ -243,7 +226,7 @@ class DW1000 {
         dwt_configure(&dw1000_config);
 
         dwt_write32bitreg(TX_POWER_ID, 0x85858585);
-        Log.d("[DW1000] init OK");
+        Log.d(TAG,"init OK");
         return 0;
     }
 
@@ -292,11 +275,11 @@ class DW1000 {
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);
         } else if (status_reg & SYS_STATUS_ALL_RX_TO) {
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_TO);
-            Log.e("RX TIMEOUT!");
+            Log.e(TAG,"RX TIMEOUT!");
             return 1;
         } else if (status_reg & SYS_STATUS_ALL_RX_ERR) {
             dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-            Log.e("RX ERROR!");
+            Log.e(TAG,"RX ERROR!");
             return 1;
         }
         // Log.d("RX OK!");

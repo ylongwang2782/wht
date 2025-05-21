@@ -8,7 +8,7 @@
 #include "bsp_uid.hpp"
 #include "peripherals.hpp"
 
-#ifdef BOARDTEST
+#ifdef SLAVE_BOARDTEST
 
 class ComEchoTask : public TaskClassS<256> {
    public:
@@ -84,6 +84,7 @@ class LedElvTestTask : public TaskClassS<256> {
 class KeyTestTask : public TaskClassS<1024> {
    public:
     KeyTestTask() : TaskClassS<1024>("KeyTestTask", TaskPrio_High) {}
+        static constexpr const char TAG[] = "KEY";
 
    private:
     void task() override {
@@ -111,7 +112,7 @@ class KeyTestTask : public TaskClassS<1024> {
         for (;;) {
             for (auto key : keys) {
                 if (key->isPressed()) {
-                    Log.d("[%s] pressed", key->getName());
+                    Log.d(TAG,"[%s] pressed", key->getName());
                 }
             }
             TaskBase::delay(1000);
@@ -122,6 +123,7 @@ class KeyTestTask : public TaskClassS<1024> {
 class DipSwithTestTask : public TaskClassS<1024> {
    public:
     DipSwithTestTask() : TaskClassS<1024>("DipSwithTestTask", TaskPrio_Mid) {}
+    static constexpr const char TAG[] = "DIPS";
     void task() override {
         // SW1 = PC3
         // SW2 = PC2
@@ -145,7 +147,7 @@ class DipSwithTestTask : public TaskClassS<1024> {
 
         for (;;) {
             uint8_t switchVal = dip.value();    // 获取当前拨码值
-            Log.d("[DipSwitch]: %02X", switchVal);
+            Log.d(TAG,"%02X", switchVal);
             TaskBase::delay(1000);
         }
     }
@@ -169,38 +171,38 @@ class DW1000Task : public TaskClassS<1024> {
 };
 
 static void BootTask(void* pvParameters) {
+    static constexpr const char TAG[] = "BOOT";
     uint32_t myUid = UIDReader::get();
-    Log.d("[BOOT]");
-    Log.d("[BOOT] Board Test Firmware v3.0, Build: %s %s", __DATE__, __TIME__);
-    Log.d("[BOOT] UID: %08X", myUid);
+    Log.d(TAG,"Slave Board Test Firmware %s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
+    Log.d(TAG,"UID: %08X", myUid);
 
-    LogTask logTask;
+    LogTask logTask(Log);
     logTask.give();
-    Log.d("[BOOT] LogTask started");
+    Log.d(TAG,"LogTask started");
 
     ComEchoTask ComEchoTask;
     ComEchoTask.give();
-    Log.d("[BOOT] ComEchoTask started");
+    Log.d(TAG,"ComEchoTask started");
 
     GpioTestTask GpioTestTask;
     GpioTestTask.give();
-    Log.d("[BOOT] GpioTestTask started");
+    Log.d(TAG,"GpioTestTask started");
 
     LedElvTestTask LedElvTestTask;
     LedElvTestTask.give();
-    Log.d("[BOOT] LedElvTestTask started");
+    Log.d(TAG,"LedElvTestTask started");
 
     KeyTestTask KeyTestTask;
     KeyTestTask.give();
-    Log.d("[BOOT] KeyTestTask started");
+    Log.d(TAG,"KeyTestTask started");
 
     DipSwithTestTask DipSwithTestTask;
     DipSwithTestTask.give();
-    Log.d("[BOOT] DipSwithTestTask started");
+    Log.d(TAG,"DipSwithTestTask started");
 
     DW1000Task DW1000Task;
     DW1000Task.give();
-    Log.d("[BOOT] DW1000Task started");
+    Log.d(TAG,"DW1000Task started");
 
     while (1) {
         // Log.d("heap minimum: %d", xPortGetMinimumEverFreeHeapSize());
@@ -209,7 +211,7 @@ static void BootTask(void* pvParameters) {
     }
 }
 
-int Slave_Init(void) {
+int slave_boardtest_init(void) {
     xTaskCreate(BootTask, "BootTask", 10 * 1024, NULL, 2, NULL);
 
     return 0;

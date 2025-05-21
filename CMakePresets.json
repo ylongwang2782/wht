@@ -51,14 +51,25 @@
             }
         },
         {
-            "name": "BoardTest",
-            "displayName": "BoardTest",
+            "name": "MasterBoardTest",
+            "displayName": "MasterBoardTest",
             "toolchainFile": "${sourceDir}/CMake/arm-none-eabi-gcc.cmake",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "true",
-                "BUILD_VARIANT": "BOARDTEST"
+                "BUILD_VARIANT": "MASTER_BOARDTEST"
+            }
+        },
+        {
+            "name": "SlaveBoardTest",
+            "displayName": "SlaveBoardTest",
+            "toolchainFile": "${sourceDir}/CMake/arm-none-eabi-gcc.cmake",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "true",
+                "BUILD_VARIANT": "SLAVE_BOARDTEST"
             }
         }
     ]
