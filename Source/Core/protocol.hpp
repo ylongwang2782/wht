@@ -13,8 +13,8 @@
  *          1. 构造具体消息对象并设置字段
  *          2. 使用PacketPacker打包为Packet
  *          3. 使用FramePacker打包为完整帧
- * @version 1.6
- * @date 2025-04-11
+ * @version 1.7
+ * @date 2025-05-22
  *
  * @copyright Copyright (c) 2025
  *
@@ -47,7 +47,9 @@ enum class Master2SlaveMessageID : uint8_t {
     READ_COND_DATA_MSG = 0x20,    // 读取
     READ_RES_DATA_MSG = 0x21,     // 读取
     READ_CLIP_DATA_MSG = 0x22,    // 读取
-    RST_MSG = 0x30
+    RST_MSG = 0x30,
+    PING_REQ_MSG = 0x40,
+    SHORT_ID_ASSIGN_MSG = 0x50
 };
 
 enum class Slave2MasterMessageID : uint8_t {
@@ -55,6 +57,9 @@ enum class Slave2MasterMessageID : uint8_t {
     RES_CFG_MSG = 0x11,     // 阻值信息
     CLIP_CFG_MSG = 0x12,    // 卡钉信息
     RST_MSG = 0x30,
+    PING_RSP_MSG = 0x40,
+    ANNOUNCE_MSG = 0x50,
+    SHORT_ID_CONFIRM_MSG = 0x51
 };
 
 enum class Backend2MasterMessageID : uint8_t {
@@ -747,6 +752,65 @@ class RstMsg : public Message {
         return static_cast<uint8_t>(Master2SlaveMessageID::RST_MSG);
     }
 };
+
+/*
+Ping Req Message
+Sequence Number	u16
+Timestamp	uint32
+*/
+class PingReqMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "PingReqMsg";
+    static uint16_t sequenceNumber;    // 新增序列号
+    static uint32_t timestamp;         // 新增时间戳
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(static_cast<uint8_t>(sequenceNumber));    // 低字节
+        data.push_back(static_cast<uint8_t>(sequenceNumber >> 8));    // 高字节
+        ProtocolUtils::serializeUint32(data, timestamp);    // 序列化时间戳
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 5) {    // 修改为5字节
+            Log.e(TAG, "Invalid PingReqMsg data size");
+        }
+        sequenceNumber = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
+        timestamp =
+            ProtocolUtils::deserializeUint32(data, 2);    // 反序列化时间戳
+        Log.v(TAG, "sequenceNumber = 0x%04X, timestamp = 0x%08X",
+              sequenceNumber, timestamp);
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::PING_REQ_MSG);
+    }
+};
+
+/*
+Short ID Assign Message
+Short ID	uint8_t	1 Byte
+*/
+class ShortIdAssignMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "ShortIdAssignMsg";
+    static uint8_t shortId;    // 新增短ID
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(shortId);    // 序列化短ID
+    }
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {    // 修改为1字节
+            Log.e(TAG, "Invalid ShortIdAssignMsg data size");
+        }
+    }
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Master2SlaveMessageID::SHORT_ID_ASSIGN_MSG);
+    }
+};
 }    // namespace Master2Slave
 
 namespace Slave2Master {
@@ -918,6 +982,107 @@ class RstMsg : public Message {
         return static_cast<uint8_t>(Slave2MasterMessageID::RST_MSG);
     }
 };
+
+/*
+Ping Rsp Message
+Sequence Number	u16
+Timestamp	uint32
+*/
+class PingRspMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "PingRspMsg";
+    static uint16_t sequenceNumber;    // 新增序列号
+    static uint32_t timestamp;         // 新增时间戳
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(static_cast<uint8_t>(sequenceNumber));    // 低字节
+        data.push_back(static_cast<uint8_t>(sequenceNumber >> 8));    // 高字节
+        ProtocolUtils::serializeUint32(data, timestamp);    // 序列化时间戳
+    }
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 5) {
+            Log.e(TAG, "Invalid PingRspMsg data size");
+        }
+        sequenceNumber = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
+        timestamp =
+            ProtocolUtils::deserializeUint32(data, 2);    // 反序列化时间戳
+        Log.v(TAG, "sequenceNumber = 0x%04X, timestamp = 0x%08X",
+              sequenceNumber, timestamp);
+    }
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2MasterMessageID::PING_RSP_MSG);
+    }
+};
+
+/*
+Announce Message
+VersionMajor	uint8_t
+VersionMinor	uint8_t
+VersionPatch	uint16_t
+*/
+class AnnounceMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "AnnounceMsg";
+    static uint8_t versionMajor;     // 固件主版本号
+    static uint8_t versionMinor;     // 固件次版本号
+    static uint16_t versionPatch;    // 固件补丁号
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(versionMajor);    // 序列化固件主版本号
+        data.push_back(versionMinor);    // 序列化固件次版本号
+        data.push_back(static_cast<uint8_t>(versionPatch));         // 低字节
+        data.push_back(static_cast<uint8_t>(versionPatch >> 8));    // 高字节
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 4) {    // 修改为4字节(原3+新增1)
+            Log.e(TAG, "Invalid AnnounceMsg data size");
+            return;
+        }
+        versionMajor = data[0];    // 反序列化固件主版本号
+        versionMinor = data[1];    // 反序列化固件次版本号
+        versionPatch = data[2] | (data[3] << 8);    // 调整字段索引(+1)
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(Slave2MasterMessageID::ANNOUNCE_MSG);
+    }
+};
+
+/*
+Short ID Confirm Message
+status	uint8_t	1 Byte
+Short ID	uint8_t	1 Byte
+*/
+class ShortIdConfirmMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "ShortIdConfirmMsg";
+    static uint8_t status;     // 状态码
+    static uint8_t shortId;    // 短ID
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(status);     // 序列化状态码
+        data.push_back(shortId);    // 序列化短ID
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 2) {    // 修改为2字节(原1+新增1)
+            Log.e(TAG, "Invalid ShortIdConfirmMsg data size");
+            return;
+        }
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(
+            Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG);
+    }
+};
 }    // namespace Slave2Master
 
 namespace Backend2Master {
@@ -987,7 +1152,8 @@ class SlaveCfgMsg : public Message {
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
             Log.v(TAG, "",
-                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
+                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, "
+                  "clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }

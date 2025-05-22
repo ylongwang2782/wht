@@ -11,17 +11,17 @@ extern MsgProc msgProc;
 Harness harness;
 namespace Master2Slave {
 void SyncMsg::process() {
-    Log.d("SyncMsg","process");
+    Log.d("SyncMsg", "process");
     runLed.off();
     harness.startWithCount(CondCfgMsg::totalConductionNum);
 }
 
 void CondCfgMsg::process() {
-    Log.d("CondCfgMsg","process");
+    Log.d("CondCfgMsg", "process");
 
     // 1. REPLY
     // 1.1 构造 CondCfgMsg
-    Slave2Master::CondCfgMsg condInfoMsg;
+    CondCfgMsg condInfoMsg;
     condInfoMsg.timeSlot = timeSlot;
     condInfoMsg.interval = interval;
     condInfoMsg.totalConductionNum = totalConductionNum;
@@ -40,10 +40,10 @@ void CondCfgMsg::process() {
     msgProc.send(condInfoFrame);
 }
 
-void ResCfgMsg::process() { Log.d("ResCfgMsg","process"); }
-void ClipCfgMsg::process() { Log.d("ClipCfgMsg","process"); }
+void ResCfgMsg::process() { Log.d("ResCfgMsg", "process"); }
+void ClipCfgMsg::process() { Log.d("ClipCfgMsg", "process"); }
 void ReadCondDataMsg::process() {
-    Log.d("ReadCondDataMsg","process");
+    Log.d("ReadCondDataMsg", "process");
     Slave2Backend::CondDataMsg condDataMsg;
     condDataMsg.conductionData = harness.data.flatten();
     condDataMsg.conductionLength = condDataMsg.conductionData.size();
@@ -55,34 +55,58 @@ void ReadCondDataMsg::process() {
     // 1.4 发送
     msgProc.send(master_data);
 }
-void ReadResDataMsg::process() { Log.d("ReadResDataMsg","process"); }
-void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg","process"); }
-void RstMsg::process() { Log.d("RstMsg","process"); }
+void ReadResDataMsg::process() { Log.d("ReadResDataMsg", "process"); }
+void ReadClipDataMsg::process() { Log.d("ReadClipDataMsg", "process"); }
+void RstMsg::process() { Log.d("RstMsg", "process"); }
+
+void PingReqMsg::process() { Log.d("PingReqMsg", "process"); }
+
+void ShortIdAssignMsg::process() { Log.d("ShortIdAssignMsg", "process"); }
 };    // namespace Master2Slave
 
 namespace Slave2Master {
-void Slave2Master::CondCfgMsg::process() { Log.d("CondCfgMsg","process"); }
-void Slave2Master::ResCfgMsg::process() { Log.d("ResCfgMsg","process"); }
-void Slave2Master::ClipCfgMsg::process() { Log.d("ClipCfgMsg","process"); }
-void Slave2Master::RstMsg::process() { Log.d("RstMsg","process"); }
+void CondCfgMsg::process() { Log.d("CondCfgMsg", "process"); }
+
+void ResCfgMsg::process() { Log.d("ResCfgMsg", "process"); }
+
+void ClipCfgMsg::process() { Log.d("ClipCfgMsg", "process"); }
+
+void RstMsg::process() { Log.d("RstMsg", "process"); }
+
+void PingRspMsg::process() { Log.d("PingRspMsg", "process"); }
+
+void AnnounceMsg::process() { Log.d("AnnounceMsg", "process"); }
+
+void ShortIdConfirmMsg::process() { Log.d("ShortIdConfirmMsg", "process"); }
 }    // namespace Slave2Master
 
 namespace Backend2Master {
-void Backend2Master::SlaveCfgMsg::process() { Log.d("SlaveCfgMsg"," process"); }
-void Backend2Master::ModeCfgMsg::process() { Log.d("ModeCfgMsg","process"); }
-void Backend2Master::RstMsg::process() { Log.d("RstMsg","process"); }
-void Backend2Master::CtrlMsg::process() { Log.d("CtrlMsg","process"); }
+void SlaveCfgMsg::process() { Log.d("SlaveCfgMsg", " process"); }
+
+void ModeCfgMsg::process() { Log.d("ModeCfgMsg", "process"); }
+
+void RstMsg::process() { Log.d("RstMsg", "process"); }
+
+void CtrlMsg::process() { Log.d("CtrlMsg", "process"); }
+
 }    // namespace Backend2Master
 
 namespace Master2Backend {
-void Master2Backend::SlaveCfgMsg::process() { Log.d("SlaveCfgMsg"," process"); }
-void Master2Backend::ModeCfgMsg::process() { Log.d("ModeCfgMsg","process"); }
-void Master2Backend::RstMsg::process() { Log.d("RstMsg","process"); }
-void Master2Backend::CtrlMsg::process() { Log.d("CtrlMsg","process"); }
+void SlaveCfgMsg::process() { Log.d("SlaveCfgMsg", " process"); }
+
+void ModeCfgMsg::process() { Log.d("ModeCfgMsg", "process"); }
+
+void RstMsg::process() { Log.d("RstMsg", "process"); }
+
+void CtrlMsg::process() { Log.d("CtrlMsg", "process"); }
+
 }    // namespace Master2Backend
 
 namespace Slave2Backend {
-void Slave2Backend::CondDataMsg::process() { Log.d("CondDataMsg","process"); }
-void Slave2Backend::ResDataMsg::process() { Log.d("ResDataMsg","process"); }
-void Slave2Backend::ClipDataMsg::process() { Log.d("ClipDataMsg","process"); }
+void CondDataMsg::process() { Log.d("CondDataMsg", "process"); }
+
+void ResDataMsg::process() { Log.d("ResDataMsg", "process"); }
+
+void ClipDataMsg::process() { Log.d("ClipDataMsg", "process"); }
+
 }    // namespace Slave2Backend
