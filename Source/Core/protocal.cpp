@@ -171,6 +171,12 @@ std::vector<RstMsg::SlaveResetConfig> RstMsg::slaves;
 
 /*Ctrl Message*/
 uint8_t CtrlMsg::runningStatus = 0;
+
+/*
+Device List Request Message
+Reserve	u8	1 Byte
+*/
+uint8_t DeviceListReqMsg::reserve = 0;
 }    // namespace Backend2Master
 
 namespace Master2Backend {
@@ -192,6 +198,19 @@ std::vector<RstMsg::SlaveResetConfig> RstMsg::slaves;
 /*Ctrl Message*/
 uint8_t CtrlMsg::status = 0;
 uint8_t CtrlMsg::runningStatus = 0;
+
+/*
+Device List Response Message
+Device Count	u8	1 Byte
+Device ID	u32	4 Byte
+Short ID	u8	1 Byte
+Online	u8	1 Byte
+VersionMajor	u8	1 Byte
+VersionMinor	u8	1 Byte
+VersionPatch	u16	2 Byte
+*/
+uint8_t DeviceListRspMsg::deviceCount = 0;
+std::vector<DeviceListRspMsg::DeviceInfo> DeviceListRspMsg::devices;
 }    // namespace Master2Backend
 
 namespace Slave2Backend {

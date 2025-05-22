@@ -66,7 +66,9 @@ enum class Backend2MasterMessageID : uint8_t {
     SLAVE_CFG_MSG = 0x00,
     MODE_CFG_MSG = 0x01,
     RST_MSG = 0x02,
-    CTRL_MSG = 0x03
+    CTRL_MSG = 0x03,
+    PING_CTRL_MSG = 0x04,
+    DEVICE_LIST_REQ_MSG = 0x05,
 };
 
 enum class Master2BackendMessageID : uint8_t {
@@ -74,9 +76,8 @@ enum class Master2BackendMessageID : uint8_t {
     MODE_CFG_MSG = 0x01,
     RST_MSG = 0x02,
     CTRL_MSG = 0x03,
-    CONDUCTION_DATA_MSG = 0x10,    // 导通数据
-    RESISTANCE_DATA_MSG = 0x11,    // 阻值数据
-    CLIPPING_DATA_MSG = 0x12       // 卡钉数据
+    PING_RES_MSG = 0x04,
+    DEVICE_LIST_RSP_MSG = 0x05,
 };
 
 enum class Slave2BackendMessageID : uint8_t {
@@ -1288,6 +1289,32 @@ class CtrlMsg : public Message {
     }
 };
 
+/*
+Device List Request Message
+Reserve	u8	1 Byte
+*/
+class DeviceListReqMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "DeviceListReqMsg";
+    static uint8_t reserve;    // 保留字段
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        data.push_back(reserve);    // 序列化保留字段
+    }
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() != 1) {
+            Log.e(TAG, "Invalid data size");
+            return;
+        }
+    }
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(
+            Backend2MasterMessageID::DEVICE_LIST_REQ_MSG);
+    }
+};
+
 }    // namespace Backend2Master
 
 namespace Master2Backend {
@@ -1361,7 +1388,8 @@ class SlaveCfgMsg : public Message {
         for (size_t i = 0; i < slaves.size(); i++) {
             const auto& s = slaves[i];
             Log.v(TAG, "",
-                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, clip=0x%04X",
+                  "Slave %d: id=0x%08X, cond=%d, res=%d, mode=%d, "
+                  "clip=0x%04X",
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }
@@ -1504,10 +1532,104 @@ class CtrlMsg : public Message {
         return static_cast<uint8_t>(Master2BackendMessageID::CTRL_MSG);
     }
 };
+
+/*
+Device List Response Message
+Device Count	u8	1 Byte
+Device ID	u32	4 Byte
+Short ID	u8	1 Byte
+Online	u8	1 Byte
+VersionMajor	u8	1 Byte
+VersionMinor	u8	1 Byte
+VersionPatch	u16	2 Byte
+*/
+class DeviceListRspMsg : public Message {
+   public:
+    static constexpr const char TAG[] = "DeviceListRspMsg";
+    struct DeviceInfo {
+        uint32_t id;              // 设备ID (4字节)
+        uint8_t shortId;          // 短ID (1字节)
+        uint8_t online;           // 在线状态 (1字节)
+        uint8_t versionMajor;     // 主版本号 (1字节)
+        uint8_t versionMinor;     // 次版本号 (1字节)
+        uint16_t versionPatch;    // 修订版本号 (2字节)
+    };
+    static uint8_t deviceCount;                // 设备数量
+    static std::vector<DeviceInfo> devices;    // 设备信息列表
+
+    void serialize(std::vector<uint8_t>& data) const override {
+        // reserve data size for all devices
+        data.reserve(1 + deviceCount * 11);
+        data.push_back(deviceCount);    // 序列化设备数量
+        // 序列化每个设备信息
+        for (const auto& device : devices) {
+            // 序列化设备ID (4字节)
+            ProtocolUtils::serializeUint32(data, device.id);
+            // 序列化短ID
+            data.push_back(device.shortId);
+            // 序列化在线状态
+            data.push_back(device.online);
+            // 序列化版本号
+            data.push_back(device.versionMajor);
+            data.push_back(device.versionMinor);
+            // 序列化修订版本号 (2字节)
+            data.push_back(static_cast<uint8_t>(device.versionPatch));
+            data.push_back(static_cast<uint8_t>(device.versionPatch >> 8));
+        }
+    }
+
+    void deserialize(const std::vector<uint8_t>& data) override {
+        if (data.size() < 1 ||
+            (data.size() - 1) % 11 != 0) {    // 每个设备11字节
+            Log.e(TAG, "Invalid data size");
+            return;
+        }
+
+        deviceCount = data[0];    // 反序列化设备数量
+        devices.clear();
+
+        // 反序列化每个设备信息
+        size_t offset = 1;
+        for (uint8_t i = 0; i < deviceCount; i++) {
+            if (offset + 10 >= data.size()) break;    // 确保有足够数据
+
+            DeviceInfo device;
+            // 反序列化设备ID (4字节)
+            device.id = ProtocolUtils::deserializeUint32(data, offset);
+            offset += 4;
+
+            // 反序列化短ID
+            device.shortId = data[offset++];
+            // 反序列化在线状态
+            device.online = data[offset++];
+            // 反序列化版本号
+            device.versionMajor = data[offset++];
+            device.versionMinor = data[offset++];
+            // 反序列化修订版本号 (2字节)
+            device.versionPatch = data[offset] | (data[offset + 1] << 8);
+            offset += 2;
+
+            devices.push_back(device);
+            Log.v(TAG,
+                  "Device %d: id=0x%08X, shortId=0x%02X, online=%d, "
+                  "version=%d.%d.%d",
+                  i, device.id, device.shortId, device.online,
+                  device.versionMajor, device.versionMinor,
+                  device.versionPatch);
+        }
+    }
+
+    void process() override;
+
+    uint8_t message_type() const override {
+        return static_cast<uint8_t>(
+            Master2BackendMessageID::DEVICE_LIST_RSP_MSG);
+    }
+};
+
 }    // namespace Master2Backend
 
 namespace Slave2Backend {
-
 class CondDataMsg : public Message {
    public:
     static constexpr const char TAG[] = "CondDataMsg";
