@@ -173,7 +173,7 @@ class DW1000Task : public TaskClassS<1024> {
 static void BootTask(void* pvParameters) {
     static constexpr const char TAG[] = "BOOT";
     uint32_t myUid = UIDReader::get();
-    Log.d(TAG,"Slave Board Test Firmware %s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
+    Log.d(TAG,"Slave Board Test Firmware v%s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
     Log.d(TAG,"UID: %08X", myUid);
 
     LogTask logTask(Log);

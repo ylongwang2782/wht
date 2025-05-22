@@ -118,7 +118,7 @@ static void BootTask(void* pvParameters) {
     Log.d(TAG, "LogTask initialized");
 
     uint32_t myUid = UIDReader::get();
-    Log.d(TAG, "Master Board Test Firmware %s, Build: %s %s", FIRMWARE_VERSION,
+    Log.d(TAG, "Master Board Test Firmware v%s, Build: %s %s", FIRMWARE_VERSION,
           __DATE__, __TIME__);
     Log.d(TAG, "UID: %08X", myUid);
 

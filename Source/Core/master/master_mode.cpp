@@ -71,7 +71,7 @@ static void Master_Task(void* pvParameters) {
     // data = FramePacker::pack(msg);
     // Log.r(data.data(), data.size());
 
-    Log.d(TAG,"Slave Firmware %s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
+    Log.d(TAG,"Slave Firmware v%s, Build: %s %s", FIRMWARE_VERSION, __DATE__, __TIME__);
 
     EthDevice ethDevice;
     ethDevice.init();
