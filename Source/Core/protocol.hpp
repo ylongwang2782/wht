@@ -1045,6 +1045,10 @@ class AnnounceMsg : public Message {
         versionMajor = data[0];    // 反序列化固件主版本号
         versionMinor = data[1];    // 反序列化固件次版本号
         versionPatch = data[2] | (data[3] << 8);    // 调整字段索引(+1)
+        Log.v(TAG,
+              "versionMajor = 0x%02X, versionMinor = 0x%02X,  versionPatch = "
+              "0x%04X",
+              versionMajor, versionMinor, versionPatch);    // 打印日志信息
     }
 
     void process() override;
@@ -1075,6 +1079,9 @@ class ShortIdConfirmMsg : public Message {
             Log.e(TAG, "Invalid ShortIdConfirmMsg data size");
             return;
         }
+        status = data[0];     // 反序列化状态码
+        shortId = data[1];    // 反序列化短ID
+        Log.v(TAG, "status=0x%02X, shortId = 0x%02X", status, shortId);
     }
 
     void process() override;
