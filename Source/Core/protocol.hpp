@@ -162,7 +162,7 @@ class Message {
    public:
     virtual ~Message() = default;
     virtual void serialize(std::vector<uint8_t>& data) const = 0;
-    virtual void deserialize(const std::vector<uint8_t>& data) = 0;
+    virtual bool deserialize(const std::vector<uint8_t>& data) = 0;
     virtual void process() = 0;
     // 消息类型标识
     virtual uint8_t message_type() const = 0;
@@ -504,13 +504,15 @@ class SyncMsg : public Message {
         ProtocolUtils::serializeUint32(data, timestamp);
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {
             Log.e(TAG, "Invalid SyncMsg data size");
+            return false;
         }
         mode = data[0];
         timestamp = ProtocolUtils::deserializeUint32(data, 1);
         Log.v(TAG, "mode = 0x%02X, timestamp = 0x%08X", mode, timestamp);
+        return true;
     }
 
     void process() override;
@@ -540,10 +542,10 @@ class CondCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(conductionNum >> 8));
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
             Log.e(TAG, "Invalid CondCfgMsg data size");
-            return;
+            return false;
         }
         timeSlot = data[0];
         interval = data[1];    // 反序列化采集间隔
@@ -556,6 +558,7 @@ class CondCfgMsg : public Message {
               "= 0x%04X, startConductionNum = 0x%04X, conductionNum = 0x%04X",
               timeSlot, interval, totalConductionNum, startConductionNum,
               conductionNum);
+        return true;
     }
     void process() override;
 
@@ -584,10 +587,10 @@ class ResCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(resistanceNum >> 8));
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 8) {    // 修改为8字节
             Log.e(TAG, "Invalid ResCfgMsg data size");
-            return;
+            return false;
         }
         timeSlot = data[0];
         interval = data[1];    // 反序列化采集间隔
@@ -600,6 +603,7 @@ class ResCfgMsg : public Message {
               "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
               timeSlot, interval, totalResistanceNum, startResistanceNum,
               resistanceNum);
+        return true;
     }
 
     void process() override;
@@ -624,10 +628,10 @@ class ClipCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {    // 修改为4字节
             Log.e(TAG, "Invalid ClipCfgMsg data size");
-            return;
+            return false;
         }
         interval = data[0];                    // 反序列化采集间隔
         mode = data[1];                        // 反序列化 mode
@@ -636,6 +640,7 @@ class ClipCfgMsg : public Message {
               "interval = 0x%02X, mode = 0x%02X, clipPin = "
               "0x%04X",
               interval, mode, clipPin);
+        return true;
     }
 
     void process() override;
@@ -656,13 +661,14 @@ class ReadCondDataMsg : public Message {
         data.push_back(reserve);    // 序列化保留字段
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid ReadCondDataMsg data size");
-            return;
+            return false;
         }
         reserve = data[0];    // 反序列化保留字段
         Log.v(TAG, "reserve = 0x%02X", reserve);
+        return true;
     }
 
     void process() override;
@@ -683,13 +689,14 @@ class ReadResDataMsg : public Message {
         data.push_back(reserve);    // 序列化保留字段
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid ReadResDataMsg data size");
-            return;
+            return false;
         }
         reserve = data[0];    // 反序列化保留字段
         Log.v(TAG, "reserve = 0x%02X", reserve);
+        return true;
     }
 
     void process() override;
@@ -709,13 +716,14 @@ class ReadClipDataMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(reserve);    // 序列化保留字段
     }
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid ReadClipDataMsg data size");
-            return;
+            return false;
         }
         reserve = data[0];    // 反序列化保留字段
         Log.v(TAG, "reserve = 0x%02X", reserve);
+        return true;
     }
     void process() override;
 
@@ -737,14 +745,16 @@ class RstMsg : public Message {
         data.push_back(static_cast<uint8_t>(clipLed >> 8));    // 高字节
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 3) {    // 修改为3字节
             Log.e(TAG, "Invalid RstMsg data size");
+            return false;
         }
         lock = data[0];
         // 新增 clipLed 反序列化
         clipLed = data[1] | (data[2] << 8);    // 低字节在前，高字节在后
         Log.v(TAG, "lock = 0x%02X, clipLed = 0x%04X", lock, clipLed);
+        return true;
     }
 
     void process() override;
@@ -771,15 +781,17 @@ class PingReqMsg : public Message {
         ProtocolUtils::serializeUint32(data, timestamp);    // 序列化时间戳
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {    // 修改为5字节
             Log.e(TAG, "Invalid PingReqMsg data size");
+            return false;
         }
         sequenceNumber = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
         timestamp =
             ProtocolUtils::deserializeUint32(data, 2);    // 反序列化时间戳
         Log.v(TAG, "sequenceNumber = 0x%04X, timestamp = 0x%08X",
               sequenceNumber, timestamp);
+        return true;
     }
 
     void process() override;
@@ -801,12 +813,14 @@ class ShortIdAssignMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(shortId);    // 序列化短ID
     }
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {    // 修改为1字节
             Log.e(TAG, "Invalid ShortIdAssignMsg data size");
+            return false;
         }
         shortId = data[0];    // 反序列化短ID
         Log.v(TAG, "shortId = 0x%02X", shortId);
+        return true;
     }
     void process() override;
 
@@ -840,10 +854,10 @@ class CondCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(conductionNum >> 8));
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 9) {    // 修改为9字节(原8+新增1)
             Log.e(TAG, "Invalid CondCfgMsg data size");
-            return;
+            return false;
         }
         status = data[0];    // 新增状态码反序列化
         timeSlot = data[1];
@@ -857,6 +871,7 @@ class CondCfgMsg : public Message {
               "startConductionNum = 0x%04X, conductionNum = 0x%04X",
               status, timeSlot, interval, totalConductionNum,
               startConductionNum, conductionNum);
+        return true;
     }
     void process() override;
 
@@ -887,10 +902,10 @@ class ResCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(resistanceNum));
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 9) {    // 修改为9字节(原8+新增1)
             Log.e(TAG, "Invalid ResCfgMsg data size");
-            return;
+            return false;
         }
         status = data[0];    // 新增状态码反序列化
         timeSlot = data[1];
@@ -904,6 +919,7 @@ class ResCfgMsg : public Message {
               "startResistanceNum = 0x%04X, resistanceNum = 0x%04X",
               status, timeSlot, interval, totalResistanceNum,
               startResistanceNum, resistanceNum);
+        return true;
     }
 
     void process() override;
@@ -930,10 +946,10 @@ class ClipCfgMsg : public Message {
         data.push_back(static_cast<uint8_t>(clipPin >> 8));    // 高字节在后
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {    // 修改为5字节(原4+新增1)
             Log.e(TAG, "Invalid ClipCfgMsg data size");
-            return;
+            return false;
         }
         status = data[0];                      // 新增状态码反序列化
         interval = data[1];                    // 调整字段索引(+1)
@@ -943,6 +959,7 @@ class ClipCfgMsg : public Message {
               "status=0x%02X, interval = 0x%02X, mode = 0x%02X, "
               "clipPin = 0x%04X",
               status, interval, mode, clipPin);
+        return true;
     }
 
     void process() override;
@@ -966,10 +983,10 @@ class RstMsg : public Message {
         data.push_back(static_cast<uint8_t>(clipLed >> 8));    // 高字节
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 4) {    // 修改为4字节(原3+新增1)
             Log.e(TAG, "Invalid RstMsg data size");
-            return;
+            return false;
         }
 
         status = data[0];                      // 新增状态码反序列化
@@ -977,6 +994,7 @@ class RstMsg : public Message {
         clipLed = data[2] | (data[3] << 8);    // 调整字段索引(+1)
         Log.v(TAG, "status=0x%02X, lockStatus = 0x%02X, clipLed = 0x%04X",
               status, lockStatus, clipLed);
+        return true;
     }
 
     void process() override;
@@ -1002,15 +1020,17 @@ class PingRspMsg : public Message {
         data.push_back(static_cast<uint8_t>(sequenceNumber >> 8));    // 高字节
         ProtocolUtils::serializeUint32(data, timestamp);    // 序列化时间戳
     }
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 5) {
             Log.e(TAG, "Invalid PingRspMsg data size");
+            return false;
         }
         sequenceNumber = data[0] | (data[1] << 8);    // 低字节在前，高字节在后
         timestamp =
             ProtocolUtils::deserializeUint32(data, 2);    // 反序列化时间戳
         Log.v(TAG, "sequenceNumber = 0x%04X, timestamp = 0x%08X",
               sequenceNumber, timestamp);
+        return true;
     }
     void process() override;
 
@@ -1044,10 +1064,10 @@ class AnnounceMsg : public Message {
                                             8));    // 序列化修订版本号的高字节
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 6) {    // 修改为6字节(原4+新增2)
             Log.e(TAG, "Invalid AnnounceMsg data size");
-            return;
+            return false;
         }
         deviceId =
             ProtocolUtils::deserializeUint32(data, 0);    // 反序列化设备ID
@@ -1058,6 +1078,7 @@ class AnnounceMsg : public Message {
               "deviceId = 0x%08X, versionMajor = 0x%02X, "
               "versionMinor = 0x%02X, versionPatch = 0x%04X",
               deviceId, versionMajor, versionMinor, versionPatch);
+        return true;
     }
     void process() override;
 
@@ -1082,14 +1103,15 @@ class ShortIdConfirmMsg : public Message {
         data.push_back(shortId);    // 序列化短ID
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {    // 修改为2字节(原1+新增1)
             Log.e(TAG, "Invalid ShortIdConfirmMsg data size");
-            return;
+            return false;
         }
         status = data[0];     // 反序列化状态码
         shortId = data[1];    // 反序列化短ID
         Log.v(TAG, "status=0x%02X, shortId = 0x%02X", status, shortId);
+        return true;
     }
 
     void process() override;
@@ -1132,10 +1154,10 @@ class SlaveCfgMsg : public Message {
         }
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 || (data.size() - 1) % 9 != 0) {    // 每个从机9字节
             Log.e(TAG, "", "Invalid data size");
-            return;
+            return false;
         }
 
         slaveNum = data[0];
@@ -1173,6 +1195,7 @@ class SlaveCfgMsg : public Message {
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }
+        return true;
     }
 
     void process() override;
@@ -1192,13 +1215,14 @@ class ModeCfgMsg : public Message {
         data.push_back(mode);    // 序列化模式
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
         mode = data[0];
         Log.v(TAG, "mode = 0x%02X", mode);
+        return true;
     }
 
     void process() override;
@@ -1234,10 +1258,10 @@ class RstMsg : public Message {
         }
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 || (data.size() - 1) % 7 != 0) {    // 每个从机7字节
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         slaveNum = data[0];
@@ -1270,6 +1294,7 @@ class RstMsg : public Message {
             Log.v(TAG, "Slave %d: id=0x%08X, lock=%d, clipStatus=0x%04X", i,
                   s.id, s.lock, s.clipStatus);
         }
+        return true;
     }
 
     void process() override;
@@ -1288,13 +1313,14 @@ class CtrlMsg : public Message {
         data.push_back(runningStatus);    // 序列化运行状态
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
         runningStatus = data[0];
         Log.v(TAG, "runningStatus = 0x%02X", runningStatus);
+        return true;
     }
 
     void process() override;
@@ -1316,11 +1342,14 @@ class DeviceListReqMsg : public Message {
     void serialize(std::vector<uint8_t>& data) const override {
         data.push_back(reserve);    // 序列化保留字段
     }
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 1) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
+        reserve = data[0];
+        Log.v(TAG, "reserve = 0x%02X", reserve);
+        return true;
     }
     void process() override;
 
@@ -1365,11 +1394,11 @@ class SlaveCfgMsg : public Message {
         }
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2 ||
             (data.size() - 2) % 9 != 0) {    // 2字节头部 + 每个从机9字节
             Log.e(TAG, "", "Invalid data size");
-            return;
+            return false;
         }
 
         status = data[0];
@@ -1408,6 +1437,7 @@ class SlaveCfgMsg : public Message {
                   i, s.id, s.conductionNum, s.resistanceNum, s.clipMode,
                   s.clipStatus);
         }
+        return true;
     }
 
     void process() override;
@@ -1428,14 +1458,15 @@ class ModeCfgMsg : public Message {
         data.push_back(mode);      // 序列化模式
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
         status = data[0];    // 反序列化响应状态
         mode = data[1];      // 反序列化模式
         Log.v(TAG, "status=0x%02X, mode=0x%02X", status, mode);
+        return true;
     }
 
     void process() override;
@@ -1472,11 +1503,11 @@ class RstMsg : public Message {
         }
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2 ||
             (data.size() - 2) % 7 != 0) {    // 2字节头部 + 每个从机7字节
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         status = data[0];
@@ -1510,6 +1541,7 @@ class RstMsg : public Message {
             Log.v(TAG, "Slave %d: id=0x%08X, clipStatus=0x%04X, lock=%d", i,
                   s.id, s.clipStatus, s.lock);
         }
+        return true;
     }
 
     void process() override;
@@ -1530,15 +1562,16 @@ class CtrlMsg : public Message {
         data.push_back(runningStatus);    // 序列化运行状态
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
         status = data[0];           // 反序列化响应状态
         runningStatus = data[1];    // 反序列化运行状态
         Log.v(TAG, "status=0x%02X, runningStatus=0x%02X", status,
               runningStatus);
+        return true;
     }
 
     void process() override;
@@ -1593,11 +1626,11 @@ class DeviceListRspMsg : public Message {
         }
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 1 ||
             (data.size() - 1) % 11 != 0) {    // 每个设备11字节
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         deviceCount = data[0];    // 反序列化设备数量
@@ -1632,6 +1665,7 @@ class DeviceListRspMsg : public Message {
                   device.versionMajor, device.versionMinor,
                   device.versionPatch);
         }
+        return true;
     }
 
     void process() override;
@@ -1661,10 +1695,10 @@ class CondDataMsg : public Message {
         data.insert(data.end(), conductionData.begin(), conductionData.end());
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         // 反序列化导通数据长度
@@ -1673,12 +1707,13 @@ class CondDataMsg : public Message {
         // 反序列化导通数据
         if (data.size() != 2 + conductionLength) {
             Log.e(TAG, "Invalid conduction data size");
-            return;
+            return false;
         }
         conductionData.assign(data.begin() + 2, data.end());
 
         Log.v(TAG, "length=%d, dataSize=%d", conductionLength,
               conductionData.size());
+        return true;
     }
 
     void process() override;
@@ -1704,10 +1739,10 @@ class ResDataMsg : public Message {
         data.insert(data.end(), resistanceData.begin(), resistanceData.end());
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() < 2) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         // 反序列化阻值数据长度
@@ -1716,12 +1751,13 @@ class ResDataMsg : public Message {
         // 反序列化阻值数据
         if (data.size() != 2 + resistanceLength) {
             Log.e(TAG, "Invalid resistance data size");
-            return;
+            return false;
         }
         resistanceData.assign(data.begin() + 2, data.end());
 
         Log.v(TAG, "length=%d, dataSize=%d", resistanceLength,
               resistanceData.size());
+        return true;
     }
 
     void process() override;
@@ -1742,16 +1778,17 @@ class ClipDataMsg : public Message {
         data.push_back(static_cast<uint8_t>(clipData >> 8));    // 高字节
     }
 
-    void deserialize(const std::vector<uint8_t>& data) override {
+    bool deserialize(const std::vector<uint8_t>& data) override {
         if (data.size() != 2) {
             Log.e(TAG, "Invalid data size");
-            return;
+            return false;
         }
 
         // 反序列化卡钉板数据
         clipData = data[0] | (data[1] << 8);
 
         Log.v(TAG, "clipData=0x%04X", clipData);
+        return true;
     }
 
     void process() override;
@@ -1849,44 +1886,65 @@ class FrameParser {
                 case Slave2MasterMessageID::COND_CFG_MSG: {
                     Log.v(TAG, "processing COND_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::CondCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::RES_CFG_MSG: {
                     Log.v(TAG, "processing RES_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ResCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::CLIP_CFG_MSG: {
                     Log.v(TAG, "processing CLIP_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ClipCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::RST_MSG: {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Slave2Master::RstMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::PING_RSP_MSG: {
                     Log.v(TAG, "processing PING_RSP_MSG message");
                     auto msg = std::make_unique<Slave2Master::PingRspMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::ANNOUNCE_MSG: {
                     Log.v(TAG, "processing ANNOUNCE_MSG message");
                     auto msg = std::make_unique<Slave2Master::AnnounceMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG: {
                     Log.v(TAG, "processing SHORT_ID_CONFIRM_MSG message");
                     auto msg =
                         std::make_unique<Slave2Master::ShortIdConfirmMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                 }
                 default:
                     Log.e(TAG,
@@ -1930,25 +1988,37 @@ class FrameParser {
                 case Backend2MasterMessageID::SLAVE_CFG_MSG: {
                     Log.v(TAG, "Processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::SlaveCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Backend2MasterMessageID::MODE_CFG_MSG: {
                     Log.v(TAG, "Processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::ModeCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Backend2MasterMessageID::RST_MSG: {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Backend2Master::RstMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Backend2MasterMessageID::CTRL_MSG: {
                     Log.v(TAG, "processing CTRL_MSG message");
                     auto msg = std::make_unique<Backend2Master::CtrlMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 default:
@@ -1987,19 +2057,28 @@ class FrameParser {
                 case Slave2BackendMessageID::COND_DATA_MSG: {
                     Log.v(TAG, "processing COND_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::CondDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2BackendMessageID::RES_DATA_MSG: {
                     Log.v(TAG, "processing RES_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ResDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Slave2BackendMessageID::CLIP_DATA_MSG: {
                     Log.v(TAG, "processing CLIP_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ClipDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 default:
@@ -2081,7 +2160,10 @@ class FrameParser {
                 case Master2SlaveMessageID::SYNC_MSG: {
                     Log.v(TAG, "processing SYNC_MSG message");
                     auto msg = std::make_unique<Master2Slave::SyncMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG, "SYNC_MSG message deserialized");
                     return msg;
                 }
@@ -2090,7 +2172,10 @@ class FrameParser {
                           "processing COND_CFG_MSG "
                           "message");
                     auto msg = std::make_unique<Master2Slave::CondCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG,
                           "COND_CFG_MSG message "
                           "deserialized");
@@ -2101,7 +2186,10 @@ class FrameParser {
                           "processing RES_CFG_MSG "
                           "message");
                     auto msg = std::make_unique<Master2Slave::ResCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG,
                           "RES_CFG_MSG message "
                           "deserialized");
@@ -2112,7 +2200,10 @@ class FrameParser {
                           "processing CLIP_CFG_MSG "
                           "message");
                     auto msg = std::make_unique<Master2Slave::ClipCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG,
                           "CLIP_CFG_MSG message "
                           "deserialized");
@@ -2122,14 +2213,20 @@ class FrameParser {
                     Log.v(TAG, "processing READ_COND_DATA_MSG message");
                     auto msg =
                         std::make_unique<Master2Slave::ReadCondDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG, "READ_COND_DATA_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::READ_RES_DATA_MSG: {
                     Log.v(TAG, "processing READ_RES_DATA_MSG message");
                     auto msg = std::make_unique<Master2Slave::ReadResDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG, "READ_RES_DATA_MSG message deserialized");
                     return msg;
                 }
@@ -2137,27 +2234,39 @@ class FrameParser {
                     Log.v(TAG, "processing READ_CLIP_DATA_MSG message");
                     auto msg =
                         std::make_unique<Master2Slave::ReadClipDataMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG, "READ_CLIP_DATA_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::RST_MSG: {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Slave::RstMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     Log.v(TAG, "RST_MSG message deserialized");
                     return msg;
                 }
                 case Master2SlaveMessageID::PING_REQ_MSG: {
                     Log.v(TAG, "processing PING_REQ_MSG message");
                     auto msg = std::make_unique<Master2Slave::PingReqMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                 }
                 case Master2SlaveMessageID::SHORT_ID_ASSIGN_MSG: {
                     Log.v(TAG, "processing SHORT_ID_ASSIGN_MSG message");
                     auto msg =
                         std::make_unique<Master2Slave::ShortIdAssignMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                 }
                 default:
                     Log.e(TAG,
@@ -2204,25 +2313,37 @@ class FrameParser {
                 case Master2BackendMessageID::SLAVE_CFG_MSG: {
                     Log.v(TAG, "processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::SlaveCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Master2BackendMessageID::MODE_CFG_MSG: {
                     Log.v(TAG, "processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::ModeCfgMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Master2BackendMessageID::RST_MSG: {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Backend::RstMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 case Master2BackendMessageID::CTRL_MSG: {
                     Log.v(TAG, "processing CTRL_MSG message");
                     auto msg = std::make_unique<Master2Backend::CtrlMsg>();
-                    msg->deserialize(packet.payload);
+                    if (!msg->deserialize(packet.payload)) {
+                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        return nullptr;
+                    }
                     return msg;
                 }
                 default:
