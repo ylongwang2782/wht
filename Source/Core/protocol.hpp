@@ -1833,44 +1833,15 @@ class FrameParser {
             static_cast<uint8_t>(PacketType::Slave2Master)) {
             Slave2MasterPacket packet;
 
-            // 3. 反序列化 Slave2MasterPacket
             if (!packet.deserialize(packet_data)) {
-                Log.e(TAG, "Failed to deserialize Slave2MasterPacket");
+                Log.e(TAG, "Failed to deserialize %s", packet.TAG);
                 return nullptr;
             }
 
-            const char* msgTypeStr = "Unknown";
-            switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
-                case Slave2MasterMessageID::COND_CFG_MSG:
-                    msgTypeStr = "COND_CFG_MSG";
-                    break;
-                case Slave2MasterMessageID::RES_CFG_MSG:
-                    msgTypeStr = "RES_CFG_MSG";
-                    break;
-                case Slave2MasterMessageID::CLIP_CFG_MSG:
-                    msgTypeStr = "CLIP_CFG_MSG";
-                    break;
-                case Slave2MasterMessageID::RST_MSG:
-                    msgTypeStr = "RST_MSG";
-                    break;
-                case Slave2MasterMessageID::PING_RSP_MSG:
-                    msgTypeStr = "PING_RSP_MSG";
-                    break;
-                case Slave2MasterMessageID::ANNOUNCE_MSG:
-                    msgTypeStr = "ANNOUNCE_MSG";
-                    break;
-                case Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG:
-                    msgTypeStr = "SHORT_ID_CONFIRM_MSG";
-                    break;
-                default:
-                    break;
-            }
-
             Log.v(TAG,
-                  "Slave2MasterPacket parsed, type=%s (0x%02X, "
+                  "%s parsed, msg type=0x%02X, "
                   "source_id=0x%08X",
-                  msgTypeStr, packet.message_id, packet.source_id);
-
+                  packet.TAG, packet.message_id, packet.source_id);
             /*
             enum class Slave2MasterMessageID : uint8_t {
             COND_CFG_MSG = 0x10,    // 导通信息
@@ -1884,67 +1855,68 @@ class FrameParser {
             */
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
                 case Slave2MasterMessageID::COND_CFG_MSG: {
-                    Log.v(TAG, "processing COND_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::CondCfgMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::RES_CFG_MSG: {
-                    Log.v(TAG, "processing RES_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ResCfgMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::CLIP_CFG_MSG: {
-                    Log.v(TAG, "processing CLIP_CFG_MSG message");
                     auto msg = std::make_unique<Slave2Master::ClipCfgMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::RST_MSG: {
-                    Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Slave2Master::RstMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::PING_RSP_MSG: {
-                    Log.v(TAG, "processing PING_RSP_MSG message");
                     auto msg = std::make_unique<Slave2Master::PingRspMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::ANNOUNCE_MSG: {
-                    Log.v(TAG, "processing ANNOUNCE_MSG message");
                     auto msg = std::make_unique<Slave2Master::AnnounceMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
                 }
                 case Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG: {
-                    Log.v(TAG, "processing SHORT_ID_CONFIRM_MSG message");
                     auto msg =
                         std::make_unique<Slave2Master::ShortIdConfirmMsg>();
+                    Log.v(TAG, "processing %s message", msg->TAG);
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
+                    return msg;
                 }
                 default:
                     Log.e(TAG,
@@ -1957,31 +1929,12 @@ class FrameParser {
         } else if (header.packet_id ==
                    static_cast<uint8_t>(PacketType::Backend2Master)) {
             Backend2MasterPacket packet;
-            // 3. 反序列化 Slave2MasterPacket
             if (!packet.deserialize(packet_data)) {
-                Log.e("B2M", "Failed to deserialize packet");
+                Log.e(TAG, "Failed to deserialize %s", packet.TAG);
                 return nullptr;
             }
 
-            const char* msgTypeStr = "Unknown";
-            switch (static_cast<Backend2MasterMessageID>(packet.message_id)) {
-                case Backend2MasterMessageID::SLAVE_CFG_MSG:
-                    msgTypeStr = "SLAVE_CFG_MSG";
-                    break;
-                case Backend2MasterMessageID::MODE_CFG_MSG:
-                    msgTypeStr = "MODE_CFG_MSG";
-                    break;
-                case Backend2MasterMessageID::RST_MSG:
-                    msgTypeStr = "RST_MSG";
-                    break;
-                case Backend2MasterMessageID::CTRL_MSG:
-                    msgTypeStr = "CTRL_MSG";
-                    break;
-                default:
-                    break;
-            }
-
-            Log.v(TAG, "Packet parsed, msg type=%s (0x%02X) ", msgTypeStr,
+            Log.v(TAG, "%s parsed, msg type=0x%02X, ", packet.TAG,
                   packet.message_id);
 
             switch (static_cast<Backend2MasterMessageID>(packet.message_id)) {
@@ -1989,7 +1942,7 @@ class FrameParser {
                     Log.v(TAG, "Processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::SlaveCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -1998,7 +1951,7 @@ class FrameParser {
                     Log.v(TAG, "Processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::ModeCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2007,7 +1960,7 @@ class FrameParser {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Backend2Master::RstMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2016,7 +1969,7 @@ class FrameParser {
                     Log.v(TAG, "processing CTRL_MSG message");
                     auto msg = std::make_unique<Backend2Master::CtrlMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2031,34 +1984,21 @@ class FrameParser {
         } else if (header.packet_id ==
                    static_cast<uint8_t>(PacketType::Slave2Backend)) {
             Slave2BackendPacket packet;
+
             if (!packet.deserialize(packet_data)) {
-                Log.e("S2BP", "Failed to deserialize packet");
+                Log.e(TAG, "Failed to deserialize %s", packet.TAG);
                 return nullptr;
             }
 
-            const char* msgTypeStr = "Unknown";
-            switch (static_cast<Slave2BackendMessageID>(packet.message_id)) {
-                case Slave2BackendMessageID::COND_DATA_MSG:
-                    msgTypeStr = "COND_DATA_MSG";
-                    break;
-                case Slave2BackendMessageID::RES_DATA_MSG:
-                    msgTypeStr = "RES_DATA_MSG";
-                    break;
-                case Slave2BackendMessageID::CLIP_DATA_MSG:
-                    msgTypeStr = "CLIP_DATA_MSG";
-                    break;
-                default:
-                    break;
-            }
-
-            Log.v(TAG, "packet parsed, msg type=%s (0x%02X) ", msgTypeStr,
+            Log.v(TAG, "%s parsed, msg type=0x%02X, ", packet.TAG,
                   packet.message_id);
+
             switch (static_cast<Slave2BackendMessageID>(packet.message_id)) {
                 case Slave2BackendMessageID::COND_DATA_MSG: {
                     Log.v(TAG, "processing COND_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::CondDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2067,7 +2007,7 @@ class FrameParser {
                     Log.v(TAG, "processing RES_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ResDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2076,7 +2016,7 @@ class FrameParser {
                     Log.v(TAG, "processing CLIP_DATA_MSG message");
                     auto msg = std::make_unique<Slave2Backend::ClipDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2097,57 +2037,17 @@ class FrameParser {
             static_cast<uint8_t>(PacketType::Master2Slave)) {
             // 3. 反序列化 Master2SlavePacket
             Master2SlavePacket packet;
+
             if (!packet.deserialize(packet_data)) {
-                Log.e(TAG, "Failed to deserialize Master2SlavePacket");
+                Log.e(TAG, "Failed to deserialize %s", packet.TAG);
                 return nullptr;
             }
 
-            /*
-            enum class Master2SlaveMessageID : uint8_t {
-                SYNC_MSG = 0x00,              // 同步消息
-                COND_CFG_MSG = 0x10,          // 写入导通信息
-                RES_CFG_MSG = 0x11,           // 写入阻值信息
-                CLIP_CFG_MSG = 0x12,          // 写入卡钉信息
-                READ_COND_DATA_MSG = 0x20,    // 读取
-                READ_RES_DATA_MSG = 0x21,     // 读取
-                READ_CLIP_DATA_MSG = 0x22,    // 读取
-                RST_MSG = 0x30,
-                PING_REQ_MSG = 0x40,
-                SHORT_ID_ASSIGN_MSG = 0x50
-            };
-            */
-            const char* msgTypeStr = "Unknown";
-            switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
-                case Master2SlaveMessageID::SYNC_MSG:
-                    msgTypeStr = "SYNC_MSG";
-                    break;
-                case Master2SlaveMessageID::COND_CFG_MSG:
-                    msgTypeStr = "COND_CFG_MSG";
-                    break;
-                case Master2SlaveMessageID::RES_CFG_MSG:
-                    msgTypeStr = "RES_CFG_MSG";
-                    break;
-                case Master2SlaveMessageID::CLIP_CFG_MSG:
-                    msgTypeStr = "CLIP_CFG_MSG";
-                    break;
-                case Master2SlaveMessageID::READ_COND_DATA_MSG:
-                    msgTypeStr = "READ_COND_DATA_MSG";
-                    break;
-                case Master2SlaveMessageID::RST_MSG:
-                    msgTypeStr = "RST_MSG";
-                    break;
-                case Master2SlaveMessageID::PING_REQ_MSG:
-                    msgTypeStr = "PING_REQ_MSG";
-                    break;
-                case Master2SlaveMessageID::SHORT_ID_ASSIGN_MSG:
-                    msgTypeStr = "SHORT_ID_ASSIGN_MSG";
-                    break default : break;
-            }
-
             Log.v(TAG,
-                  "packet parsed, type=%s (0x%02X), "
+                  "%s parsed, type=%s (0x%02X), "
                   "destination_id=0x%08X",
-                  msgTypeStr, packet.message_id, packet.destination_id);
+                  packet.TAG, msgTypeStr, packet.message_id,
+                  packet.destination_id);
 
             if (packet.destination_id != 0xFFFFFFFF &&
                 packet.destination_id != UIDReader::get()) {
@@ -2161,7 +2061,7 @@ class FrameParser {
                     Log.v(TAG, "processing SYNC_MSG message");
                     auto msg = std::make_unique<Master2Slave::SyncMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG, "SYNC_MSG message deserialized");
@@ -2173,7 +2073,7 @@ class FrameParser {
                           "message");
                     auto msg = std::make_unique<Master2Slave::CondCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG,
@@ -2187,7 +2087,7 @@ class FrameParser {
                           "message");
                     auto msg = std::make_unique<Master2Slave::ResCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG,
@@ -2201,7 +2101,7 @@ class FrameParser {
                           "message");
                     auto msg = std::make_unique<Master2Slave::ClipCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG,
@@ -2214,7 +2114,7 @@ class FrameParser {
                     auto msg =
                         std::make_unique<Master2Slave::ReadCondDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG, "READ_COND_DATA_MSG message deserialized");
@@ -2224,7 +2124,7 @@ class FrameParser {
                     Log.v(TAG, "processing READ_RES_DATA_MSG message");
                     auto msg = std::make_unique<Master2Slave::ReadResDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG, "READ_RES_DATA_MSG message deserialized");
@@ -2235,7 +2135,7 @@ class FrameParser {
                     auto msg =
                         std::make_unique<Master2Slave::ReadClipDataMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG, "READ_CLIP_DATA_MSG message deserialized");
@@ -2245,7 +2145,7 @@ class FrameParser {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Slave::RstMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     Log.v(TAG, "RST_MSG message deserialized");
@@ -2255,7 +2155,7 @@ class FrameParser {
                     Log.v(TAG, "processing PING_REQ_MSG message");
                     auto msg = std::make_unique<Master2Slave::PingReqMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                 }
@@ -2264,7 +2164,7 @@ class FrameParser {
                     auto msg =
                         std::make_unique<Master2Slave::ShortIdAssignMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                 }
@@ -2285,36 +2185,18 @@ class FrameParser {
             static_cast<uint8_t>(PacketType::Master2Backend)) {
             Master2BackendPacket packet;
             if (!packet.deserialize(packet_data)) {
-                Log.e("M2BP", "Failed to deserialize packet");
+                Log.e(TAG, "Failed to deserialize %s", packet.TAG);
                 return nullptr;
             }
 
-            const char* msgTypeStr = "Unknown";
-            switch (static_cast<Master2BackendMessageID>(packet.message_id)) {
-                case Master2BackendMessageID::SLAVE_CFG_MSG:
-                    msgTypeStr = "SLAVE_CFG_MSG";
-                    break;
-                case Master2BackendMessageID::MODE_CFG_MSG:
-                    msgTypeStr = "MODE_CFG_MSG";
-                    break;
-                case Master2BackendMessageID::RST_MSG:
-                    msgTypeStr = "RST_MSG";
-                    break;
-                case Master2BackendMessageID::CTRL_MSG:
-                    msgTypeStr = "CTRL_MSG";
-                    break;
-                default:
-                    break;
-            }
-
-            Log.v(TAG, "packet parsed, msg type=%s (0x%02X) ", msgTypeStr,
-                  packet.message_id);
+            Log.v(TAG, "%s parsed, msg type=%s (0x%02X) ", packet.TAG,
+                  msgTypeStr, packet.message_id);
             switch (static_cast<Master2BackendMessageID>(packet.message_id)) {
                 case Master2BackendMessageID::SLAVE_CFG_MSG: {
                     Log.v(TAG, "processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::SlaveCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2323,7 +2205,7 @@ class FrameParser {
                     Log.v(TAG, "processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Master2Backend::ModeCfgMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2332,7 +2214,7 @@ class FrameParser {
                     Log.v(TAG, "processing RST_MSG message");
                     auto msg = std::make_unique<Master2Backend::RstMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
@@ -2341,7 +2223,7 @@ class FrameParser {
                     Log.v(TAG, "processing CTRL_MSG message");
                     auto msg = std::make_unique<Master2Backend::CtrlMsg>();
                     if (!msg->deserialize(packet.payload)) {
-                        Log.e(TAG, "Failed to deserialize COND_CFG_MSG");
+                        Log.e(TAG, "Failed to deserialize %s", msg->TAG);
                         return nullptr;
                     }
                     return msg;
