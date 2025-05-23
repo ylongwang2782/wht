@@ -61,7 +61,12 @@ void RstMsg::process() { Log.d("RstMsg", "process"); }
 
 void PingReqMsg::process() { Log.d("PingReqMsg", "process"); }
 
-void ShortIdAssignMsg::process() { Log.d("ShortIdAssignMsg", "process"); }
+void ShortIdAssignMsg::process() {
+    Log.d("ShortIdAssignMsg", "process");
+    if (shortId == 0) {
+        Slave2Master::ShortIdConfirmMsg::shortId = shortId;
+    }
+}
 };    // namespace Master2Slave
 
 namespace Slave2Master {

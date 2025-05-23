@@ -251,11 +251,32 @@ class PCmanagerMsg {
     BinarySemaphore& upload_done_sem;
 };
 
-// 从机数据传输任务 <-> 从机管理任务
-// 消息结构-----------------------------------------------------
+// 后端主机数据传输管理----------------------------------------
 class ManagerDataTransferMsg {
    public:
     ManagerDataTransferMsg()
+        : cmd_tx_sem("cmd_tx_sem"),
+          rx_done_sem("rx_done_sem"),
+          tx_request_sem("tx_request_sem"),
+          tx_done_sem("tx_done_sem"),
+
+          tx_data_queue("manager_tx_data_queue"),
+          rx_data_queue("manager_rx_data_queue") {}
+
+   public:
+    BinarySemaphore cmd_tx_sem;
+    BinarySemaphore rx_done_sem;
+    BinarySemaphore tx_request_sem;
+    BinarySemaphore tx_done_sem;
+
+    Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> tx_data_queue;
+    Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> rx_data_queue;
+};
+
+// 主从机数传传输管理
+class SlaveUploadTransferMgr {
+   public:
+    SlaveUploadTransferMgr()
         : rx_done_sem("rx_done_sem"),
           tx_request_sem("tx_request_sem"),
           tx_done_sem("tx_done_sem"),
@@ -268,7 +289,8 @@ class ManagerDataTransferMsg {
     BinarySemaphore tx_request_sem;
     BinarySemaphore tx_done_sem;
 
-    Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> tx_data_queue;
-    Queue<uint8_t, ManagerDataTransferMsg_RXDATA_QUEUE_SIZE> rx_data_queue;
+    Queue<uint8_t, SlaveUploadTransferMgr_RXDATA_QUEUE_SIZE> tx_data_queue;
+    Queue<uint8_t, SlaveUploadTransferMgr_RXDATA_QUEUE_SIZE> rx_data_queue;
 };
+
 #endif

@@ -21,6 +21,8 @@
 // 从机数据传输任务 <-> 从机管理任务：接受数据传输队列大小
 #define ManagerDataTransferMsg_RXDATA_QUEUE_SIZE 2048
 
+#define SlaveUploadTransferMgr_RXDATA_QUEUE_SIZE 256
+
 // < SlaveManager 从机管理任务 >----------------------------------------
 // 栈大小
 #define SlaveManager_STACK_SIZE 2 * 1024

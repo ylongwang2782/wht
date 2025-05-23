@@ -50,6 +50,7 @@ class __ProcessBase {
                 if (!rsp) {
                     return true;    // 直接返回，不等待从机回复
                 }
+                transfer_msg.cmd_tx_sem.give();
 
                 // 发送成功，等待从机回复
                 if (transfer_msg.rx_done_sem.take(SlaveManager_RSP_TIMEOUT) ==
@@ -282,6 +283,7 @@ class ReadCondProcessor : private __ProcessBase {
     ReadCondProcessor(ManagerDataTransferMsg& __transfer_msg)
         : __ProcessBase(__transfer_msg) {}
     uint32_t deviceID;
+
    private:
     Master2Slave::ReadCondDataMsg read_cond_data_msg;
     Slave2Backend::CondDataMsg upload_cond_data_msg;
@@ -311,16 +313,18 @@ class ReadCondProcessor : private __ProcessBase {
 
 class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
    public:
-    ManagerDataTransfer(ManagerDataTransferMsg& __manager_transfer_msg)
+    ManagerDataTransfer(ManagerDataTransferMsg& __manager_transfer_msg,
+                        SlaveUploadTransferMgr& __slaveUploadTransferMgr)
         : TaskClassS("SlaveDataTransfer", TaskPrio_High),
-          transfer_msg(__manager_transfer_msg) {}
+          transfer_msg(__manager_transfer_msg),
+          slaveUploadTransferMgr(__slaveUploadTransferMgr) {}
 
    private:
     ManagerDataTransferMsg& transfer_msg;
+    SlaveUploadTransferMgr& slaveUploadTransferMgr;
 
-   private:
     void task() override {
-        Log.i("SlaveDataTransfer_Task", "Boot");
+        Log.d("SlaveDataTransfer_Task", "Boot");
 
 #ifdef SLAVE_USE_UWB
         UWB<UwbUartInterface> uwb;
@@ -341,12 +345,18 @@ class ManagerDataTransfer : public TaskClassS<ManagerDataTransfer_STACK_SIZE> {
             }
 
             if (uwb.get_recv_data(buffer)) {
-                for (auto it = buffer.begin(); it != buffer.end(); it++) {
-                    transfer_msg.rx_data_queue.add(*it);
+                if (transfer_msg.cmd_tx_sem.take(0)) {
+                    for (auto it = buffer.begin(); it != buffer.end(); it++) {
+                        transfer_msg.rx_data_queue.add(*it);
+                    }
+                    transfer_msg.rx_done_sem.give();
+                } else {
+                    for (auto it = buffer.begin(); it != buffer.end(); it++) {
+                        slaveUploadTransferMgr.rx_data_queue.add(*it);
+                    }
+                    slaveUploadTransferMgr.rx_done_sem.give();
                 }
-                transfer_msg.rx_done_sem.give();
             }
-
             uwb.update();
             TaskBase::delay(5);
         }
@@ -444,7 +454,7 @@ class SlaveManager : public TaskClassS<SlaveManager_STACK_SIZE> {
         SlaveDev dev;
         switch (cfg_state) {
             case CONGIG_START: {
-                Log.i("SlaveManager", "config process start");
+                Log.d("SlaveManager", "config process start");
                 timeSlot = 0;
                 slave_dev_index = 0;
                 slave_num = forward_data.cfg_cmd.slave_dev_num;
