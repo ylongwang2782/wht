@@ -139,10 +139,12 @@ uint32_t PingRspMsg::timestamp = 0;
 
 /*
 Announce Message
+Device ID	u32
 VersionMajor	uint8_t 
 VersionMinor	uint8_t 
 VersionPatch	uint16_t 
 */
+uint32_t AnnounceMsg::deviceId = 0;
 uint8_t AnnounceMsg::versionMajor = 0;
 uint8_t AnnounceMsg::versionMinor = 0;
 uint16_t AnnounceMsg::versionPatch = 0;

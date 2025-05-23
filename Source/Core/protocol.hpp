@@ -805,6 +805,8 @@ class ShortIdAssignMsg : public Message {
         if (data.size() != 1) {    // 修改为1字节
             Log.e(TAG, "Invalid ShortIdAssignMsg data size");
         }
+        shortId = data[0];    // 反序列化短ID
+        Log.v(TAG, "shortId = 0x%02X", shortId);
     }
     void process() override;
 
@@ -1019,6 +1021,7 @@ class PingRspMsg : public Message {
 
 /*
 Announce Message
+Device ID	u32
 VersionMajor	uint8_t
 VersionMinor	uint8_t
 VersionPatch	uint16_t
@@ -1026,31 +1029,36 @@ VersionPatch	uint16_t
 class AnnounceMsg : public Message {
    public:
     static constexpr const char TAG[] = "AnnounceMsg";
-    static uint8_t versionMajor;     // 固件主版本号
-    static uint8_t versionMinor;     // 固件次版本号
-    static uint16_t versionPatch;    // 固件补丁号
+    static uint32_t deviceId;        // 设备ID
+    static uint8_t versionMajor;     // 主版本号
+    static uint8_t versionMinor;     // 次版本号
+    static uint16_t versionPatch;    // 修订版本号
 
     void serialize(std::vector<uint8_t>& data) const override {
-        data.push_back(versionMajor);    // 序列化固件主版本号
-        data.push_back(versionMinor);    // 序列化固件次版本号
-        data.push_back(static_cast<uint8_t>(versionPatch));         // 低字节
-        data.push_back(static_cast<uint8_t>(versionPatch >> 8));    // 高字节
+        ProtocolUtils::serializeUint32(data, deviceId);    // 序列化设备ID
+        data.push_back(versionMajor);    // 序列化主版本号
+        data.push_back(versionMinor);    // 序列化次版本号
+        data.push_back(
+            static_cast<uint8_t>(versionPatch));    // 序列化修订版本号
+        data.push_back(static_cast<uint8_t>(versionPatch >>
+                                            8));    // 序列化修订版本号的高字节
     }
 
     void deserialize(const std::vector<uint8_t>& data) override {
-        if (data.size() != 4) {    // 修改为4字节(原3+新增1)
+        if (data.size() != 6) {    // 修改为6字节(原4+新增2)
             Log.e(TAG, "Invalid AnnounceMsg data size");
             return;
         }
-        versionMajor = data[0];    // 反序列化固件主版本号
-        versionMinor = data[1];    // 反序列化固件次版本号
-        versionPatch = data[2] | (data[3] << 8);    // 调整字段索引(+1)
+        deviceId =
+            ProtocolUtils::deserializeUint32(data, 0);    // 反序列化设备ID
+        versionMajor = data[4];                     // 反序列化主版本号
+        versionMinor = data[5];                     // 反序列化次版本号
+        versionPatch = data[6] | (data[7] << 8);    // 反序列化修订版本号
         Log.v(TAG,
-              "versionMajor = 0x%02X, versionMinor = 0x%02X,  versionPatch = "
-              "0x%04X",
-              versionMajor, versionMinor, versionPatch);    // 打印日志信息
+              "deviceId = 0x%08X, versionMajor = 0x%02X, "
+              "versionMinor = 0x%02X, versionPatch = 0x%04X",
+              deviceId, versionMajor, versionMinor, versionPatch);
     }
-
     void process() override;
 
     uint8_t message_type() const override {
