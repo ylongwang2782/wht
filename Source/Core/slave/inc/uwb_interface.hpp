@@ -267,6 +267,6 @@ class SlaveUwbSpiInterface : public CxUwbInterface {
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        Log.d("uwb", buffer);
+        Log.d("UWB", buffer);
     }
 };

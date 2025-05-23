@@ -103,11 +103,11 @@ class UciCtrlPacket : public UciCtrlPcketBase {
         return is_last_packet;
     }
 
-    bool flow_parse(uint8_t& data, std::vector<uint8_t>& total_payload) {
+    bool flow_parse(uint8_t& data) {
         switch (parser_sta) {
             case PARSE_START: {
                 recv_packet = false;
-                total_payload.clear();
+                packet.clear();
                 parser_sta = MT_PBF_GID_BYTE;
             }
             case MT_PBF_GID_BYTE: {
@@ -149,7 +149,7 @@ class UciCtrlPacket : public UciCtrlPcketBase {
                 break;
             }
             case PAYLOAD_BYTES: {
-                total_payload.push_back(data);
+                packet.push_back(data);
                 pkt_recv_len++;
                 if (pkt_recv_len == currunt_payload_len) {
                     recv_packet = true;
@@ -196,6 +196,23 @@ class UciCMD : private UciCtrlPacket {
    public:
     UciCMD() : packet(UciCtrlPacket::packet) {}
 
+#pragma pack(1)
+    typedef struct {
+        uint8_t status;
+        uint16_t uci_ver;
+        uint16_t mac_ver;
+        uint16_t phy_ver;
+        uint16_t uci_test_ver;
+        uint8_t vendor_info_len;
+    } UWBDeviceInfo;
+
+    // typedef struct {
+    //     uint8_t type_id;
+    //     uint8_t len;
+    //     uint8_t value[2];
+    // } UWBParameter;
+#pragma pack()
+
    public:
     std::vector<uint8_t>& packet;
 
@@ -205,6 +222,8 @@ class UciCMD : private UciCtrlPacket {
    public:
     uint16_t payload_len() { return payload.size(); }
     void reset_packer() { reset(); }
+
+    /* -----------------<Device Reset CMD>----------------- */
     bool core_device_reset() {
         payload.resize(1);
         payload.clear();
@@ -231,6 +250,7 @@ class UciCMD : private UciCtrlPacket {
         return true;
     }
 
+    /* ---------------<Get Device Info CMD>--------------- */
     bool core_get_device_info() {
         payload.resize(0);
         payload.clear();
@@ -240,6 +260,25 @@ class UciCMD : private UciCtrlPacket {
         return build_packet(payload);
     }
 
+    bool check_core_get_device_info_rsp(const UciCtrlPacket& rsp,
+                                        UWBDeviceInfo& info) {
+        if (rsp.mt != MT_RSP) {
+            return false;
+        }
+        if (rsp.gid != GID0x00) {
+            return false;
+        }
+        if (rsp.oid != CORE_GET_DEVICE_INFO_CMD) {
+            return false;
+        }
+        memcpy(&info, rsp.packet.data(), sizeof(UWBDeviceInfo));
+        if (info.status != STATUS_OK) {
+            return false;
+        }
+        return true;
+    }
+
+    /* ---------------<Get Caps Info CMD>---------------- */
     bool core_get_caps_info() {
         payload.resize(0);
         payload.clear();
@@ -249,8 +288,84 @@ class UciCMD : private UciCtrlPacket {
         return build_packet(payload);
     }
 
-    bool core_set_config() { return false; }
+    /* -----------------<Set Config CMD>----------------- */
+    // bool core_set_config(uint8_t param_id, uint8_t val_len) {
+    //     payload.resize(2);
+    //     payload.clear();
+    //     mt = MT_CMD;
+    //     gid = GID0x00;
+    //     oid = CORE_SET_CONFIG_CMD;
+    //     payload[0] = param_id;
+    //     payload[1] = val_len;    // length
+    //     return build_packet(payload);
+    // }
 
+    bool core_set_config(uint8_t param_id, uint8_t val_len,
+                         uint8_t* param_val) {
+        payload.clear();
+        payload.resize(3);
+        mt = MT_CMD;
+        gid = GID0x03;
+        oid = CX_SET_CONFIG_CMD;
+        payload[0] = 0x01;    // 0x01表示设置参数
+        payload[1] = param_id;
+        payload[2] = val_len;    // length
+        payload.insert(payload.end(), param_val, param_val + val_len);
+        return build_packet(payload);
+    }
+
+    bool check_core_set_config_rsp(const UciCtrlPacket& rsp) {
+        if (rsp.mt != MT_RSP) {
+            return false;
+        }
+        if (rsp.gid != GID0x03) {
+            return false;
+        }
+        if (rsp.oid != CX_SET_CONFIG_CMD) {
+            return false;
+        }
+        if (rsp.packet[0] != STATUS_OK) {
+            return false;
+        }
+        return true;
+    }
+
+    /* -----------------<Get Config CMD>----------------- */
+    bool core_get_config(uint8_t param_id) {
+        payload.clear();
+        payload.resize(2);
+        mt = MT_CMD;
+        gid = GID0x03;
+        oid = CX_GET_CONFIG_CMD;
+        payload[0] = 0x01;    // 获取一个设备
+        payload[1] = param_id;
+        return build_packet(payload);
+    }
+
+    bool check_core_get_config_rsp(const UciCtrlPacket& rsp, uint8_t* param_id,
+                                   uint8_t* val_len, uint8_t* param_val) {
+        if (rsp.mt != MT_RSP) {
+            return false;
+        }
+        if (rsp.gid != GID0x03) {
+            return false;
+        }
+        if (rsp.oid != CX_GET_CONFIG_CMD) {
+            return false;
+        }
+        if (rsp.packet[0] != STATUS_OK) {
+            return false;
+        }
+        if (rsp.packet[1] != 0x01) {
+            return false;
+        }
+        *param_id = rsp.packet[2];
+        *val_len = rsp.packet[3];
+        memcpy(param_val, rsp.packet.data() + 4, *val_len);
+        return true;
+    }
+
+    /* ---------------<Data Timestamp CMD>--------------- */
     bool cx_app_data_tx(const std::vector<uint8_t>& data) {
         if (data.size() > CX_APP_DATA_TX_MAX_PAYLOAD_LEN) {
             return false;
@@ -279,6 +394,7 @@ class UciCMD : private UciCtrlPacket {
         return true;
     }
 
+    /* ---------------<Data Receive CMD>---------------- */
     bool cx_app_data_rx() {
         payload.resize(0);
         payload.clear();
@@ -304,6 +420,7 @@ class UciCMD : private UciCtrlPacket {
         return true;
     }
 
+    /* ---------------<Data Stop Receive CMD>---------------- */
     bool cx_app_data_stop_rx() {
         payload.resize(0);
         payload.clear();
@@ -325,6 +442,21 @@ class UciCMD : private UciCtrlPacket {
         if (rsp.packet[0] != STATUS_OK) {
             return false;
         }
+        return true;
+    }
+
+    bool cx_set_hprf() {
+        payload.clear();
+        mt = MT_CMD;
+        gid = GID0x03;
+        oid = 0x03;
+        payload.resize(7);
+        payload = {0x02, 0xB5, 0x01, 0x03, 0x14, 0x01,0x19};
+        return build_packet(payload);
+    }
+
+    bool check_cx_set_hprf_rsp(const UciCtrlPacket& rsp) {
+       
         return true;
     }
 };
