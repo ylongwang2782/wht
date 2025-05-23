@@ -1801,15 +1801,35 @@ class FrameParser {
                 case Slave2MasterMessageID::RST_MSG:
                     msgTypeStr = "RST_MSG";
                     break;
+                case Slave2MasterMessageID::PING_RSP_MSG:
+                    msgTypeStr = "PING_RSP_MSG";
+                    break;
+                case Slave2MasterMessageID::ANNOUNCE_MSG:
+                    msgTypeStr = "ANNOUNCE_MSG";
+                    break;
+                case Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG:
+                    msgTypeStr = "SHORT_ID_CONFIRM_MSG";
+                    break;
                 default:
                     break;
             }
 
             Log.v(TAG,
-                  "packet parsed, type=%s (0x%02X), "
+                  "Slave2MasterPacket parsed, type=%s (0x%02X, "
                   "source_id=0x%08X",
                   msgTypeStr, packet.message_id, packet.source_id);
 
+            /*
+            enum class Slave2MasterMessageID : uint8_t {
+            COND_CFG_MSG = 0x10,    // 导通信息
+            RES_CFG_MSG = 0x11,     // 阻值信息
+            CLIP_CFG_MSG = 0x12,    // 卡钉信息
+            RST_MSG = 0x30,
+            PING_RSP_MSG = 0x40,
+            ANNOUNCE_MSG = 0x50,
+            SHORT_ID_CONFIRM_MSG = 0x51
+            };
+            */
             switch (static_cast<Slave2MasterMessageID>(packet.message_id)) {
                 case Slave2MasterMessageID::COND_CFG_MSG: {
                     Log.v(TAG, "processing COND_CFG_MSG message");
@@ -1835,9 +1855,27 @@ class FrameParser {
                     msg->deserialize(packet.payload);
                     return msg;
                 }
+                case Slave2MasterMessageID::PING_RSP_MSG: {
+                    Log.v(TAG, "processing PING_RSP_MSG message");
+                    auto msg = std::make_unique<Slave2Master::PingRspMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                case Slave2MasterMessageID::ANNOUNCE_MSG: {
+                    Log.v(TAG, "processing ANNOUNCE_MSG message");
+                    auto msg = std::make_unique<Slave2Master::AnnounceMsg>();
+                    msg->deserialize(packet.payload);
+                    return msg;
+                }
+                case Slave2MasterMessageID::SHORT_ID_CONFIRM_MSG: {
+                    Log.v(TAG, "processing SHORT_ID_CONFIRM_MSG message");
+                    auto msg =
+                        std::make_unique<Slave2Master::ShortIdConfirmMsg>();
+                    msg->deserialize(packet.payload);
+                }
                 default:
                     Log.e(TAG,
-                          "unsupported Slave message "
+                          "unsupported Slave2Master message "
                           "type=0x%02X",
                           static_cast<uint8_t>(packet.message_id));
                     return nullptr;
@@ -1870,18 +1908,18 @@ class FrameParser {
                     break;
             }
 
-            Log.v(TAG, "packet parsed, msg type=%s (0x%02X) ", msgTypeStr,
+            Log.v(TAG, "Packet parsed, msg type=%s (0x%02X) ", msgTypeStr,
                   packet.message_id);
 
             switch (static_cast<Backend2MasterMessageID>(packet.message_id)) {
                 case Backend2MasterMessageID::SLAVE_CFG_MSG: {
-                    Log.v(TAG, "processing SLAVE_CFG_MSG message");
+                    Log.v(TAG, "Processing SLAVE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::SlaveCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
                 }
                 case Backend2MasterMessageID::MODE_CFG_MSG: {
-                    Log.v(TAG, "processing MODE_CFG_MSG message");
+                    Log.v(TAG, "Processing MODE_CFG_MSG message");
                     auto msg = std::make_unique<Backend2Master::ModeCfgMsg>();
                     msg->deserialize(packet.payload);
                     return msg;
@@ -1900,7 +1938,7 @@ class FrameParser {
                 }
                 default:
                     Log.e(TAG,
-                          "unsupported Slave message "
+                          "unsupported Backend2Master message "
                           "type=0x%02X",
                           static_cast<uint8_t>(packet.message_id));
                     return nullptr;
@@ -1970,6 +2008,20 @@ class FrameParser {
                 return nullptr;
             }
 
+            /*
+            enum class Master2SlaveMessageID : uint8_t {
+                SYNC_MSG = 0x00,              // 同步消息
+                COND_CFG_MSG = 0x10,          // 写入导通信息
+                RES_CFG_MSG = 0x11,           // 写入阻值信息
+                CLIP_CFG_MSG = 0x12,          // 写入卡钉信息
+                READ_COND_DATA_MSG = 0x20,    // 读取
+                READ_RES_DATA_MSG = 0x21,     // 读取
+                READ_CLIP_DATA_MSG = 0x22,    // 读取
+                RST_MSG = 0x30,
+                PING_REQ_MSG = 0x40,
+                SHORT_ID_ASSIGN_MSG = 0x50
+            };
+            */
             const char* msgTypeStr = "Unknown";
             switch (static_cast<Master2SlaveMessageID>(packet.message_id)) {
                 case Master2SlaveMessageID::SYNC_MSG:
@@ -1990,8 +2042,12 @@ class FrameParser {
                 case Master2SlaveMessageID::RST_MSG:
                     msgTypeStr = "RST_MSG";
                     break;
-                default:
+                case Master2SlaveMessageID::PING_REQ_MSG:
+                    msgTypeStr = "PING_REQ_MSG";
                     break;
+                case Master2SlaveMessageID::SHORT_ID_ASSIGN_MSG:
+                    msgTypeStr = "SHORT_ID_ASSIGN_MSG";
+                    break default : break;
             }
 
             Log.v(TAG,
@@ -2077,9 +2133,20 @@ class FrameParser {
                     Log.v(TAG, "RST_MSG message deserialized");
                     return msg;
                 }
+                case Master2SlaveMessageID::PING_REQ_MSG: {
+                    Log.v(TAG, "processing PING_REQ_MSG message");
+                    auto msg = std::make_unique<Master2Slave::PingReqMsg>();
+                    msg->deserialize(packet.payload);
+                }
+                case Master2SlaveMessageID::SHORT_ID_ASSIGN_MSG: {
+                    Log.v(TAG, "processing SHORT_ID_ASSIGN_MSG message");
+                    auto msg =
+                        std::make_unique<Master2Slave::ShortIdAssignMsg>();
+                    msg->deserialize(packet.payload);
+                }
                 default:
                     Log.e(TAG,
-                          "unsupported Master message "
+                          "unsupported Master2Slave message "
                           "type=0x%02X",
                           static_cast<uint8_t>(packet.message_id));
                     return nullptr;
