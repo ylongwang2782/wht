@@ -69,7 +69,7 @@ uint32_t PingReqMsg::timestamp = 0;
 Short ID Assign Message
 Short ID	uint8_t
 */
-uint8_t ShortIdAssignMsg::shortId = 0;
+uint8_t ShortIdAssignMsg::shortId = 1;
 
 }    // namespace Master2Slave
 
